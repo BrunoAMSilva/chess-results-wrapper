@@ -1,6 +1,6 @@
 ---
 import type { Pairing } from "../lib/scraper";
-
+import { reverseName } from "../lib/utils";
 import { useTranslations } from "../i18n/ui";
 
 interface Props {
@@ -11,12 +11,6 @@ interface Props {
 
 const { pairing, index, lang } = Astro.props;
 const t = useTranslations(lang);
-
-function reverseName(name: string): string {
-  if (!name.includes(",")) return name;
-  const [last, ...rest] = name.split(",");
-  return `${rest.join(",").trim()} ${last.trim()}`;
-}
 
 function resultClass(result: string): string {
   if (result.includes("1 - 0")) return "white-wins";

@@ -3,9 +3,7 @@ import Layout from "../layouts/Layout.astro";
 import MatchCard from "../components/MatchCard.astro";
 import { scrapePairings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
-
-const DEFAULT_TOURNAMENT = "1361358";
-const ROWS_PER_PAGE = 9;
+import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../lib/constants";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const round = parseInt(Astro.url.searchParams.get("round") || "1");
@@ -95,7 +93,7 @@ const totalPages = pages.length;
           <span class="col-label col-center">{t('table.table')}</span>
           <span class="col-label col-black">{t('table.black')}</span>
         </div>
-        <div class="carousel" id="carousel" data-total-pages={totalPages} data-interval="10">
+        <div class="carousel" id="carousel" data-total-pages={totalPages} data-interval={CAROUSEL_INTERVAL}>
           {pages.map((page, pageIdx) => (
             <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
               {page.map((pairing, i) => (
@@ -180,100 +178,13 @@ const totalPages = pages.length;
     const round = (document.getElementById("inputRound") as HTMLSelectElement).value;
     if (tid) window.location.href = `/?tid=${tid}&lang=${lang}&round=${round}`;
   });
+</script>
 
-  // Carousel
-  const carousel = document.getElementById("carousel");
-  if (carousel) {
-    const totalPages = parseInt(carousel.dataset.totalPages || "1");
-    const interval = parseInt(carousel.dataset.interval || "10") * 1000;
-    const pages = carousel.querySelectorAll<HTMLElement>(".carousel-page");
-    const dots = document.querySelectorAll<HTMLElement>(".page-dot");
-    const progressFill = document.getElementById("progressFill");
-    let current = 0;
-    let timer: ReturnType<typeof setTimeout>;
-    let progressStart: number;
-    let animFrame: number = 0;
-
-    function showPage(idx: number) {
-      pages.forEach((p, i) => {
-        p.classList.toggle("active", i === idx);
-        p.classList.toggle("exit", i !== idx);
-      });
-      dots.forEach((d, i) => d.classList.toggle("active", i === idx));
-      current = idx;
-      startProgress();
-    }
-
-    function startProgress() {
-      if (!progressFill || totalPages <= 1) return;
-      cancelAnimationFrame(animFrame);
-      progressStart = performance.now();
-      progressFill.style.transition = "none";
-      progressFill.style.width = "0%";
-
-      requestAnimationFrame(() => {
-        progressFill.style.transition = `width ${interval}ms linear`;
-        progressFill.style.width = "100%";
-      });
-    }
-
-    function nextPage() {
-      showPage((current + 1) % totalPages);
-    }
-
-    if (totalPages > 1) {
-      // Auto-cycle
-      timer = setInterval(nextPage, interval);
-      startProgress();
-
-      // Click dots to navigate
-      dots.forEach((dot) => {
-        dot.addEventListener("click", () => {
-          clearInterval(timer);
-          showPage(parseInt(dot.dataset.dot || "0"));
-          timer = setInterval(nextPage, interval);
-        });
-      });
-
-      // Keyboard navigation
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-          clearInterval(timer);
-          if (e.key === "ArrowRight") showPage((current + 1) % totalPages);
-          else showPage((current - 1 + totalPages) % totalPages);
-          timer = setInterval(nextPage, interval);
-        }
-      });
-    }
-  }
+<script>
+  import "../scripts/carousel";
 </script>
 
 <style>
-  .container {
-    display: flex;
-    flex-direction: column;
-    height: 100dvh;
-    padding: 0.6rem 2.5rem 0.4rem;
-  }
-
-  .header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 2rem;
-    margin-bottom: 0.5rem;
-    flex-shrink: 0;
-    animation: fadeInUp 0.5s ease both;
-    padding: 0.5rem 0;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    overflow: hidden;
-  }
-
   .header-right-group {
     display: flex;
     align-items: center;
@@ -289,81 +200,11 @@ const totalPages = pages.length;
     gap: 4px;
   }
 
-  .title-row {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    overflow: hidden;
-  }
-
-  .icon-logo {
-    width: 28px;
-    height: 28px;
-    color: var(--accent);
-    flex-shrink: 0;
-  }
-
   .icon-sm {
     width: 14px;
     height: 14px;
     flex-shrink: 0;
     opacity: 0.6;
-  }
-
-  /* Force global brightness */
-  :root {
-    --text: #ffffff;
-    --text-dim: #a0a0b0;
-  }
-  
-  html, body {
-    color: #ffffff;
-  }
-
-  .title {
-    font-size: 1.8rem;
-    font-weight: 800;
-    line-height: 1.1;
-    color: #ffffff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    text-transform: uppercase;
-    letter-spacing: -0.02em;
-    /* Removed text-shadow to ensure flat clean look */
-  }
-
-  .view-switch-panel {
-    display: flex;
-    background: var(--bg);
-    border-radius: 6px;
-    padding: 4px;
-    gap: 4px;
-    margin-bottom: 0.5rem;
-  }
-
-  .switch-btn {
-    flex: 1;
-    text-align: center;
-    padding: 6px 0;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-dim);
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .switch-btn:hover {
-    color: #fff;
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .switch-btn.active {
-    background: var(--accent);
-    color: #fff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   }
 
   .info-row {
@@ -472,17 +313,6 @@ const totalPages = pages.length;
     line-height: 1;
   }
 
-  /* Matches section */
-  .matches-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
-    min-height: 0;
-  }
-
   .column-headers {
     display: grid;
     grid-template-columns: 1fr 100px 1fr;
@@ -491,15 +321,6 @@ const totalPages = pages.length;
     background: #111;
     border-bottom: 1px solid rgba(255,255,255,0.1);
     flex-shrink: 0;
-  }
-
-  .col-label {
-    font-size: 1rem;
-    font-weight: 800;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: #ffffff;
-    opacity: 0.7;
   }
 
   .col-white {
@@ -515,189 +336,5 @@ const totalPages = pages.length;
     text-align: left;
     padding-left: 1rem;
   }
-
-  /* Carousel */
-  .carousel {
-    flex: 1;
-    position: relative;
-    min-height: 0;
-    overflow: hidden;
-  }
-
-  .carousel-page {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    flex-direction: column;
-    opacity: 0;
-    transform: translateX(40px);
-    transition: opacity 0.5s ease, transform 0.5s ease;
-    pointer-events: none;
-  }
-
-  .carousel-page.active {
-    opacity: 1;
-    transform: translateX(0);
-    pointer-events: auto;
-    position: relative;
-    height: 100%;
-  }
-
-  .carousel-page.exit {
-    opacity: 0;
-    transform: translateX(-40px);
-  }
-
-  .carousel-footer {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.35rem 2rem;
-    background: var(--bg);
-    border-top: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-
-  .page-dots {
-    display: flex;
-    gap: 0.4rem;
-  }
-
-  .page-dot {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    border: 1.5px solid var(--text-dim);
-    background: transparent;
-    cursor: pointer;
-    padding: 0;
-    transition: all 0.2s ease;
-  }
-
-  .page-dot.active {
-    background: var(--accent);
-    border-color: var(--accent);
-  }
-
-  .page-dot:hover {
-    border-color: var(--accent);
-  }
-
-  .progress-bar {
-    flex: 1;
-    height: 3px;
-    background: var(--border);
-    border-radius: 2px;
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    width: 0%;
-    background: var(--accent);
-    border-radius: 2px;
-  }
-
-  .error-card {
-    background: rgba(248, 113, 113, 0.1);
-    border: 1px solid rgba(248, 113, 113, 0.3);
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    text-align: center;
-  }
-
-  .error-hint {
-    font-size: 1rem;
-    color: var(--text-dim);
-    margin-top: 0.5rem;
-  }
-
-  /* Config panel */
-  .config-panel {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    z-index: 100;
-  }
-
-  .config-toggle {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  }
-
-  .config-toggle:hover {
-    border-color: var(--accent);
-    transform: rotate(90deg);
-  }
-
-  .config-body {
-    position: absolute;
-    bottom: 50px;
-    right: 0;
-    width: 260px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-    display: none;
-    flex-direction: column;
-    gap: 0.75rem;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-    animation: fadeInUp 0.3s ease both;
-  }
-
-  .config-body.open {
-    display: flex;
-  }
-
-  .config-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-dim);
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-  }
-
-  .config-input {
-    padding: 0.5rem 0.6rem;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: var(--bg);
-    color: var(--text);
-    font-size: 0.85rem;
-    font-family: var(--font);
-  }
-
-  .config-input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-
-  .config-btn {
-    padding: 0.5rem;
-    border-radius: 6px;
-    border: none;
-    background: var(--accent);
-    color: #fff;
-    font-weight: 600;
-    font-size: 0.85rem;
-    cursor: pointer;
-    font-family: var(--font);
-    transition: opacity 0.2s ease;
-  }
-
-  .config-btn:hover {
-    opacity: 0.9;
-  }
+</style>
 </style>

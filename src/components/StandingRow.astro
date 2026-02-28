@@ -1,5 +1,6 @@
 ---
 import type { Standing } from "../lib/scraper";
+import { reverseName } from "../lib/utils";
 import { useTranslations } from "../i18n/ui";
 
 interface Props {
@@ -10,12 +11,6 @@ interface Props {
 
 const { standing, index, lang } = Astro.props;
 const t = useTranslations(lang);
-
-function reverseName(name: string): string {
-  if (!name.includes(",")) return name;
-  const [last, ...rest] = name.split(",");
-  return `${rest.join(",").trim()} ${last.trim()}`;
-}
 
 const isTop3 = standing.rank <= 3;
 const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';

@@ -1,5 +1,6 @@
 import * as cheerio from "cheerio";
 import { getCache, setCache } from "./cache";
+import { BASE_URL, CACHE_TTL } from "./constants";
 
 export interface Pairing {
   table: number;
@@ -36,8 +37,6 @@ export interface StandingsData {
   standings: Standing[];
 }
 
-const BASE_URL = "https://chess-results.com";
-
 function buildUrl(
   tournamentId: string,
   round: number,
@@ -57,12 +56,16 @@ export async function scrapePairings(
 
   const url = buildUrl(tournamentId, round, lang);
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to fetch pairings: HTTP ${res.status} for tournament ${tournamentId}`);
   const html = await res.text();
-  const data = parseHtml(html, round);
-  
-  setCache(cacheKey, data, 300); // Cache for 5 minutes
-  return data;
+
+  try {
+    const data = parseHtml(html, round);
+    setCache(cacheKey, data, CACHE_TTL);
+    return data;
+  } catch (e) {
+    throw new Error(`Failed to parse pairings for tournament ${tournamentId}, round ${round}: ${e instanceof Error ? e.message : e}`);
+  }
 }
 
 export async function scrapeStandings(
@@ -73,28 +76,27 @@ export async function scrapeStandings(
   const cached = getCache<StandingsData>(cacheKey);
   if (cached) return cached;
 
-  const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=4&turdet=YES`; // Corrected art=4
+  const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=4&turdet=YES`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to fetch standings: HTTP ${res.status} for tournament ${tournamentId}`);
   const html = await res.text();
-  const data = parseStandingsHtml(html);
 
-  setCache(cacheKey, data, 300); // Cache for 5 minutes
-  return data;
+  try {
+    const data = parseStandingsHtml(html);
+    setCache(cacheKey, data, CACHE_TTL);
+    return data;
+  } catch (e) {
+    throw new Error(`Failed to parse standings for tournament ${tournamentId}: ${e instanceof Error ? e.message : e}`);
+  }
 }
 
-export function parseHtml(html: string, round: number): TournamentData {
-  const $ = cheerio.load(html);
-
-  // Tournament name
+function parseTournamentInfo($: cheerio.CheerioAPI): Omit<TournamentInfo, 'round'> {
   const name = $("h2").first().text().trim();
 
-  // Round info line like "Round 1 on 2026/02/28 at 15:05"
   const roundLine = $("h3").last().text().trim();
   const dateMatch = roundLine.match(/(\d{4}\/\d{2}\/\d{2})/);
   const date = dateMatch ? dateMatch[1] : "";
 
-  // Total rounds from tournament details
   const totalRoundsText = $("td.CR")
     .filter((_, el) => {
       const text = $(el).text();
@@ -105,7 +107,6 @@ export function parseHtml(html: string, round: number): TournamentData {
     .trim();
   const totalRounds = parseInt(totalRoundsText) || 5;
 
-  // Location
   const location =
     $("td.CR a")
       .filter((_, el) =>
@@ -113,6 +114,13 @@ export function parseHtml(html: string, round: number): TournamentData {
       )
       .text()
       .trim() || "";
+
+  return { name, totalRounds, date, location };
+}
+
+export function parseHtml(html: string, round: number): TournamentData {
+  const $ = cheerio.load(html);
+  const info = parseTournamentInfo($);
 
   // Parse pairings table
   const pairings: Pairing[] = [];
@@ -145,32 +153,14 @@ export function parseHtml(html: string, round: number): TournamentData {
   });
 
   return {
-    info: { name, round, totalRounds, date, location },
+    info: { ...info, round },
     pairings,
   };
 }
 
 export function parseStandingsHtml(html: string): StandingsData {
   const $ = cheerio.load(html);
-
-  // Tournament info (reused logic, simplified)
-  const name = $("h2").first().text().trim();
-  const roundLine = $("h3").last().text().trim();
-  const dateMatch = roundLine.match(/(\d{4}\/\d{2}\/\d{2})/);
-  const date = dateMatch ? dateMatch[1] : "";
-  
-  // Total rounds
-  const totalRoundsText = $("td.CR")
-    .filter((_, el) => {
-      const text = $(el).text();
-      return text.includes("Number of rounds") || text.includes("Número de rondas") || text.includes("Rundenanzahl");
-    })
-    .next()
-    .text()
-    .trim();
-  const totalRounds = parseInt(totalRoundsText) || 5;
-
-  const location = "";
+  const info = parseTournamentInfo($);
 
   // Find column indices
   let ptsIdx = -1;
@@ -230,7 +220,7 @@ export function parseStandingsHtml(html: string): StandingsData {
   });
 
   return {
-    info: { name, round: 0, totalRounds, date, location },
+    info: { ...info, round: 0 },
     standings,
   };
 }

@@ -7,6 +7,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
+    "typecheck": "astro check",
     "test": "vitest run src/lib/scraper.test.ts",
     "test:live": "vitest run src/lib/scraper.test.ts",
     "test:unit": "SKIP_LIVE=1 vitest run src/lib/scraper.test.ts"
