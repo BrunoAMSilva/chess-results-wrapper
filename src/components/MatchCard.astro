@@ -1,0 +1,153 @@
+---
+import type { Pairing } from "../lib/scraper";
+
+import { useTranslations } from "../i18n/ui";
+
+interface Props {
+  pairing: Pairing;
+  index: number;
+  lang: number;
+}
+
+const { pairing, index, lang } = Astro.props;
+const t = useTranslations(lang);
+
+function reverseName(name: string): string {
+  if (!name.includes(",")) return name;
+  const [last, ...rest] = name.split(",");
+  return `${rest.join(",").trim()} ${last.trim()}`;
+}
+
+function resultClass(result: string): string {
+  if (result.includes("1 - 0")) return "white-wins";
+  if (result.includes("0 - 1")) return "black-wins";
+  if (result.includes("½") || result.includes("0.5") || result.includes("draw"))
+    return "draw";
+  return "";
+}
+
+const rClass = resultClass(pairing.result);
+const isBye = !pairing.black;
+---
+
+<div
+  class:list={["match-row", rClass, { bye: isBye }]}
+  style={`animation-delay: ${index * 40}ms`}
+>
+  <div class="player white-side">
+    <span class="player-name">{reverseName(pairing.white.name)}</span>
+  </div>
+
+  <div class="table-divider">
+    <span class="table-num">{pairing.table}</span>
+  </div>
+
+  <div class="player black-side">
+    {pairing.black ? (
+      <span class="player-name">{reverseName(pairing.black.name)}</span>
+    ) : (
+      <span class="bye-label">{pairing.result === "1" ? t('match.bye') : t('match.notPaired')}</span>
+    )}
+  </div>
+</div>
+
+<style>
+  .match-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: stretch;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex: 1;
+    min-height: 0;
+    animation: fadeInUp 0.4s ease both;
+    color: #ffffff;
+  }
+
+  .match-row:last-child {
+    border-bottom: none;
+  }
+
+  .match-row.bye {
+    opacity: 0.45;
+  }
+
+  /* Winner highlight — :global needed for dynamic classes */
+  .match-row:global(.white-wins) .white-side {
+    background: #d4a824;
+  }
+
+  .match-row:global(.white-wins) .white-side .player-name {
+    color: #000 !important;
+    text-shadow: none;
+    font-weight: 800;
+  }
+
+  .match-row:global(.black-wins) .black-side {
+    background: #d4a824;
+  }
+
+  .match-row:global(.black-wins) .black-side .player-name {
+    color: #000 !important;
+    text-shadow: none;
+    font-weight: 800;
+  }
+
+  .match-row:global(.draw) .white-side,
+  .match-row:global(.draw) .black-side {
+    background: rgba(251, 191, 36, 0.12);
+  }
+
+  .player {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0 2rem;
+  }
+
+  .white-side {
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  .black-side {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .player-name {
+    font-size: 2.6rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #ffffff !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    letter-spacing: -0.01em;
+  }
+
+  .table-divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100px;
+    background: #111;
+    border-left: 1px solid rgba(255,255,255,0.1);
+    border-right: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .table-num {
+    font-size: 3.2rem;
+    font-weight: 900;
+    color: #ffffff;
+    line-height: 1;
+    letter-spacing: -0.05em;
+  }
+
+  .bye-label {
+    font-size: 1.8rem;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+</style>

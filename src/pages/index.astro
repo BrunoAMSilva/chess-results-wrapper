@@ -1,0 +1,653 @@
+---
+import Layout from "../layouts/Layout.astro";
+import MatchCard from "../components/MatchCard.astro";
+import { scrapePairings } from "../lib/scraper";
+import { useTranslations } from "../i18n/ui";
+
+const DEFAULT_TOURNAMENT = "1361358";
+const ROWS_PER_PAGE = 7;
+
+const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
+const round = parseInt(Astro.url.searchParams.get("round") || "1");
+const lang = parseInt(Astro.url.searchParams.get("lang") || "1");
+const rowsPerPage = parseInt(Astro.url.searchParams.get("rows") || String(ROWS_PER_PAGE));
+
+const t = useTranslations(lang);
+
+let data;
+let error: string | null = null;
+
+try {
+  data = await scrapePairings(tid, round, lang);
+} catch (e) {
+  error = e instanceof Error ? e.message : t('error.load');
+}
+
+const allPairings = data?.pairings || [];
+const activePairings = allPairings.filter((p) => p.black !== null);
+const totalPlayers = activePairings.length * 2 + allPairings.filter((p) => !p.black).length;
+const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
+
+// Group pairings into pages
+const pages: typeof allPairings[] = [];
+for (let i = 0; i < allPairings.length; i += rowsPerPage) {
+  pages.push(allPairings.slice(i, i + rowsPerPage));
+}
+const totalPages = pages.length;
+---
+
+<Layout title={data?.info.name || t('site.title')} lang={lang}>
+  <div class="container">
+    <header class="header">
+      <div class="header-left">
+        <div class="title-row">
+          <svg class="icon-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2v2M12 8v1M9 3h6M8 6h8M7 9h10l1 3H6l1-3zM6 12l-1 7h14l-1-7M5 19h14v2H5v-2z" stroke-linejoin="round" stroke-linecap="round"/>
+          </svg>
+          <h1 class="title">{data?.info.name || t('site.title')}</h1>
+        </div>
+      </div>
+
+      {data && (
+        <div class="header-right">
+          <div class="toolbar-stats">
+            <span class="stat-pill">
+              <span class="stat-group">
+                <span class="stat-value">{activePairings.length}</span>
+                <span class="stat-label">{t('header.matches')}</span>
+              </span>
+              <span class="stat-divider"></span>
+              <span class="stat-group">
+                <span class="stat-value">{totalPlayers}</span>
+                <span class="stat-label">{t('header.players')}</span>
+              </span>
+              <span class="stat-divider"></span>
+              <span class="stat-group">
+                <span class="stat-label">{t('header.round')}</span>
+                <span class="stat-value">{round} <span style="font-size: 0.8em; opacity: 0.5">/ {data.info.totalRounds}</span></span>
+              </span>
+            </span>
+            
+            <div class="round-nav">
+              <a href={`/?tid=${tid}&round=${round - 1}&lang=${lang}`} class:list={["nav-btn", { disabled: round <= 1 }]} aria-label={t('header.prevRound')}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </a>
+              <a href={`/?tid=${tid}&round=${round + 1}&lang=${lang}`} class:list={["nav-btn", { disabled: round >= data.info.totalRounds }]} aria-label={t('header.nextRound')}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+    </header>
+
+    {error && (
+      <div class="error-card">
+        <p>{error}</p>
+        <p class="error-hint">{t('error.hint')}</p>
+      </div>
+    )}
+
+    {data && (
+      <section class="matches-section">
+        <div class="column-headers">
+          <span class="col-label col-white">{t('table.white')}</span>
+          <span class="col-label col-center">{t('table.table')}</span>
+          <span class="col-label col-black">{t('table.black')}</span>
+        </div>
+        <div class="carousel" id="carousel" data-total-pages={totalPages} data-interval="10">
+          {pages.map((page, pageIdx) => (
+            <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
+              {page.map((pairing, i) => (
+                <MatchCard pairing={pairing} index={i} lang={lang} />
+              ))}
+            </div>
+          ))}
+        </div>
+        {totalPages > 1 && (
+          <div class="carousel-footer">
+            <div class="page-dots" id="pageDots">
+              {pages.map((_, i) => (
+                <button
+                  class:list={["page-dot", { active: i === 0 }]}
+                  data-dot={i}
+                  aria-label={`Page ${i + 1}`}
+                />
+              ))}
+            </div>
+            <div class="progress-bar" id="progressBar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+          </div>
+        )}
+      </section>
+    )}
+  </div>
+
+  <div class="config-panel" id="configPanel">
+    <button class="config-toggle" id="configToggle" aria-label={t('config.title')}>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+      </svg>
+    </button>
+    <div class="config-body" id="configBody">
+      <label class="config-label">
+        {t('config.tid')}
+        <input type="text" id="inputTid" value={tid} class="config-input" />
+      </label>
+      <label class="config-label">
+        {t('config.lang')}
+        <select id="inputLang" class="config-input">
+          <option value="1" selected={lang === 1}>English</option>
+          <option value="10" selected={lang === 10}>Português</option>
+          <option value="2" selected={lang === 2}>Español</option>
+          <option value="0" selected={lang === 0}>Deutsch</option>
+          <option value="20" selected={lang === 20}>Français</option>
+        </select>
+      </label>
+      <label class="config-label">
+        {t('config.round')}
+        <select id="inputRound" class="config-input">
+          {rounds.map((r) => (
+            <option value={r} selected={r === round}>{r}</option>
+          ))}
+        </select>
+      </label>
+      <button id="configGo" class="config-btn">{t('config.update')}</button>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  // Config panel
+  const toggle = document.getElementById("configToggle")!;
+  const body = document.getElementById("configBody")!;
+  const goBtn = document.getElementById("configGo")!;
+
+  toggle.addEventListener("click", () => body.classList.toggle("open"));
+
+  goBtn.addEventListener("click", () => {
+    const tid = (document.getElementById("inputTid") as HTMLInputElement).value.trim();
+    const lang = (document.getElementById("inputLang") as HTMLSelectElement).value;
+    const round = (document.getElementById("inputRound") as HTMLSelectElement).value;
+    if (tid) window.location.href = `/?tid=${tid}&lang=${lang}&round=${round}`;
+  });
+
+  // Carousel
+  const carousel = document.getElementById("carousel");
+  if (carousel) {
+    const totalPages = parseInt(carousel.dataset.totalPages || "1");
+    const interval = parseInt(carousel.dataset.interval || "10") * 1000;
+    const pages = carousel.querySelectorAll<HTMLElement>(".carousel-page");
+    const dots = document.querySelectorAll<HTMLElement>(".page-dot");
+    const progressFill = document.getElementById("progressFill");
+    let current = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    let progressStart: number;
+    let animFrame: number = 0;
+
+    function showPage(idx: number) {
+      pages.forEach((p, i) => {
+        p.classList.toggle("active", i === idx);
+        p.classList.toggle("exit", i !== idx);
+      });
+      dots.forEach((d, i) => d.classList.toggle("active", i === idx));
+      current = idx;
+      startProgress();
+    }
+
+    function startProgress() {
+      if (!progressFill || totalPages <= 1) return;
+      cancelAnimationFrame(animFrame);
+      progressStart = performance.now();
+      progressFill.style.transition = "none";
+      progressFill.style.width = "0%";
+
+      requestAnimationFrame(() => {
+        progressFill.style.transition = `width ${interval}ms linear`;
+        progressFill.style.width = "100%";
+      });
+    }
+
+    function nextPage() {
+      showPage((current + 1) % totalPages);
+    }
+
+    if (totalPages > 1) {
+      // Auto-cycle
+      timer = setInterval(nextPage, interval);
+      startProgress();
+
+      // Click dots to navigate
+      dots.forEach((dot) => {
+        dot.addEventListener("click", () => {
+          clearInterval(timer);
+          showPage(parseInt(dot.dataset.dot || "0"));
+          timer = setInterval(nextPage, interval);
+        });
+      });
+
+      // Keyboard navigation
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          clearInterval(timer);
+          if (e.key === "ArrowRight") showPage((current + 1) % totalPages);
+          else showPage((current - 1 + totalPages) % totalPages);
+          timer = setInterval(nextPage, interval);
+        }
+      });
+    }
+  }
+</script>
+
+<style>
+  .container {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    padding: 0.6rem 2.5rem 0.4rem;
+  }
+
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    margin-bottom: 0.5rem;
+    flex-shrink: 0;
+    animation: fadeInUp 0.5s ease both;
+    padding: 0.5rem 0;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    overflow: hidden;
+  }
+
+  .icon-logo {
+    width: 28px;
+    height: 28px;
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .icon-sm {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    opacity: 0.6;
+  }
+
+  /* Force global brightness */
+  :root {
+    --text: #ffffff;
+    --text-dim: #a0a0b0;
+  }
+  
+  html, body {
+    color: #ffffff;
+  }
+
+  .title {
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    /* Removed text-shadow to ensure flat clean look */
+  }
+
+  .info-row {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+  }
+
+  .info-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  .toolbar-stats {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .round-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 2px;
+  }
+
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    color: #ffffff;
+    border-radius: 4px;
+    transition: background 0.2s;
+    opacity: 0.8;
+  }
+
+  .nav-btn:hover:not(.disabled) {
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+  }
+
+  .nav-btn.disabled {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  .stat-pill {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 0;
+    background: transparent;
+    border: none;
+  }
+
+  .stat-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.2rem;
+    padding: 0;
+    color: #ffffff;
+    border-right: 1px solid rgba(255,255,255,0.2);
+    padding-right: 1.5rem;
+  }
+
+  .stat-group:last-of-type {
+    border-right: none;
+    padding-right: 0;
+    background: transparent;
+    margin-left: 0;
+    flex-direction: column;
+    gap: 0.2rem;
+    box-shadow: none;
+  }
+  
+  .stat-group:last-of-type .stat-label {
+    color: rgba(255, 255, 255, 0.6) !important;
+    opacity: 1;
+  }
+
+  .stat-divider {
+    display: none;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.6) !important;
+    letter-spacing: 0.05em;
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #ffffff !important;
+    line-height: 1;
+  }
+
+  /* Matches section */
+  .matches-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .column-headers {
+    display: grid;
+    grid-template-columns: 1fr 100px 1fr;
+    align-items: center;
+    padding: 0.6rem 2rem;
+    background: #111;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
+  }
+
+  .col-label {
+    font-size: 1rem;
+    font-weight: 800;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #ffffff;
+    opacity: 0.7;
+  }
+
+  .col-white {
+    text-align: right;
+    padding-right: 1rem;
+  }
+
+  .col-center {
+    text-align: center;
+  }
+
+  .col-black {
+    text-align: left;
+    padding-left: 1rem;
+  }
+
+  /* Carousel */
+  .carousel {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .carousel-page {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    transform: translateX(40px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    pointer-events: none;
+  }
+
+  .carousel-page.active {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+    position: relative;
+    height: 100%;
+  }
+
+  .carousel-page.exit {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+
+  .carousel-footer {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.35rem 2rem;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .page-dots {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .page-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid var(--text-dim);
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    transition: all 0.2s ease;
+  }
+
+  .page-dot.active {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .page-dot:hover {
+    border-color: var(--accent);
+  }
+
+  .progress-bar {
+    flex: 1;
+    height: 3px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .error-card {
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .error-hint {
+    font-size: 1rem;
+    color: var(--text-dim);
+    margin-top: 0.5rem;
+  }
+
+  /* Config panel */
+  .config-panel {
+    position: fixed;
+    bottom: 1.5rem;
+    right: 1.5rem;
+    z-index: 100;
+  }
+
+  .config-toggle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .config-toggle:hover {
+    border-color: var(--accent);
+    transform: rotate(90deg);
+  }
+
+  .config-body {
+    position: absolute;
+    bottom: 50px;
+    right: 0;
+    width: 260px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    display: none;
+    flex-direction: column;
+    gap: 0.75rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    animation: fadeInUp 0.3s ease both;
+  }
+
+  .config-body.open {
+    display: flex;
+  }
+
+  .config-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .config-input {
+    padding: 0.5rem 0.6rem;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-family: var(--font);
+  }
+
+  .config-input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .config-btn {
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    font-family: var(--font);
+    transition: opacity 0.2s ease;
+  }
+
+  .config-btn:hover {
+    opacity: 0.9;
+  }
+</style>

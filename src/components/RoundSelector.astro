@@ -1,0 +1,81 @@
+---
+import { useTranslations } from "../i18n/ui";
+
+interface Props {
+  currentRound: number;
+  totalRounds: number;
+  tournamentId: string;
+  lang: number;
+}
+
+const { currentRound, totalRounds, tournamentId, lang } = Astro.props;
+const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1);
+const t = useTranslations(lang);
+---
+
+<nav class="round-selector">
+  <span class="round-label">{t('round.label')}</span>
+  <div class="round-pills">
+    {rounds.map((r) => (
+      <a
+        href={`/?tid=${tournamentId}&round=${r}&lang=${lang}`}
+        class:list={["round-pill", { active: r === currentRound }]}
+      >
+        {r}
+      </a>
+    ))}
+  </div>
+</nav>
+
+<style>
+  .round-selector {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    animation: slideIn 0.4s ease both;
+  }
+
+  .round-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .round-pills {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .round-pill {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .round-pill:hover {
+    border-color: var(--accent);
+    color: var(--text);
+    transform: translateY(-1px);
+  }
+
+  .round-pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 12px rgba(124, 106, 239, 0.4);
+  }
+</style>
