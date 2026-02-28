@@ -1,6 +1,6 @@
 export const languages = {
   1: 'en',
-  10: 'pt',
+  10: 'pt-PT',
 };
 
 export const defaultLang = 1;
@@ -26,6 +26,15 @@ export const ui = {
     'config.round': 'Round',
     'config.update': 'Update',
     'round.label': 'Round',
+    'standings.rank': 'RK',
+    'standings.name': 'NAME',
+    'standings.fed': 'FED',
+    'standings.pts': 'PTS',
+    'standings.tb1': 'TB1',
+    'standings.tb2': 'TB2',
+    'standings.tb3': 'TB3',
+    'nav.pairings': 'Pairings',
+    'nav.standings': 'Standings',
   },
   10: {
     'site.title': 'Emparceiramentos',
@@ -47,6 +56,15 @@ export const ui = {
     'config.round': 'Ronda',
     'config.update': 'Atualizar',
     'round.label': 'Ronda',
+    'standings.rank': 'POS',
+    'standings.name': 'NOME',
+    'standings.fed': 'FED',
+    'standings.pts': 'PTS',
+    'standings.tb1': 'TB1',
+    'standings.tb2': 'TB2',
+    'standings.tb3': 'TB3',
+    'nav.pairings': 'Jogos',
+    'nav.standings': 'Classificação',
   },
 } as const;
 

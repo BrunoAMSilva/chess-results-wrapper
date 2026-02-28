@@ -1,14 +1,13 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import MatchCard from "../components/MatchCard.astro";
-import { scrapePairings } from "../lib/scraper";
+import StandingRow from "../components/StandingRow.astro";
+import { scrapeStandings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
 
 const DEFAULT_TOURNAMENT = "1361358";
 const ROWS_PER_PAGE = 9;
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
-const round = parseInt(Astro.url.searchParams.get("round") || "1");
 const lang = parseInt(Astro.url.searchParams.get("lang") || "1");
 const rowsPerPage = parseInt(Astro.url.searchParams.get("rows") || String(ROWS_PER_PAGE));
 
@@ -18,20 +17,17 @@ let data;
 let error: string | null = null;
 
 try {
-  data = await scrapePairings(tid, round, lang);
+  data = await scrapeStandings(tid, lang);
 } catch (e) {
   error = e instanceof Error ? e.message : t('error.load');
 }
 
-const allPairings = data?.pairings || [];
-const activePairings = allPairings.filter((p) => p.black !== null);
-const totalPlayers = activePairings.length * 2 + allPairings.filter((p) => !p.black).length;
-const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
+const allStandings = data?.standings || [];
 
-// Group pairings into pages
-const pages: typeof allPairings[] = [];
-for (let i = 0; i < allPairings.length; i += rowsPerPage) {
-  pages.push(allPairings.slice(i, i + rowsPerPage));
+// Group standings into pages
+const pages: typeof allStandings[] = [];
+for (let i = 0; i < allStandings.length; i += rowsPerPage) {
+  pages.push(allStandings.slice(i, i + rowsPerPage));
 }
 const totalPages = pages.length;
 ---
@@ -48,36 +44,7 @@ const totalPages = pages.length;
         </div>
       </div>
 
-      <div class="header-right-group">
-        {data && (
-          <div class="toolbar-stats">
-            <span class="stat-pill">
-              <span class="stat-group">
-                <span class="stat-value">{activePairings.length}</span>
-                <span class="stat-label">{t('header.matches')}</span>
-              </span>
-              <span class="stat-divider"></span>
-              <span class="stat-group">
-                <span class="stat-value">{totalPlayers}</span>
-                <span class="stat-label">{t('header.players')}</span>
-              </span>
-              <span class="stat-divider"></span>
-              <span class="stat-group">
-                <span class="stat-label">{t('header.round')}</span>
-                <span class="stat-value">{round} <span style="font-size: 0.8em; opacity: 0.5">/ {data.info.totalRounds}</span></span>
-              </span>
-            </span>
-            
-            <div class="round-nav">
-              <a href={`/?tid=${tid}&round=${round - 1}&lang=${lang}`} class:list={["nav-btn", { disabled: round <= 1 }]} aria-label={t('header.prevRound')}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-              </a>
-              <a href={`/?tid=${tid}&round=${round + 1}&lang=${lang}`} class:list={["nav-btn", { disabled: round >= data.info.totalRounds }]} aria-label={t('header.nextRound')}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-              </a>
-            </div>
-          </div>
-        )}
+      <div class="header-right">
       </div>
     </header>
 
@@ -91,15 +58,15 @@ const totalPages = pages.length;
     {data && (
       <section class="matches-section">
         <div class="column-headers">
-          <span class="col-label col-white">{t('table.white')}</span>
-          <span class="col-label col-center">{t('table.table')}</span>
-          <span class="col-label col-black">{t('table.black')}</span>
+          <span class="col-label col-rank">{t('standings.rank')}</span>
+          <span class="col-label col-name">{t('standings.name')}</span>
+          <span class="col-label col-stats pr-8 text-right">{t('standings.pts')} / TB</span>
         </div>
         <div class="carousel" id="carousel" data-total-pages={totalPages} data-interval="10">
           {pages.map((page, pageIdx) => (
             <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
-              {page.map((pairing, i) => (
-                <MatchCard pairing={pairing} index={i} lang={lang} />
+              {page.map((standing, i) => (
+                <StandingRow standing={standing} index={i} lang={lang} />
               ))}
             </div>
           ))}
@@ -132,12 +99,12 @@ const totalPages = pages.length;
     </button>
     <div class="config-body" id="configBody">
       <div class="view-switch-panel">
-        <span class="switch-btn active">
+        <a href={`/?tid=${tid}&lang=${lang}`} class="switch-btn">
           {t('nav.pairings')}
-        </span>
-        <a href={`/standings?tid=${tid}&lang=${lang}`} class="switch-btn">
-          {t('nav.standings')}
         </a>
+        <span class="switch-btn active">
+          {t('nav.standings')}
+        </span>
       </div>
       <label class="config-label">
         {t('config.tid')}
@@ -151,14 +118,6 @@ const totalPages = pages.length;
           <option value="2" selected={lang === 2}>Español</option>
           <option value="0" selected={lang === 0}>Deutsch</option>
           <option value="20" selected={lang === 20}>Français</option>
-        </select>
-      </label>
-      <label class="config-label">
-        {t('config.round')}
-        <select id="inputRound" class="config-input">
-          {rounds.map((r) => (
-            <option value={r} selected={r === round}>{r}</option>
-          ))}
         </select>
       </label>
       <button id="configGo" class="config-btn">{t('config.update')}</button>
@@ -177,8 +136,7 @@ const totalPages = pages.length;
   goBtn.addEventListener("click", () => {
     const tid = (document.getElementById("inputTid") as HTMLInputElement).value.trim();
     const lang = (document.getElementById("inputLang") as HTMLSelectElement).value;
-    const round = (document.getElementById("inputRound") as HTMLSelectElement).value;
-    if (tid) window.location.href = `/?tid=${tid}&lang=${lang}&round=${round}`;
+    if (tid) window.location.href = `/standings?tid=${tid}&lang=${lang}`;
   });
 
   // Carousel
@@ -274,21 +232,6 @@ const totalPages = pages.length;
     overflow: hidden;
   }
 
-  .header-right-group {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    flex-shrink: 0;
-  }
-
-  .view-switch {
-    display: flex;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 4px;
-    gap: 4px;
-  }
-
   .title-row {
     display: flex;
     align-items: center;
@@ -303,23 +246,6 @@ const totalPages = pages.length;
     flex-shrink: 0;
   }
 
-  .icon-sm {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    opacity: 0.6;
-  }
-
-  /* Force global brightness */
-  :root {
-    --text: #ffffff;
-    --text-dim: #a0a0b0;
-  }
-  
-  html, body {
-    color: #ffffff;
-  }
-
   .title {
     font-size: 1.8rem;
     font-weight: 800;
@@ -330,7 +256,6 @@ const totalPages = pages.length;
     text-overflow: ellipsis;
     text-transform: uppercase;
     letter-spacing: -0.02em;
-    /* Removed text-shadow to ensure flat clean look */
   }
 
   .view-switch-panel {
@@ -366,113 +291,6 @@ const totalPages = pages.length;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   }
 
-  .info-row {
-    display: flex;
-    align-items: center;
-    gap: 1.2rem;
-  }
-
-  .info-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-    color: var(--text-dim);
-  }
-
-  .toolbar-stats {
-    display: flex;
-    align-items: center;
-    gap: 2rem;
-  }
-
-  .round-nav {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
-    padding: 2px;
-  }
-
-  .nav-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    color: #ffffff;
-    border-radius: 4px;
-    transition: background 0.2s;
-    opacity: 0.8;
-  }
-
-  .nav-btn:hover:not(.disabled) {
-    background: rgba(255, 255, 255, 0.1);
-    opacity: 1;
-  }
-
-  .nav-btn.disabled {
-    opacity: 0.3;
-    pointer-events: none;
-  }
-
-  .stat-pill {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    padding: 0;
-    background: transparent;
-    border: none;
-  }
-
-  .stat-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 0.2rem;
-    padding: 0;
-    color: #ffffff;
-    border-right: 1px solid rgba(255,255,255,0.2);
-    padding-right: 1.5rem;
-  }
-
-  .stat-group:last-of-type {
-    border-right: none;
-    padding-right: 0;
-    background: transparent;
-    margin-left: 0;
-    flex-direction: column;
-    gap: 0.2rem;
-    box-shadow: none;
-  }
-  
-  .stat-group:last-of-type .stat-label {
-    color: rgba(255, 255, 255, 0.6) !important;
-    opacity: 1;
-  }
-
-  .stat-divider {
-    display: none;
-  }
-
-  .stat-label {
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.6) !important;
-    letter-spacing: 0.05em;
-  }
-
-  .stat-value {
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: #ffffff !important;
-    line-height: 1;
-  }
-
-  /* Matches section */
   .matches-section {
     flex: 1;
     display: flex;
@@ -485,12 +303,13 @@ const totalPages = pages.length;
 
   .column-headers {
     display: grid;
-    grid-template-columns: 1fr 100px 1fr;
+    grid-template-columns: 80px 1fr 280px;
     align-items: center;
     padding: 0.6rem 2rem;
     background: #111;
     border-bottom: 1px solid rgba(255,255,255,0.1);
     flex-shrink: 0;
+    gap: 1.5rem;
   }
 
   .col-label {
@@ -502,21 +321,19 @@ const totalPages = pages.length;
     opacity: 0.7;
   }
 
-  .col-white {
-    text-align: right;
-    padding-right: 1rem;
-  }
-
-  .col-center {
+  .col-rank {
     text-align: center;
   }
 
-  .col-black {
+  .col-name {
     text-align: left;
-    padding-left: 1rem;
+    padding-left: 0.5rem;
   }
 
-  /* Carousel */
+  .col-stats {
+    text-align: right;
+  }
+
   .carousel {
     flex: 1;
     position: relative;
@@ -612,7 +429,7 @@ const totalPages = pages.length;
     margin-top: 0.5rem;
   }
 
-  /* Config panel */
+  /* Config panel - reused styles */
   .config-panel {
     position: fixed;
     bottom: 1.5rem;

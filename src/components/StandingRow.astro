@@ -1,0 +1,241 @@
+---
+import type { Standing } from "../lib/scraper";
+import { useTranslations } from "../i18n/ui";
+
+interface Props {
+  standing: Standing;
+  index: number;
+  lang: number;
+}
+
+const { standing, index, lang } = Astro.props;
+const t = useTranslations(lang);
+
+function reverseName(name: string): string {
+  if (!name.includes(",")) return name;
+  const [last, ...rest] = name.split(",");
+  return `${rest.join(",").trim()} ${last.trim()}`;
+}
+
+const isTop3 = standing.rank <= 3;
+const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
+---
+
+<div
+  class:list={["standing-row", { "top-3": isTop3 }, rankClass]}
+  style={`animation-delay: ${index * 40}ms`}
+>
+  <div class="rank-col">
+    <span class="rank-num">{standing.rank}</span>
+  </div>
+
+  <div class="player-info">
+    <span class="player-name">{reverseName(standing.name)}</span>
+    <span class="player-fed">{standing.fed}</span>
+  </div>
+
+  <div class="stats-col">
+    <div class="main-stat">
+        <span class="points">{standing.points}</span>
+        <span class="stat-label">{t('standings.pts')}</span>
+    </div>
+    
+    <div class="tie-breaks">
+        <div class="tb-group">
+            <span class="tb-val">{standing.tieBreak1}</span>
+            <span class="tb-lbl">TB1</span>
+        </div>
+        <div class="tb-group">
+            <span class="tb-val">{standing.tieBreak2}</span>
+            <span class="tb-lbl">TB2</span>
+        </div>
+        <div class="tb-group">
+            <span class="tb-val">{standing.tieBreak3}</span>
+            <span class="tb-lbl">TB3</span>
+        </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .standing-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 280px;
+    align-items: center;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 1.5rem 0 0;
+    animation: fadeInUp 0.4s ease both;
+    color: #ffffff;
+    gap: 0;
+    height: 90px;
+  }
+
+  .standing-row:last-child {
+    border-bottom: none;
+  }
+
+  .standing-row.top-3 {
+    background: linear-gradient(90deg, rgba(124, 106, 239, 0.15) 0%, var(--surface) 100%);
+    border-left: 4px solid var(--accent);
+  }
+
+  .standing-row.rank-1 {
+    border-left-color: #FFD700;
+    background: linear-gradient(90deg, rgba(255, 215, 0, 0.15) 0%, var(--surface) 100%);
+  }
+
+  .standing-row.rank-2 {
+    border-left-color: #C0C0C0;
+    background: linear-gradient(90deg, rgba(192, 192, 192, 0.15) 0%, var(--surface) 100%);
+  }
+
+  .standing-row.rank-3 {
+    border-left-color: #CD7F32;
+    background: linear-gradient(90deg, rgba(205, 127, 50, 0.15) 0%, var(--surface) 100%);
+  }
+
+  .rank-col {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--text-dim);
+    line-height: 1;
+  }
+
+  .rank-1 .rank-col {
+    color: #FFD700;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+  }
+
+  .rank-2 .rank-col {
+    color: #C0C0C0;
+    text-shadow: 0 0 20px rgba(192, 192, 192, 0.4);
+  }
+
+  .rank-3 .rank-col {
+    color: #CD7F32;
+    text-shadow: 0 0 20px rgba(205, 127, 50, 0.4);
+  }
+
+  .rank-1 .points {
+    color: #FFD700;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+  }
+
+  .rank-2 .points {
+    color: #C0C0C0;
+    text-shadow: 0 0 20px rgba(192, 192, 192, 0.4);
+  }
+
+  .rank-3 .points {
+    color: #CD7F32;
+    text-shadow: 0 0 20px rgba(205, 127, 50, 0.4);
+  }
+
+  .top-3 .rank-col {
+    /* Fallback/Base styles handled by specific rank classes */
+  }
+
+  .player-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden;
+    padding-left: 1.5rem;
+  }
+
+  .player-name {
+    font-size: 1.8rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #ffffff;
+    line-height: 1.1;
+    margin-bottom: 0.2rem;
+  }
+
+  .player-fed {
+    font-size: 0.9rem;
+    color: var(--text-dim);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .stats-col {
+    display: flex;
+    align-items: stretch;
+    justify-content: flex-end;
+    gap: 1.5rem;
+    padding-right: 2.5rem;
+    height: 100%;
+  }
+
+  .main-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100px;
+    background: rgba(255, 255, 255, 0.05);
+    margin-right: 0.5rem;
+    height: 100%;
+    border-radius: 0;
+    flex-shrink: 0;
+    padding: 0 0.5rem;
+  }
+
+  .points {
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  
+  .accent-text {
+    color: var(--accent);
+  }
+
+  .stat-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-top: 0.2rem;
+  }
+
+  .tie-breaks {
+    display: flex;
+    gap: 0.8rem;
+    padding-left: 1rem;
+    align-self: center;
+  }
+
+  .tb-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 44px;
+  }
+
+  .tb-val {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.95);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tb-lbl {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--text-dim);
+    opacity: 0.6;
+    margin-top: 0.1rem;
+  }
+</style>

@@ -12,7 +12,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-
 # environment variables
 .env
 .env.production
@@ -22,3 +21,16 @@ pnpm-debug.log*
 
 # jetbrains setting folder
 .idea/
+
+# debug artifacts (screenshots, scripts, etc.)
+debug/
+
+# test results & playwright
+test-results/
+playwright-report/
+
+# SQLite cache database
+cache.db
+
+# test fixtures (downloaded HTML - large files)
+tests/fixtures/*.html

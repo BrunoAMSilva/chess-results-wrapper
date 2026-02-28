@@ -6,11 +6,21 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest run src/lib/scraper.test.ts",
+    "test:live": "vitest run src/lib/scraper.test.ts",
+    "test:unit": "SKIP_LIVE=1 vitest run src/lib/scraper.test.ts"
   },
   "dependencies": {
     "@astrojs/node": "^9.5.4",
     "astro": "^5.17.1",
+    "better-sqlite3": "^12.6.2",
     "cheerio": "^1.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/better-sqlite3": "^7.6.13",
+    "playwright": "^1.58.2",
+    "vitest": "^4.0.18"
   }
 }

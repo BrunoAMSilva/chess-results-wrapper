@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { getCache, setCache } from "./cache";
 
 export interface Pairing {
   table: number;
@@ -20,6 +21,21 @@ export interface TournamentData {
   pairings: Pairing[];
 }
 
+export interface Standing {
+  rank: number;
+  name: string;
+  fed: string;
+  points: string;
+  tieBreak1: string;
+  tieBreak2: string;
+  tieBreak3: string;
+}
+
+export interface StandingsData {
+  info: TournamentInfo;
+  standings: Standing[];
+}
+
 const BASE_URL = "https://chess-results.com";
 
 function buildUrl(
@@ -35,14 +51,39 @@ export async function scrapePairings(
   round: number,
   lang = 1,
 ): Promise<TournamentData> {
+  const cacheKey = `pairings:${tournamentId}:${round}:${lang}`;
+  const cached = getCache<TournamentData>(cacheKey);
+  if (cached) return cached;
+
   const url = buildUrl(tournamentId, round, lang);
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
   const html = await res.text();
-  return parseHtml(html, round);
+  const data = parseHtml(html, round);
+  
+  setCache(cacheKey, data, 300); // Cache for 5 minutes
+  return data;
 }
 
-function parseHtml(html: string, round: number): TournamentData {
+export async function scrapeStandings(
+  tournamentId: string,
+  lang = 1,
+): Promise<StandingsData> {
+  const cacheKey = `standings:${tournamentId}:${lang}`;
+  const cached = getCache<StandingsData>(cacheKey);
+  if (cached) return cached;
+
+  const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=4&turdet=YES`; // Corrected art=4
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Failed to fetch: ${res.status}`);
+  const html = await res.text();
+  const data = parseStandingsHtml(html);
+
+  setCache(cacheKey, data, 300); // Cache for 5 minutes
+  return data;
+}
+
+export function parseHtml(html: string, round: number): TournamentData {
   const $ = cheerio.load(html);
 
   // Tournament name
@@ -55,7 +96,10 @@ function parseHtml(html: string, round: number): TournamentData {
 
   // Total rounds from tournament details
   const totalRoundsText = $("td.CR")
-    .filter((_, el) => $(el).text().includes("Number of rounds"))
+    .filter((_, el) => {
+      const text = $(el).text();
+      return text.includes("Number of rounds") || text.includes("Número de rondas") || text.includes("Rundenanzahl");
+    })
     .next()
     .text()
     .trim();
@@ -103,5 +147,90 @@ function parseHtml(html: string, round: number): TournamentData {
   return {
     info: { name, round, totalRounds, date, location },
     pairings,
+  };
+}
+
+export function parseStandingsHtml(html: string): StandingsData {
+  const $ = cheerio.load(html);
+
+  // Tournament info (reused logic, simplified)
+  const name = $("h2").first().text().trim();
+  const roundLine = $("h3").last().text().trim();
+  const dateMatch = roundLine.match(/(\d{4}\/\d{2}\/\d{2})/);
+  const date = dateMatch ? dateMatch[1] : "";
+  
+  // Total rounds
+  const totalRoundsText = $("td.CR")
+    .filter((_, el) => {
+      const text = $(el).text();
+      return text.includes("Number of rounds") || text.includes("Número de rondas") || text.includes("Rundenanzahl");
+    })
+    .next()
+    .text()
+    .trim();
+  const totalRounds = parseInt(totalRoundsText) || 5;
+
+  const location = "";
+
+  // Find column indices
+  let ptsIdx = -1;
+  let tb1Idx = -1;
+  let tb2Idx = -1;
+  let tb3Idx = -1;
+  let nameIdx = 2; // Default
+  let fedIdx = 4; // Default
+
+  // Inspect headers. The row with th usually is CRng1b or CRng1
+  const headerRow = $("table.CRs1 tr").filter((_, row) => $(row).find("th").length > 0).first();
+  headerRow.find("th").each((i, el) => {
+    const text = $(el).text().trim();
+    if (text === "Pts." || text === "Pts") ptsIdx = i;
+    if (text.includes("TB1") || text.includes("Desp1")) tb1Idx = i;
+    if (text.includes("TB2") || text.includes("Desp2")) tb2Idx = i;
+    if (text.includes("TB3") || text.includes("Desp3")) tb3Idx = i;
+    if (text === "Name" || text === "Nome") nameIdx = i; // Might differ
+    if (text === "FED") fedIdx = i;
+  });
+
+  const standings: Standing[] = [];
+  $("table.CRs1 tr").each((_, row) => {
+    const $row = $(row);
+    // Skip header rows
+    if ($row.find("th").length > 0 || $row.hasClass("CRng1b")) return;
+
+    const cells = $row.find("td");
+    // Need enough cells.
+    if (cells.length < 5) return;
+
+    const rankText = $(cells[0]).text().trim();
+    const rank = parseInt(rankText);
+    if (isNaN(rank)) return;
+
+    const name = $(cells[nameIdx]).text().trim();
+    const fed = fedIdx !== -1 && cells[fedIdx] ? $(cells[fedIdx]).text().trim() : "";
+    
+    let points = "";
+    if (ptsIdx !== -1 && cells[ptsIdx]) {
+      points = $(cells[ptsIdx]).text().trim();
+    } 
+
+    const tb1 = tb1Idx !== -1 && cells[tb1Idx] ? $(cells[tb1Idx]).text().trim() : "";
+    const tb2 = tb2Idx !== -1 && cells[tb2Idx] ? $(cells[tb2Idx]).text().trim() : "";
+    const tb3 = tb3Idx !== -1 && cells[tb3Idx] ? $(cells[tb3Idx]).text().trim() : "";
+
+    standings.push({
+      rank,
+      name,
+      fed,
+      points,
+      tieBreak1: tb1,
+      tieBreak2: tb2,
+      tieBreak3: tb3,
+    });
+  });
+
+  return {
+    info: { name, round: 0, totalRounds, date, location },
+    standings,
   };
 }

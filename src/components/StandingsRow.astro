@@ -1,0 +1,134 @@
+---
+import type { Standing } from "../lib/scraper";
+
+interface Props {
+  standing: Standing;
+  index: number;
+}
+
+const { standing, index } = Astro.props;
+
+function reverseName(name: string): string {
+  if (!name.includes(",")) return name;
+  const [last, ...rest] = name.split(",");
+  return `${rest.join(",").trim()} ${last.trim()}`;
+}
+
+const isTop3 = standing.rank <= 3;
+---
+
+<div
+  class:list={["standing-row", { "top-3": isTop3 }]}
+  style={`animation-delay: ${index * 40}ms`}
+>
+  <div class="rank-col">
+    <span class="rank-num">{standing.rank}</span>
+  </div>
+
+  <div class="name-col">
+    <span class="player-name">{reverseName(standing.name)}</span>
+    <span class="fed-label">{standing.fed}</span>
+  </div>
+
+  <div class="stats-col">
+    <span class="points">{standing.points}</span>
+    <div class="tie-breaks">
+        <span class="tb">{standing.tieBreak1}</span>
+        <span class="tb">{standing.tieBreak2}</span>
+        <span class="tb">{standing.tieBreak3}</span>
+    </div>
+  </div>
+</div>
+
+<style>
+  .standing-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 200px;
+    align-items: center;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.8rem 1rem;
+    animation: fadeInUp 0.4s ease both;
+    color: #ffffff;
+    gap: 1.5rem;
+  }
+
+  .standing-row:last-child {
+    border-bottom: none;
+  }
+
+  .standing-row.top-3 {
+    background: linear-gradient(90deg, rgba(124, 106, 239, 0.1) 0%, var(--surface) 100%);
+    border-left: 4px solid var(--accent);
+  }
+
+  .standing-row.top-3 .rank-num {
+    color: var(--accent);
+    transform: scale(1.1);
+  }
+
+  .rank-col {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .rank-num {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .name-col {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .player-name {
+    font-size: 1.6rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #ffffff;
+    line-height: 1.2;
+  }
+
+  .fed-label {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    font-weight: 600;
+  }
+
+  .stats-col {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .points {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--win);
+    min-width: 60px;
+    text-align: right;
+  }
+
+  .tie-breaks {
+    display: flex;
+    gap: 0.8rem;
+    opacity: 0.7;
+  }
+
+  .tb {
+    font-size: 1rem;
+    color: var(--text-dim);
+    font-weight: 500;
+    min-width: 30px;
+    text-align: center;
+  }
+</style>

@@ -1,43 +1,53 @@
-# Astro Starter Kit: Minimal
+# Chess Results Wrapper
 
-```sh
-npm create astro@latest -- --template minimal
-```
+A clean, modern wrapper for Chess-Results.com pairings, built with Astro.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Features
 
-## 🚀 Project Structure
+- **Modern UI**: Clean, responsive interface for viewing chess tournament pairings.
+- **Carousel View**: Automatically cycles through pages of pairings, perfect for projector displays at tournaments.
+- **Internationalization (i18n)**: Supports English and Portuguese (Portugal).
+- **Configurable**: Easily change tournament ID, round, and language via the UI or URL parameters.
 
-Inside of your Astro project, you'll see the following folders and files:
+## Usage
 
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
-```
+### URL Parameters
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+You can configure the view using URL parameters:
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+- `tid`: Tournament ID (e.g., `1361358`)
+- `round`: Round number (e.g., `1`)
+- `lang`: Language ID
+    - `1`: English (Default)
+    - `10`: Portuguese (Portugal)
+    - `2`: Spanish (UI only)
+    - `0`: German (UI only)
+    - `20`: French (UI only)
 
-Any static assets, like images, can be placed in the `public/` directory.
+Example: `/?tid=1361358&round=1&lang=10`
 
-## 🧞 Commands
+### Development
 
-All commands are run from the root of the project, from a terminal:
+1. Install dependencies:
+   ```sh
+   npm install
+   ```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+2. Start the development server:
+   ```sh
+   npm run dev
+   ```
 
-## 👀 Want to learn more?
+3. Build for production:
+   ```sh
+   npm run build
+   ```
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+4. Preview the build:
+   ```sh
+   npm run preview
+   ```
+
+## License
+
+MIT
