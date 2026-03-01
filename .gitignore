@@ -34,4 +34,4 @@ cache.db
 data/
 
 # test fixtures (downloaded HTML - large files)
-tests/fixtures/*.html
+# tests/fixtures/*.html
