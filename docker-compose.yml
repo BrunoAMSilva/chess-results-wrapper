@@ -3,7 +3,7 @@ services:
     image: ghcr.io/brunoamsilva/chess-results-wrapper:latest
     container_name: chess-results
     ports:
-      - "8080:4321"
+      - "4321:4321"
     volumes:
       - ./data:/app/data
     environment:
