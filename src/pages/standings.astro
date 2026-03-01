@@ -53,7 +53,17 @@ const totalPages = pages.length;
       </div>
     )}
 
-    {data && (
+    {data && allStandings.length === 0 && (
+      <div class="empty-state">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 8v4M12 16h.01"/>
+        </svg>
+        <p>{t('empty.standings')}</p>
+      </div>
+    )}
+
+    {data && allStandings.length > 0 && (
       <section class="matches-section">
         <div class="column-headers">
           <span class="col-label col-rank">{t('standings.rank')}</span>

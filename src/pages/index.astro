@@ -1,7 +1,8 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import MatchCard from "../components/MatchCard.astro";
-import { scrapePairings } from "../lib/scraper";
+import StandingRow from "../components/StandingRow.astro";
+import { scrapePairings, scrapeStandings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../lib/constants";
 
@@ -14,6 +15,7 @@ const t = useTranslations(lang);
 
 let data;
 let error: string | null = null;
+let playerList: import("../lib/scraper").Standing[] = [];
 
 try {
   data = await scrapePairings(tid, round, lang);
@@ -22,6 +24,15 @@ try {
 }
 
 const allPairings = data?.pairings || [];
+
+// When no pairings, fetch player list from standings
+if (allPairings.length === 0 && !error) {
+  try {
+    const standingsData = await scrapeStandings(tid, lang);
+    playerList = standingsData.standings;
+  } catch (_) { /* ignore - show empty state */ }
+}
+
 const activePairings = allPairings.filter((p) => p.black !== null);
 const totalPlayers = activePairings.length * 2 + allPairings.filter((p) => !p.black).length;
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
@@ -86,7 +97,34 @@ const totalPages = pages.length;
       </div>
     )}
 
-    {data && (
+    {data && allPairings.length === 0 && playerList.length > 0 && (
+      <section class="matches-section">
+        <div class="column-headers">
+          <span class="col-label col-rank">{t('standings.rank')}</span>
+          <span class="col-label col-name">{t('standings.name')}</span>
+          <span class="col-label col-stats pr-8 text-right">{t('standings.pts')} / TB</span>
+        </div>
+        <div class="carousel" id="carousel" data-total-pages="1" data-interval={CAROUSEL_INTERVAL}>
+          <div class="carousel-page active" data-page="0">
+            {playerList.map((standing, i) => (
+              <StandingRow standing={standing} index={i} lang={lang} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
+
+    {data && allPairings.length === 0 && playerList.length === 0 && (
+      <div class="empty-state">
+        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 8v4M12 16h.01"/>
+        </svg>
+        <p>{t('empty.pairings')}</p>
+      </div>
+    )}
+
+    {data && allPairings.length > 0 && (
       <section class="matches-section">
         <div class="column-headers">
           <span class="col-label col-white">{t('table.white')}</span>

@@ -264,6 +264,28 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     margin-top: 0.5rem;
   }
 
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    color: var(--text-dim);
+    text-align: center;
+    gap: 1rem;
+  }
+
+  .empty-icon {
+    width: 48px;
+    height: 48px;
+    opacity: 0.4;
+  }
+
+  .empty-state p {
+    font-size: 1.2rem;
+    opacity: 0.7;
+  }
+
   /* Config panel */
   .config-panel {
     position: fixed;

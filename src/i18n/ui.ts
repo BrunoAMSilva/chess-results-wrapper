@@ -35,6 +35,9 @@ export const ui = {
     'standings.tb3': 'TB3',
     'nav.pairings': 'Pairings',
     'nav.standings': 'Standings',
+    'empty.pairings': 'No pairings available for this round.',
+    'empty.standings': 'No standings available yet.',
+    'empty.notStarted': 'This tournament has not started yet.',
   },
   10: {
     'site.title': 'Emparceiramentos',
@@ -65,6 +68,9 @@ export const ui = {
     'standings.tb3': 'TB3',
     'nav.pairings': 'Jogos',
     'nav.standings': 'Classificação',
+    'empty.pairings': 'Sem emparceiramentos para esta ronda.',
+    'empty.standings': 'Classificação ainda não disponível.',
+    'empty.notStarted': 'Este torneio ainda não começou.',
   },
 } as const;
 

@@ -26,6 +26,8 @@ export interface Standing {
   rank: number;
   name: string;
   fed: string;
+  rating: string;
+  club: string;
   points: string;
   tieBreak1: string;
   tieBreak2: string;
@@ -76,18 +78,28 @@ export async function scrapeStandings(
   const cached = getCache<StandingsData>(cacheKey);
   if (cached) return cached;
 
-  const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=4&turdet=YES`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch standings: HTTP ${res.status} for tournament ${tournamentId}`);
-  const html = await res.text();
+  // Try crosstable first (art=4), fall back to standard list (art=1)
+  for (const art of [4, 1]) {
+    const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=${art}&turdet=YES`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to fetch standings: HTTP ${res.status} for tournament ${tournamentId}`);
+    const html = await res.text();
 
-  try {
-    const data = parseStandingsHtml(html);
-    setCache(cacheKey, data, CACHE_TTL);
-    return data;
-  } catch (e) {
-    throw new Error(`Failed to parse standings for tournament ${tournamentId}: ${e instanceof Error ? e.message : e}`);
+    try {
+      const data = parseStandingsHtml(html);
+      if (data.standings.length > 0 || art === 1) {
+        setCache(cacheKey, data, CACHE_TTL);
+        return data;
+      }
+    } catch (e) {
+      if (art === 1) {
+        throw new Error(`Failed to parse standings for tournament ${tournamentId}: ${e instanceof Error ? e.message : e}`);
+      }
+    }
   }
+
+  // Should not reach here, but just in case
+  throw new Error(`No standings found for tournament ${tournamentId}`);
 }
 
 function parseTournamentInfo($: cheerio.CheerioAPI): Omit<TournamentInfo, 'round'> {
@@ -147,10 +159,31 @@ export function parseHtml(html: string, round: number): TournamentData {
     if (text === "No." && blackIdx !== -1) blackNoIdx = i;
   });
 
-  // Parse pairings table
+  // Parse pairings table — track current round for round-robin tournaments
+  // where all rounds appear on one page separated by CRg1b rows ("Round N ...")
   const pairings: Pairing[] = [];
-  $("table.CRs1 tr.CRng1, table.CRs1 tr.CRng2").each((_, row) => {
-    const cells = $(row).find("td");
+  let currentRound = round; // default: assume all rows belong to the requested round
+  const isRoundRobin = $("table.CRs1 tr.CRg1b").length > 0;
+
+  $("table.CRs1 tr").each((_, row) => {
+    const $row = $(row);
+
+    // Detect round separator rows (class CRg1b, e.g. "Round 3 on 2026/02/28")
+    if ($row.hasClass("CRg1b")) {
+      const text = $row.text().trim();
+      const roundMatch = text.match(/(?:Round|Ronda|Runde)\s+(\d+)/i);
+      if (roundMatch) {
+        currentRound = parseInt(roundMatch[1]);
+      }
+      return;
+    }
+
+    // Skip non-data rows
+    if (!$row.hasClass("CRng1") && !$row.hasClass("CRng2")) return;
+    // In round-robin, only include pairings from the requested round
+    if (isRoundRobin && currentRound !== round) return;
+
+    const cells = $row.find("td");
     if (cells.length < 6) return;
 
     const tableNum = parseInt($(cells[boIdx]).text().trim());
@@ -205,6 +238,8 @@ export function parseStandingsHtml(html: string): StandingsData {
   let tb3Idx = -1;
   let nameIdx = 2; // Default
   let fedIdx = 4; // Default
+  let rtgIdx = -1;
+  let clubIdx = -1;
 
   // Inspect headers. The row with th usually is CRng1b or CRng1
   // Scan all children (th + td) to handle crosstable format where round columns are <td>
@@ -217,6 +252,8 @@ export function parseStandingsHtml(html: string): StandingsData {
     if (text.includes("TB3") || text.includes("Desp3")) tb3Idx = i;
     if (text === "Name" || text === "Nome") nameIdx = i;
     if (text === "FED") fedIdx = i;
+    if (text === "Rtg" || text === "Elo") rtgIdx = i;
+    if (text === "Club/City" || text.includes("Clube") || text === "Verein/Ort") clubIdx = i;
   });
 
   const standings: Standing[] = [];
@@ -235,6 +272,8 @@ export function parseStandingsHtml(html: string): StandingsData {
 
     const name = $(cells[nameIdx]).text().trim();
     const fed = fedIdx !== -1 && cells[fedIdx] ? $(cells[fedIdx]).text().trim() : "";
+    const rating = rtgIdx !== -1 && cells[rtgIdx] ? $(cells[rtgIdx]).text().trim() : "";
+    const club = clubIdx !== -1 && cells[clubIdx] ? $(cells[clubIdx]).text().trim() : "";
     
     let points = "";
     if (ptsIdx !== -1 && cells[ptsIdx]) {
@@ -249,6 +288,8 @@ export function parseStandingsHtml(html: string): StandingsData {
       rank,
       name,
       fed,
+      rating,
+      club,
       points,
       tieBreak1: tb1,
       tieBreak2: tb2,

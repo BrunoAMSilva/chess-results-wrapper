@@ -26,7 +26,11 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
 
   <div class="player-info">
     <span class="player-name">{reverseName(standing.name)}</span>
-    <span class="player-fed">{standing.fed}</span>
+    <span class="player-fed">
+      {standing.fed}
+      {standing.rating && standing.rating !== "0" && <Fragment> • {standing.rating}</Fragment>}
+      {standing.club && <Fragment> • {standing.club}</Fragment>}
+    </span>
   </div>
 
   <div class="stats-col">
