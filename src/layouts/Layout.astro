@@ -24,6 +24,9 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   </head>
   <body>
     <slot />
+    <script>
+      setInterval(() => location.reload(), 30_000);
+    </script>
   </body>
 </html>
 
