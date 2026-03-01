@@ -163,13 +163,13 @@ export function parseHtml(html: string, round: number): TournamentData {
   // where all rounds appear on one page separated by CRg1b rows ("Round N ...")
   const pairings: Pairing[] = [];
   let currentRound = round; // default: assume all rows belong to the requested round
-  const isRoundRobin = $("table.CRs1 tr.CRg1b").length > 0;
+  const isRoundRobin = $("table.CRs1 tr.CRg1b, table.CRs1 tr.CRng1b").length > 0;
 
   $("table.CRs1 tr").each((_, row) => {
     const $row = $(row);
 
-    // Detect round separator rows (class CRg1b, e.g. "Round 3 on 2026/02/28")
-    if ($row.hasClass("CRg1b")) {
+    // Detect round separator rows (class CRg1b/CRng1b, e.g. "Round 3 on 2026/02/28")
+    if ($row.hasClass("CRg1b") || $row.hasClass("CRng1b")) {
       const text = $row.text().trim();
       const roundMatch = text.match(/(?:Round|Ronda|Runde)\s+(\d+)/i);
       if (roundMatch) {
@@ -178,8 +178,9 @@ export function parseHtml(html: string, round: number): TournamentData {
       return;
     }
 
-    // Skip non-data rows
-    if (!$row.hasClass("CRng1") && !$row.hasClass("CRng2")) return;
+    // Skip non-data rows (supports both CRng1/CRng2 and CRg1/CRg2 class variants)
+    const isDataRow = $row.hasClass("CRng1") || $row.hasClass("CRng2") || $row.hasClass("CRg1") || $row.hasClass("CRg2");
+    if (!isDataRow) return;
     // In round-robin, only include pairings from the requested round
     if (isRoundRobin && currentRound !== round) return;
 

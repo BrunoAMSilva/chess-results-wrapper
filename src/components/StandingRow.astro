@@ -67,7 +67,9 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     animation: fadeInUp 0.4s ease both;
     color: #ffffff;
     gap: 0;
-    height: 90px;
+    flex: 1;
+    min-height: 0;
+    max-height: 90px;
   }
 
   .standing-row:last-child {
