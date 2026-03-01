@@ -43,6 +43,13 @@ for (let i = 0; i < allPairings.length; i += rowsPerPage) {
   pages.push(allPairings.slice(i, i + rowsPerPage));
 }
 const totalPages = pages.length;
+
+// Group player list into pages (for fallback when no pairings)
+const playerPages: typeof playerList[] = [];
+for (let i = 0; i < playerList.length; i += rowsPerPage) {
+  playerPages.push(playerList.slice(i, i + rowsPerPage));
+}
+const totalPlayerPages = playerPages.length;
 ---
 
 <Layout title={data?.info.name || t('site.title')} lang={lang}>
@@ -104,13 +111,31 @@ const totalPages = pages.length;
           <span class="col-label col-name">{t('standings.name')}</span>
           <span class="col-label col-stats pr-8 text-right">{t('standings.pts')} / TB</span>
         </div>
-        <div class="carousel" id="carousel" data-total-pages="1" data-interval={CAROUSEL_INTERVAL}>
-          <div class="carousel-page active" data-page="0">
-            {playerList.map((standing, i) => (
-              <StandingRow standing={standing} index={i} lang={lang} />
-            ))}
-          </div>
+        <div class="carousel" id="carousel" data-total-pages={totalPlayerPages} data-interval={CAROUSEL_INTERVAL}>
+          {playerPages.map((page, pageIdx) => (
+            <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
+              {page.map((standing, i) => (
+                <StandingRow standing={standing} index={i} lang={lang} />
+              ))}
+            </div>
+          ))}
         </div>
+        {totalPlayerPages > 1 && (
+          <div class="carousel-footer">
+            <div class="page-dots" id="pageDots">
+              {playerPages.map((_, i) => (
+                <button
+                  class:list={["page-dot", { active: i === 0 }]}
+                  data-dot={i}
+                  aria-label={`Page ${i + 1}`}
+                />
+              ))}
+            </div>
+            <div class="progress-bar" id="progressBar">
+              <div class="progress-fill" id="progressFill"></div>
+            </div>
+          </div>
+        )}
       </section>
     )}
 
