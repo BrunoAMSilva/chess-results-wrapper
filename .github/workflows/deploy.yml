@@ -62,6 +62,6 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_SSH_PORT || 22 }}
           script: |
-            cd /opt/www/chess-placard
+            cd /var/www/chess-placard
             docker compose pull
             docker compose up -d
