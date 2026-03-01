@@ -1,0 +1,19 @@
+services:
+  chess-results:
+    image: ghcr.io/brunoamsilva/chess-results-wrapper:latest
+    container_name: chess-results
+    ports:
+      - "8080:4321"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - HOST=0.0.0.0
+      - PORT=4321
+      - DATABASE_PATH=/app/data/cache.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4321/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

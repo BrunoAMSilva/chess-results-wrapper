@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.astro
+debug
+test-results
+tests
+cache.db
+*.md
+.DS_Store
+.env*
+playwright-report
