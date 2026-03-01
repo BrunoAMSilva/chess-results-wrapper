@@ -120,34 +120,64 @@ function parseTournamentInfo($: cheerio.CheerioAPI): Omit<TournamentInfo, 'round
 
 export function parseHtml(html: string, round: number): TournamentData {
   const $ = cheerio.load(html);
+
+  // Check for error pages (e.g. "Record not found")
+  if ($(".error").length > 0 || html.includes("Record not found")) {
+    throw new Error("Tournament not found");
+  }
+
   const info = parseTournamentInfo($);
+
+  // Detect column indices from the header row
+  let whiteIdx = -1;
+  let blackIdx = -1;
+  let resultIdx = -1;
+  let boIdx = 0;
+  let whiteNoIdx = 1;
+  let blackNoIdx = -1;
+
+  const headerRow = $("table.CRs1 tr").filter((_, row) => $(row).find("th").length > 3).first();
+  headerRow.find("th, td").each((i, el) => {
+    const text = $(el).text().trim();
+    if (text === "Bo.") boIdx = i;
+    if (text === "White" || text === "Brancas" || text === "Blancas" || text === "Weiß") whiteIdx = i;
+    if (text === "Black" || text === "Negras" || text === "Schwarz") blackIdx = i;
+    if (text === "Result" || text === "Resultado" || text === "Resultat" || text === "Ergebnis") resultIdx = i;
+    if (text === "No." && whiteIdx === -1) whiteNoIdx = i;
+    if (text === "No." && blackIdx !== -1) blackNoIdx = i;
+  });
 
   // Parse pairings table
   const pairings: Pairing[] = [];
   $("table.CRs1 tr.CRng1, table.CRs1 tr.CRng2").each((_, row) => {
     const cells = $(row).find("td");
-    if (cells.length < 10) return;
+    if (cells.length < 6) return;
 
-    const tableNum = parseInt($(cells[0]).text().trim());
-    const whiteNum = parseInt($(cells[1]).text().trim());
-    const whiteName =
-      $(cells[3]).find("a").text().trim() || $(cells[3]).text().trim();
-    const result = $(cells[6]).text().trim();
+    const tableNum = parseInt($(cells[boIdx]).text().trim());
+    if (isNaN(tableNum)) return;
 
-    const blackName =
-      $(cells[9]).find("a").text().trim() || $(cells[9]).text().trim();
-    const blackNum = parseInt($(cells[11]).text().trim());
+    const whiteNum = parseInt($(cells[whiteNoIdx]).text().trim());
+    const whiteName = whiteIdx !== -1
+      ? ($(cells[whiteIdx]).find("a").text().trim() || $(cells[whiteIdx]).text().trim())
+      : "";
+    const result = resultIdx !== -1 ? $(cells[resultIdx]).text().trim() : "";
+
+    const blackName = blackIdx !== -1
+      ? ($(cells[blackIdx]).find("a").text().trim() || $(cells[blackIdx]).text().trim())
+      : "";
+    const blackNum = blackNoIdx !== -1 ? parseInt($(cells[blackNoIdx]).text().trim()) : NaN;
 
     const isUnpaired =
       blackName === "bye" ||
       blackName.includes("não emparceirado") ||
       blackName.includes("not paired") ||
+      blackName.includes("spielfrei") ||
       !blackName;
 
     pairings.push({
       table: tableNum,
       white: { name: whiteName, number: whiteNum },
-      black: isUnpaired ? null : { name: blackName, number: blackNum },
+      black: isUnpaired ? null : { name: blackName, number: isNaN(blackNum) ? 0 : blackNum },
       result,
     });
   });
@@ -160,6 +190,12 @@ export function parseHtml(html: string, round: number): TournamentData {
 
 export function parseStandingsHtml(html: string): StandingsData {
   const $ = cheerio.load(html);
+
+  // Check for error pages (e.g. "Record not found")
+  if ($(".error").length > 0 || html.includes("Record not found")) {
+    throw new Error("Tournament not found");
+  }
+
   const info = parseTournamentInfo($);
 
   // Find column indices
@@ -171,14 +207,15 @@ export function parseStandingsHtml(html: string): StandingsData {
   let fedIdx = 4; // Default
 
   // Inspect headers. The row with th usually is CRng1b or CRng1
+  // Scan all children (th + td) to handle crosstable format where round columns are <td>
   const headerRow = $("table.CRs1 tr").filter((_, row) => $(row).find("th").length > 0).first();
-  headerRow.find("th").each((i, el) => {
+  headerRow.find("th, td").each((i, el) => {
     const text = $(el).text().trim();
     if (text === "Pts." || text === "Pts") ptsIdx = i;
     if (text.includes("TB1") || text.includes("Desp1")) tb1Idx = i;
     if (text.includes("TB2") || text.includes("Desp2")) tb2Idx = i;
     if (text.includes("TB3") || text.includes("Desp3")) tb3Idx = i;
-    if (text === "Name" || text === "Nome") nameIdx = i; // Might differ
+    if (text === "Name" || text === "Nome") nameIdx = i;
     if (text === "FED") fedIdx = i;
   });
 
