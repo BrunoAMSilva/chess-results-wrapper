@@ -63,7 +63,10 @@ const isBye = !pairing.black;
   }
 
   .match-row.bye {
-    opacity: 0.45;
+  }
+
+  .match-row.bye .white-side {
+    background: rgba(255, 255, 255, 0.93);
   }
 
   /* Winner highlight — :global needed for dynamic classes */
@@ -88,11 +91,16 @@ const isBye = !pairing.black;
   }
 
   .match-row:global(.draw) .white-side {
-    background: rgba(251, 191, 36, 0.12);
+    background: rgb(213, 192, 255);
+  }
+
+  .match-row:global(.draw) .white-side .player-name {
+    color: #1a1a24;
+    text-shadow: none;
   }
 
   .match-row:global(.draw) .black-side {
-    background: rgba(251, 191, 36, 0.25);
+    background: rgba(158, 36, 251, 0.12);
   }
 
   .player {
