@@ -59,9 +59,19 @@ for (let i = 0; i < womenPlayerList.length; i += rowsPerPage) {
   womenPlayerPages.push(womenPlayerList.slice(i, i + rowsPerPage));
 }
 const totalWomenPlayerPages = womenPlayerPages.length;
+
+// Disable auto-refresh for tournaments whose last round date is in the past
+function isTournamentLive(dateStr?: string): boolean {
+  if (!dateStr) return true;
+  const tournamentDate = new Date(dateStr.replace(/\//g, '-'));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return tournamentDate >= today;
+}
+const autoRefresh = isTournamentLive(data?.info.date);
 ---
 
-<Layout title={data?.info.name || t('site.title')} lang={lang}>
+<Layout title={data?.info.name || t('site.title')} lang={lang} autoRefresh={autoRefresh}>
   <div class="container">
     <header class="header">
       <div class="header-left">

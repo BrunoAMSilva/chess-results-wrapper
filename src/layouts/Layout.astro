@@ -4,9 +4,10 @@ import { languages } from "../i18n/ui";
 interface Props {
   title: string;
   lang?: number;
+  autoRefresh?: boolean;
 }
 
-const { title, lang = 1 } = Astro.props;
+const { title, lang = 1, autoRefresh = true } = Astro.props;
 const langCode = languages[lang as keyof typeof languages] || 'en';
 ---
 
@@ -24,9 +25,13 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   </head>
   <body>
     <slot />
-    <script>
-      setInterval(() => location.reload(), 30_000);
-    </script>
+    {autoRefresh && (
+      <script>
+        setInterval(() => {
+          if (document.hasFocus()) location.reload();
+        }, 30_000);
+      </script>
+    )}
   </body>
 </html>
 
