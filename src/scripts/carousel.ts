@@ -1,12 +1,12 @@
-const carousel = document.getElementById("carousel");
-if (carousel) {
-  const totalPages = parseInt(carousel.dataset.totalPages || "1");
-  const interval = parseInt(carousel.dataset.interval || "10") * 1000;
-  const pages = carousel.querySelectorAll<HTMLElement>(".carousel-page");
-  const dots = document.querySelectorAll<HTMLElement>(".page-dot");
-  const progressFill = document.getElementById("progressFill");
+function initCarousel(container: HTMLElement) {
+  const totalPages = parseInt(container.dataset.totalPages || "1");
+  const interval = parseInt(container.dataset.interval || "10") * 1000;
+  const pages = container.querySelectorAll<HTMLElement>(".carousel-page");
+  const wrapper = container.closest("[data-carousel-group]") || container.parentElement!;
+  const dots = wrapper.querySelectorAll<HTMLElement>(".page-dot");
+  const progressFill = wrapper.querySelector<HTMLElement>(".progress-fill");
   let current = 0;
-  let timer: ReturnType<typeof setTimeout>;
+  let timer: ReturnType<typeof setInterval> | null = null;
   let animFrame: number = 0;
 
   function showPage(idx: number) {
@@ -35,25 +35,92 @@ if (carousel) {
     showPage((current + 1) % totalPages);
   }
 
+  function start() {
+    if (totalPages > 1 && !timer) {
+      timer = setInterval(nextPage, interval);
+      startProgress();
+    }
+  }
+
+  function stop() {
+    if (timer) {
+      clearInterval(timer);
+      timer = null;
+    }
+    cancelAnimationFrame(animFrame);
+  }
+
   if (totalPages > 1) {
-    timer = setInterval(nextPage, interval);
-    startProgress();
+    start();
 
     dots.forEach((dot) => {
       dot.addEventListener("click", () => {
-        clearInterval(timer);
+        stop();
         showPage(parseInt(dot.dataset.dot || "0"));
-        timer = setInterval(nextPage, interval);
+        start();
       });
     });
+  }
 
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-        clearInterval(timer);
-        if (e.key === "ArrowRight") showPage((current + 1) % totalPages);
-        else showPage((current - 1 + totalPages) % totalPages);
-        timer = setInterval(nextPage, interval);
+  return { start, stop, showPage };
+}
+
+// Initialize all carousels on the page
+const carousels = document.querySelectorAll<HTMLElement>(".carousel");
+const instances = new Map<string, ReturnType<typeof initCarousel>>();
+
+carousels.forEach((el) => {
+  const instance = initCarousel(el);
+  instances.set(el.id, instance);
+});
+
+// Keyboard navigation for the visible carousel
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    // Find the currently active (visible) carousel and navigate it
+    for (const [id, inst] of instances) {
+      const el = document.getElementById(id);
+      if (el && el.offsetParent !== null) {
+        inst.stop();
+        const totalPages = parseInt(el.dataset.totalPages || "1");
+        // Navigate via showPage - get current page from active class
+        const activePage = el.querySelector(".carousel-page.active");
+        const currentIdx = activePage ? parseInt(activePage.getAttribute("data-page") || "0") : 0;
+        if (e.key === "ArrowRight") inst.showPage((currentIdx + 1) % totalPages);
+        else inst.showPage((currentIdx - 1 + totalPages) % totalPages);
+        inst.start();
+        break;
+      }
+    }
+  }
+});
+
+// Tab switching for standings
+const tabContainer = document.getElementById("standingsTabs");
+if (tabContainer) {
+  const tabs = tabContainer.querySelectorAll<HTMLElement>(".standings-tab");
+  const openSection = document.getElementById("openStandings");
+  const womenSection = document.getElementById("womenStandings");
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const target = tab.dataset.tab;
+      tabs.forEach((t) => t.classList.toggle("active", t === tab));
+
+      if (target === "open") {
+        openSection?.classList.remove("hidden");
+        womenSection?.classList.add("hidden");
+        instances.get("womenCarousel")?.stop();
+        instances.get("carousel")?.start();
+      } else {
+        openSection?.classList.add("hidden");
+        womenSection?.classList.remove("hidden");
+        instances.get("carousel")?.stop();
+        instances.get("womenCarousel")?.start();
       }
     });
-  }
+  });
+
+  // Stop women carousel initially (it starts hidden)
+  instances.get("womenCarousel")?.stop();
 }

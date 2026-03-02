@@ -26,10 +26,12 @@ try {
 const allPairings = data?.pairings || [];
 
 // When no pairings, fetch player list from standings
+let womenPlayerList: import("../lib/scraper").Standing[] = [];
 if (allPairings.length === 0 && !error) {
   try {
     const standingsData = await scrapeStandings(tid, lang);
     playerList = standingsData.standings;
+    womenPlayerList = standingsData.womenStandings;
   } catch (_) { /* ignore - show empty state */ }
 }
 
@@ -50,6 +52,13 @@ for (let i = 0; i < playerList.length; i += rowsPerPage) {
   playerPages.push(playerList.slice(i, i + rowsPerPage));
 }
 const totalPlayerPages = playerPages.length;
+
+const hasWomenPlayers = womenPlayerList.length > 0;
+const womenPlayerPages: typeof womenPlayerList[] = [];
+for (let i = 0; i < womenPlayerList.length; i += rowsPerPage) {
+  womenPlayerPages.push(womenPlayerList.slice(i, i + rowsPerPage));
+}
+const totalWomenPlayerPages = womenPlayerPages.length;
 ---
 
 <Layout title={data?.info.name || t('site.title')} lang={lang}>
@@ -106,34 +115,76 @@ const totalPlayerPages = playerPages.length;
 
     {data && allPairings.length === 0 && playerList.length > 0 && (
       <section class="matches-section">
-        <div class="column-headers">
-          <span class="col-label col-rank">{t('standings.rank')}</span>
-          <span class="col-label col-name">{t('standings.name')}</span>
-          <span class="col-label col-stats pr-8 text-right">{t('standings.pts')} / TB</span>
+        {hasWomenPlayers && (
+          <div class="standings-tabs" id="standingsTabs">
+            <button class="standings-tab active" data-tab="open">{t('standings.open')}</button>
+            <button class="standings-tab" data-tab="women">{t('standings.women')}</button>
+          </div>
+        )}
+        <div id="openStandings" data-carousel-group>
+          <div class="column-headers">
+            <span class="col-label col-rank">{t('standings.rank')}</span>
+            <span class="col-label col-name">{t('standings.name')}</span>
+            <span class="col-label col-stats pr-8 text-right">{t('standings.pts')} / TB</span>
+          </div>
+          <div class="carousel" id="carousel" data-total-pages={totalPlayerPages} data-interval={CAROUSEL_INTERVAL}>
+            {playerPages.map((page, pageIdx) => (
+              <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
+                {page.map((standing, i) => (
+                  <StandingRow standing={standing} index={i} lang={lang} />
+                ))}
+              </div>
+            ))}
+          </div>
+          {totalPlayerPages > 1 && (
+            <div class="carousel-footer">
+              <div class="page-dots" id="pageDots">
+                {playerPages.map((_, i) => (
+                  <button
+                    class:list={["page-dot", { active: i === 0 }]}
+                    data-dot={i}
+                    aria-label={`Page ${i + 1}`}
+                  />
+                ))}
+              </div>
+              <div class="progress-bar" id="progressBar">
+                <div class="progress-fill" id="progressFill"></div>
+              </div>
+            </div>
+          )}
         </div>
-        <div class="carousel" id="carousel" data-total-pages={totalPlayerPages} data-interval={CAROUSEL_INTERVAL}>
-          {playerPages.map((page, pageIdx) => (
-            <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
-              {page.map((standing, i) => (
-                <StandingRow standing={standing} index={i} lang={lang} />
+        {hasWomenPlayers && (
+          <div id="womenStandings" class="hidden" data-carousel-group>
+            <div class="column-headers">
+              <span class="col-label col-rank">{t('standings.rank')}</span>
+              <span class="col-label col-name">{t('standings.name')}</span>
+              <span class="col-label col-stats pr-8 text-right">{t('standings.pts')} / TB</span>
+            </div>
+            <div class="carousel" id="womenCarousel" data-total-pages={totalWomenPlayerPages} data-interval={CAROUSEL_INTERVAL}>
+              {womenPlayerPages.map((page, pageIdx) => (
+                <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
+                  {page.map((standing, i) => (
+                    <StandingRow standing={standing} index={i} lang={lang} />
+                  ))}
+                </div>
               ))}
             </div>
-          ))}
-        </div>
-        {totalPlayerPages > 1 && (
-          <div class="carousel-footer">
-            <div class="page-dots" id="pageDots">
-              {playerPages.map((_, i) => (
-                <button
-                  class:list={["page-dot", { active: i === 0 }]}
-                  data-dot={i}
-                  aria-label={`Page ${i + 1}`}
-                />
-              ))}
-            </div>
-            <div class="progress-bar" id="progressBar">
-              <div class="progress-fill" id="progressFill"></div>
-            </div>
+            {totalWomenPlayerPages > 1 && (
+              <div class="carousel-footer">
+                <div class="page-dots" id="womenPageDots">
+                  {womenPlayerPages.map((_, i) => (
+                    <button
+                      class:list={["page-dot", { active: i === 0 }]}
+                      data-dot={i}
+                      aria-label={`Page ${i + 1}`}
+                    />
+                  ))}
+                </div>
+                <div class="progress-bar" id="womenProgressBar">
+                  <div class="progress-fill" id="womenProgressFill"></div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -399,5 +450,37 @@ const totalPlayerPages = playerPages.length;
     text-align: left;
     padding-left: 1rem;
   }
-</style>
+
+  .standings-tabs {
+    display: flex;
+    gap: 0;
+    background: #111;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 0 2rem;
+  }
+
+  .standings-tab {
+    padding: 0.6rem 1.2rem;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .standings-tab:hover {
+    color: rgba(255,255,255,0.7);
+  }
+
+  .standings-tab.active {
+    color: #fff;
+    border-bottom-color: var(--accent, #60a5fa);
+  }
+
+  .hidden {
+    display: none !important;
+  }
 </style>

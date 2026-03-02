@@ -29,9 +29,11 @@ debug/
 test-results/
 playwright-report/
 
-# SQLite cache database
+# SQLite databases
 cache.db
-data/
+data/*.db
+data/*.db-wal
+data/*.db-shm
 
 # test fixtures (downloaded HTML - large files)
 # tests/fixtures/*.html

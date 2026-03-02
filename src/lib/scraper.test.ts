@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseHtml, parseStandingsHtml, scrapePairings, scrapeStandings } from './scraper';
+import { detectTournamentType } from './strategies';
+import { TournamentType } from './types';
 import * as cheerio from 'cheerio';
 import fs from 'fs';
 import path from 'path';
@@ -43,6 +45,39 @@ describe('Scraper - Static Fixtures', () => {
         const data = parseStandingsHtml(html);
         expect(data).toBeDefined();
     });
+
+    it('should detect sex column and generate women standings', () => {
+      const html = loadFixture('ended_standings.html');
+      const data = parseStandingsHtml(html);
+
+      // The ended_standings fixture has a sex column
+      // Check that women's standings are derived
+      expect(data.womenStandings).toBeDefined();
+
+      // If there are women in the tournament, they should appear
+      const womenInFull = data.standings.filter(s => s.sex === 'F');
+      expect(data.womenStandings.length).toBe(womenInFull.length);
+
+      // Women's standings should have re-ranked positions
+      if (data.womenStandings.length > 0) {
+        expect(data.womenStandings[0].rank).toBe(1);
+        // Ensure rank is sequential
+        data.womenStandings.forEach((s, i) => {
+          expect(s.rank).toBe(i + 1);
+        });
+      }
+    });
+
+    it('should include sex field on standing entries', () => {
+      const html = loadFixture('ended_standings.html');
+      const data = parseStandingsHtml(html);
+
+      // Every standing should have a sex field
+      for (const s of data.standings) {
+        expect(typeof s.sex).toBe('string');
+        expect(['M', 'F', '']).toContain(s.sex);
+      }
+    });
   });
 
   describe('parseHtml (Pairings)', () => {
@@ -58,6 +93,24 @@ describe('Scraper - Static Fixtures', () => {
       expect(first.white.name).toBeTruthy();
       expect(first.black?.name).toBeTruthy();
       expect(first.result).toBeTruthy();
+    });
+
+    it('should include tournament type in info', () => {
+      const html = loadFixture('ended_pairings.html');
+      const data = parseHtml(html, 9);
+
+      expect(data.info.type).toBeDefined();
+      expect(Object.values(TournamentType)).toContain(data.info.type);
+    });
+  });
+
+  describe('Tournament type detection', () => {
+    it('should detect Swiss system by default', () => {
+      const html = loadFixture('ended_pairings.html');
+      const $ = cheerio.load(html);
+      const type = detectTournamentType($);
+      // A standard pairings page without round separators → Swiss
+      expect(type).toBe(TournamentType.Swiss);
     });
   });
 });

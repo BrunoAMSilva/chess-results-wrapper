@@ -5,7 +5,11 @@ dist
 debug
 test-results
 tests
+data
 cache.db
+*.db
+*.db-wal
+*.db-shm
 *.md
 .DS_Store
 .env*

@@ -20,9 +20,11 @@
     "cheerio": "^1.2.0"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.6",
     "@playwright/test": "^1.58.2",
     "@types/better-sqlite3": "^7.6.13",
     "playwright": "^1.58.2",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }
 }
