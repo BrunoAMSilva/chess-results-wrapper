@@ -87,9 +87,12 @@ const isBye = !pairing.black;
     font-weight: 800;
   }
 
-  .match-row:global(.draw) .white-side,
-  .match-row:global(.draw) .black-side {
+  .match-row:global(.draw) .white-side {
     background: rgba(251, 191, 36, 0.12);
+  }
+
+  .match-row:global(.draw) .black-side {
+    background: rgba(251, 191, 36, 0.25);
   }
 
   .player {
@@ -103,6 +106,12 @@ const isBye = !pairing.black;
   .white-side {
     justify-content: flex-end;
     text-align: right;
+    background: rgba(255, 255, 255, 0.93);
+  }
+
+  .white-side .player-name {
+    color: #1a1a24 !important;
+    text-shadow: none;
   }
 
   .black-side {

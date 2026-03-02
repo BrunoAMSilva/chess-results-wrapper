@@ -441,7 +441,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
     display: grid;
     grid-template-columns: 1fr 100px 1fr;
     align-items: center;
-    padding: 0.6rem 2rem;
+    padding: 0;
     background: #111;
     border-bottom: 1px solid rgba(255,255,255,0.1);
     flex-shrink: 0;
@@ -449,16 +449,20 @@ const autoRefresh = isTournamentLive(data?.info.date);
 
   .col-white {
     text-align: right;
-    padding-right: 1rem;
+    padding: 0.6rem 1rem 0.6rem 2rem;
+    background: rgba(255, 255, 255, 0.93);
+    color: #1a1a24;
+    opacity: 1;
   }
 
   .col-center {
     text-align: center;
+    padding: 0.6rem 0;
   }
 
   .col-black {
     text-align: left;
-    padding-left: 1rem;
+    padding: 0.6rem 2rem 0.6rem 1rem;
   }
 
   .standings-tabs {
