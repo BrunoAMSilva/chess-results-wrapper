@@ -52,6 +52,7 @@ export interface Pairing {
   table: number;
   white: PlayerRef;
   black: PlayerRef | null;
+  unpairedLabel?: string;
   result: string;
 }
 

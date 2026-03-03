@@ -64,17 +64,18 @@ export class SwissStrategy implements TournamentStrategy {
           ? parseInt($(cells[cols.blackNoIdx]).text().trim())
           : NaN;
 
-      const isUnpaired =
-        blackName === 'bye' ||
-        blackName.includes('não emparceirado') ||
-        blackName.includes('not paired') ||
-        blackName.includes('spielfrei') ||
-        !blackName;
+      const blackNameLower = blackName.toLowerCase();
+      const isBye = blackNameLower === 'bye' || blackNameLower.includes('spielfrei');
+      const isNotPaired =
+        blackNameLower.includes('não emparceirado') ||
+        blackNameLower.includes('not paired');
+      const isUnpaired = isBye || isNotPaired || !blackName;
 
       pairings.push({
         table: tableNum,
         white: { name: whiteName, number: whiteNum },
         black: isUnpaired ? null : { name: blackName, number: isNaN(blackNum) ? 0 : blackNum },
+        unpairedLabel: isUnpaired ? (blackName || 'BYE') : undefined,
         result,
       });
     });

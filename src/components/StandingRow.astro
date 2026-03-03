@@ -59,17 +59,16 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
 <style>
   .standing-row {
     display: grid;
-    grid-template-columns: 80px 1fr 280px;
+    grid-template-columns: 50px minmax(0, 1fr) auto;
     align-items: center;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 0 1.5rem 0 0;
+    padding: 0 0.5rem 0 0;
     animation: fadeInUp 0.4s ease both;
     color: #ffffff;
     gap: 0;
     flex: 1;
-    min-height: 0;
-    max-height: 90px;
+    min-height: 60px;
   }
 
   .standing-row:last-child {
@@ -100,7 +99,7 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 2.5rem;
+    font-size: 1.5rem;
     font-weight: 900;
     color: var(--text-dim);
     line-height: 1;
@@ -145,11 +144,12 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
-    padding-left: 1.5rem;
+    min-width: 0;
+    padding-left: 0.5rem;
   }
 
   .player-name {
-    font-size: 1.8rem;
+    font-size: 1.1rem;
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
@@ -160,19 +160,22 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
   }
 
   .player-fed {
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     color: var(--text-dim);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .stats-col {
     display: flex;
     align-items: stretch;
     justify-content: flex-end;
-    gap: 1.5rem;
-    padding-right: 2.5rem;
+    gap: 0.5rem;
+    padding-right: 0.5rem;
     height: 100%;
   }
 
@@ -181,18 +184,19 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 100px;
+    width: 60px;
     background: rgba(255, 255, 255, 0.05);
-    margin-right: 0.5rem;
+    margin-right: 0;
     height: 100%;
     border-radius: 0;
     flex-shrink: 0;
-    padding: 1rem 0;
+    padding: 0.5rem 0;
   }
 
   .points {
-    font-size: 2.5rem;
+    font-size: 1.5rem;
     font-weight: 800;
+
     color: #fff;
     line-height: 1;
     font-variant-numeric: tabular-nums;
@@ -238,5 +242,46 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     color: var(--text-dim);
     opacity: 0.6;
     margin-top: 0.1rem;
+  }
+
+  @media (max-width: 480px) {
+    .tie-breaks {
+      display: none;
+    }
+    .standing-row {
+      grid-template-columns: 40px minmax(0, 1fr) auto;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .standing-row {
+      grid-template-columns: 80px minmax(0, 1fr) auto;
+      padding: 0 1.5rem 0 0;
+      min-height: 80px;
+    }
+    .rank-col, .points {
+      font-size: 2.5rem;
+    }
+    .player-name {
+      font-size: 1.8rem;
+    }
+    .player-fed {
+      font-size: 0.9rem;
+    }
+    .player-info {
+      padding-left: 1.5rem;
+    }
+    .stats-col {
+      gap: 1.5rem;
+      padding-right: 2.5rem;
+    }
+    .main-stat {
+      width: 100px;
+      margin-right: 0.5rem;
+      padding: 1rem 0;
+    }
+    .tie-breaks {
+      gap: 0.8rem;
+    }
   }
 </style>

@@ -1,13 +1,12 @@
 ---
-import Layout from "../layouts/Layout.astro";
+import MobileLayout from "../layouts/MobileLayout.astro";
 import StandingRow from "../components/StandingRow.astro";
 import { scrapeStandings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
-import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../lib/constants";
+import { DEFAULT_TOURNAMENT } from "../lib/constants";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const lang = parseInt(Astro.url.searchParams.get("lang") || "1");
-const rowsPerPage = parseInt(Astro.url.searchParams.get("rows") || String(ROWS_PER_PAGE));
 
 const t = useTranslations(lang);
 
@@ -23,251 +22,107 @@ try {
 const allStandings = data?.standings || [];
 const womenStandings = data?.womenStandings || [];
 const hasWomen = womenStandings.length > 0;
-
-// Group standings into pages
-const pages: typeof allStandings[] = [];
-for (let i = 0; i < allStandings.length; i += rowsPerPage) {
-  pages.push(allStandings.slice(i, i + rowsPerPage));
-}
-const totalPages = pages.length;
-
-// Group women standings into pages
-const womenPages: typeof womenStandings[] = [];
-for (let i = 0; i < womenStandings.length; i += rowsPerPage) {
-  womenPages.push(womenStandings.slice(i, i + rowsPerPage));
-}
-const totalWomenPages = womenPages.length;
-
-// Disable auto-refresh for tournaments whose last round date is in the past
-function isTournamentLive(dateStr?: string): boolean {
-  if (!dateStr) return true;
-  const tournamentDate = new Date(dateStr.replace(/\//g, '-'));
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return tournamentDate >= today;
-}
-const autoRefresh = isTournamentLive(data?.info.date);
 ---
 
-<Layout title={data?.info.name || t('site.title')} lang={lang} autoRefresh={autoRefresh}>
-  <div class="container">
-    <header class="header">
-      <div class="header-left">
-        <div class="title-row">
-          <svg class="icon-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2v2M12 8v1M9 3h6M8 6h8M7 9h10l1 3H6l1-3zM6 12l-1 7h14l-1-7M5 19h14v2H5v-2z" stroke-linejoin="round" stroke-linecap="round"/>
-          </svg>
-          <h1 class="title">{data?.info.name || t('site.title')}</h1>
-        </div>
-      </div>
-
-      <div class="header-right">
-      </div>
-    </header>
-
-    {error && (
-      <div class="error-card">
-        <p>{error}</p>
-        <p class="error-hint">{t('error.hint')}</p>
-      </div>
-    )}
-
-    {data && allStandings.length === 0 && (
-      <div class="empty-state">
-        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 8v4M12 16h.01"/>
-        </svg>
-        <p>{t('empty.standings')}</p>
-      </div>
-    )}
-
-    {data && allStandings.length > 0 && (
-      <section class="matches-section">
-        {hasWomen && (
-          <div class="standings-tabs" id="standingsTabs">
-            <button class="standings-tab active" data-tab="open">{t('standings.open')}</button>
-            <button class="standings-tab" data-tab="women">{t('standings.women')}</button>
-          </div>
-        )}
-        <div id="openStandings" data-carousel-group>
-          <div class="column-headers">
-            <span class="col-label col-rank">{t('standings.rank')}</span>
-            <span class="col-label col-name">{t('standings.name')}</span>
-            <span class="col-label col-stats pr-8 text-right">{t('standings.pts')} / TB</span>
-          </div>
-          <div class="carousel" id="carousel" data-total-pages={totalPages} data-interval={CAROUSEL_INTERVAL}>
-            {pages.map((page, pageIdx) => (
-              <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
-                {page.map((standing, i) => (
-                  <StandingRow standing={standing} index={i} lang={lang} />
-                ))}
-              </div>
-            ))}
-          </div>
-          {totalPages > 1 && (
-            <div class="carousel-footer">
-              <div class="page-dots" id="pageDots">
-                {pages.map((_, i) => (
-                  <button
-                    class:list={["page-dot", { active: i === 0 }]}
-                    data-dot={i}
-                    aria-label={`Page ${i + 1}`}
-                  />
-                ))}
-              </div>
-              <div class="progress-bar" id="progressBar">
-                <div class="progress-fill" id="progressFill"></div>
-              </div>
-            </div>
-          )}
-        </div>
-        {hasWomen && (
-          <div id="womenStandings" class="hidden" data-carousel-group>
-            <div class="column-headers">
-              <span class="col-label col-rank">{t('standings.rank')}</span>
-              <span class="col-label col-name">{t('standings.name')}</span>
-              <span class="col-label col-stats pr-8 text-right">{t('standings.pts')} / TB</span>
-            </div>
-            <div class="carousel" id="womenCarousel" data-total-pages={totalWomenPages} data-interval={CAROUSEL_INTERVAL}>
-              {womenPages.map((page, pageIdx) => (
-                <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
-                  {page.map((standing, i) => (
-                    <StandingRow standing={standing} index={i} lang={lang} />
-                  ))}
-                </div>
-              ))}
-            </div>
-            {totalWomenPages > 1 && (
-              <div class="carousel-footer">
-                <div class="page-dots" id="womenPageDots">
-                  {womenPages.map((_, i) => (
-                    <button
-                      class:list={["page-dot", { active: i === 0 }]}
-                      data-dot={i}
-                      aria-label={`Page ${i + 1}`}
-                    />
-                  ))}
-                </div>
-                <div class="progress-bar" id="womenProgressBar">
-                  <div class="progress-fill" id="womenProgressFill"></div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </section>
-    )}
-  </div>
-
-  <div class="config-panel" id="configPanel">
-    <button class="config-toggle" id="configToggle" aria-label={t('config.title')}>
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-      </svg>
-    </button>
-    <div class="config-body" id="configBody">
-      <div class="view-switch-panel">
-        <a href={`/?tid=${tid}&lang=${lang}`} class="switch-btn">
-          {t('nav.pairings')}
-        </a>
-        <span class="switch-btn active">
-          {t('nav.standings')}
-        </span>
-      </div>
-      <label class="config-label">
-        {t('config.tid')}
-        <input type="text" id="inputTid" value={tid} class="config-input" />
-      </label>
-      <label class="config-label">
-        {t('config.lang')}
-        <select id="inputLang" class="config-input">
-          <option value="1" selected={lang === 1}>English</option>
-          <option value="10" selected={lang === 10}>Português</option>
-          <option value="2" selected={lang === 2}>Español</option>
-          <option value="0" selected={lang === 0}>Deutsch</option>
-          <option value="20" selected={lang === 20}>Français</option>
-        </select>
-      </label>
-      <button id="configGo" class="config-btn">{t('config.update')}</button>
+<MobileLayout title={data?.info.name || t('site.title')} lang={lang}>
+  {error && (
+    <div class="error-msg">
+      <p>{error}</p>
     </div>
+  )}
+
+  {hasWomen && (
+    <div class="standings-mobile-tabs" id="mobileStandingsTabs">
+      <button class="mobile-tab active" data-tab="open">{t('standings.open')}</button>
+      <button class="mobile-tab" data-tab="women">{t('standings.women')}</button>
+    </div>
+  )}
+
+  <div class="standings-list" id="openStandingsList">
+    {allStandings.length > 0 ? (
+      allStandings.map((standing: any, i: number) => (
+        <StandingRow standing={standing} index={i} lang={lang} />
+      ))
+    ) : (
+      !error && <div class="empty-state"><p>No standings available</p></div>
+    )}
   </div>
-</Layout>
 
-<script>
-  // Config panel
-  const toggle = document.getElementById("configToggle")!;
-  const body = document.getElementById("configBody")!;
-  const goBtn = document.getElementById("configGo")!;
-
-  toggle.addEventListener("click", () => body.classList.toggle("open"));
-
-  goBtn.addEventListener("click", () => {
-    const tid = (document.getElementById("inputTid") as HTMLInputElement).value.trim();
-    const lang = (document.getElementById("inputLang") as HTMLSelectElement).value;
-    if (tid) window.location.href = `/standings?tid=${tid}&lang=${lang}`;
-  });
-</script>
-
-<script>
-  import "../scripts/carousel";
-</script>
+  {hasWomen && (
+    <div class="standings-list hidden" id="womenStandingsList">
+      {womenStandings.map((standing: any, i: number) => (
+        <StandingRow standing={standing} index={i} lang={lang} />
+      ))}
+    </div>
+  )}
+</MobileLayout>
 
 <style>
-  .standings-tabs {
+  .standings-mobile-tabs {
     display: flex;
-    gap: 0;
-    background: #111;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    padding: 0 2rem;
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 0.25rem;
+    margin-bottom: 1rem;
+    position: sticky;
+    top: 55px;
+    z-index: 5;
   }
-
-  .standings-tab {
-    padding: 0.6rem 1.2rem;
-    background: none;
-    border: none;
-    color: rgba(255,255,255,0.4);
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: color 0.2s, border-color 0.2s;
-  }
-
-  .standings-tab:hover {
-    color: rgba(255,255,255,0.7);
-  }
-
-  .standings-tab.active {
-    color: #fff;
-    border-bottom-color: var(--accent, #60a5fa);
-  }
-
-  .hidden {
-    display: none !important;
-  }
-
-  .column-headers {
-    display: grid;
-    grid-template-columns: 80px 1fr 280px;
-    align-items: center;
-    padding: 0.6rem 2rem;
-    background: #111;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    flex-shrink: 0;
-    gap: 1.5rem;
-  }
-
-  .col-rank {
+  .mobile-tab {
+    flex: 1;
     text-align: center;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: none;
+    background: none;
+    color: var(--text-dim);
+    font-weight: 600;
+    cursor: pointer;
   }
-
-  .col-name {
-    text-align: left;
-    padding-left: 0.5rem;
+  .mobile-tab.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
+}
+  .standings-list {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 2rem;
+    background: var(--surface);
+    border-radius: 8px;
+    overflow: hidden;
   }
-
-  .col-stats {
-    text-align: right;
+  .standings-list.hidden {
+    display: none;
+  }
+  .standings-header {
+    display: none;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-dim);
   }
 </style>
+
+<script>
+  const tabs = document.querySelectorAll('.mobile-tab');
+  const openList = document.getElementById('openStandingsList');
+  const womenList = document.getElementById('womenStandingsList');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      tabs.forEach(t => t.classList.remove('active'));
+      target.classList.add('active');
+
+      if (target.dataset.tab === 'open') {
+        openList?.classList.remove('hidden');
+        womenList?.classList.add('hidden');
+      } else {
+        openList?.classList.add('hidden');
+        womenList?.classList.remove('hidden');
+      }
+    });
+  });
+</script>

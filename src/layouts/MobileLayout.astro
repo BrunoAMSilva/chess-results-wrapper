@@ -1,0 +1,413 @@
+---
+import { languages } from "../i18n/ui";
+
+interface Props {
+  title: string;
+  lang?: number;
+}
+
+const { title, lang = 1 } = Astro.props;
+const langCode = languages[lang as keyof typeof languages] || "en";
+const currentPath = Astro.url.pathname;
+const tid = Astro.url.searchParams.get("tid") || "";
+const isPairings = currentPath === "/" || currentPath === "/present";
+const isStandings = currentPath === "/standings";
+const isOptions = currentPath === "/options";
+---
+
+<!doctype html>
+<html lang={langCode}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="app-shell">
+      <div class="ambient ambient-a"></div>
+      <div class="ambient ambient-b"></div>
+
+      <header class="topbar">
+        <h1 class="page-title">{title}</h1>
+        <div class="topbar-left">
+          <!-- <a href={`/?tid=${tid}&lang=${lang}`} class="brand-link">
+            <div class="brand-icon">
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                stroke="currentColor"
+                stroke-width="2.2"
+                fill="none"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path
+                  d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"
+                ></path>
+                <path d="M12 12v9"></path>
+                <path d="M8 17l4 4 4-4"></path>
+              </svg>
+            </div>
+            <span class="brand-text">Chess Results</span>
+          </a> -->
+
+          <nav class="desktop-nav" aria-label="Main">
+            <a
+              href={`/?tid=${tid}&lang=${lang}`}
+              class={`desktop-nav-item ${isPairings ? "active" : ""}`}
+              >Pairings</a
+            >
+            <a
+              href={`/standings?tid=${tid}&lang=${lang}`}
+              class={`desktop-nav-item ${isStandings ? "active" : ""}`}
+              >Standings</a
+            >
+            <a
+              href={`/options?tid=${tid}&lang=${lang}`}
+              class={`desktop-nav-item ${isOptions ? "active" : ""}`}
+              >Settings</a
+            >
+          </nav>
+        </div>
+      </header>
+
+      <main class="mobile-main">
+        <slot />
+      </main>
+
+      <nav class="mobile-nav">
+        <a
+          href={`/?tid=${tid}&lang=${lang}`}
+          class={`nav-item ${isPairings ? "active" : ""}`}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            stroke="currentColor"
+            stroke-width="2"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="3" y1="9" x2="21" y2="9"></line>
+            <line x1="9" y1="21" x2="9" y2="9"></line>
+          </svg>
+          <span>Pairings</span>
+        </a>
+        <a
+          href={`/standings?tid=${tid}&lang=${lang}`}
+          class={`nav-item ${isStandings ? "active" : ""}`}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            stroke="currentColor"
+            stroke-width="2"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <line x1="18" y1="20" x2="18" y2="10"></line>
+            <line x1="12" y1="20" x2="12" y2="4"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
+          </svg>
+          <span>Standings</span>
+        </a>
+        <a
+          href={`/options?tid=${tid}&lang=${lang}`}
+          class={`nav-item ${isOptions ? "active" : ""}`}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            stroke="currentColor"
+            stroke-width="2"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+            ></path>
+          </svg>
+          <span>Settings</span>
+        </a>
+      </nav>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  :root {
+    --bg: #0f1014;
+    --surface: #161922;
+    --surface-hover: #1f2330;
+    --border: rgba(255, 255, 255, 0.08);
+    --text: #ffffff;
+    --text-dim: #9ca3b5;
+    --accent: #7c6aef;
+    --font: "Inter", -apple-system, sans-serif;
+  }
+
+  body {
+    font-family: var(--font);
+    background:
+      radial-gradient(
+        900px 500px at -10% -20%,
+        rgba(124, 106, 239, 0.2),
+        transparent
+      ),
+      radial-gradient(
+        700px 500px at 120% 120%,
+        rgba(69, 111, 245, 0.14),
+        transparent
+      ),
+      var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    width: 100%;
+    max-width: 1600px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .ambient {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 999px;
+    filter: blur(80px);
+    opacity: 0.35;
+    z-index: 0;
+  }
+
+  .ambient-a {
+    width: 420px;
+    height: 420px;
+    left: -120px;
+    top: -140px;
+    background: rgba(124, 106, 239, 0.35);
+  }
+
+  .ambient-b {
+    width: 380px;
+    height: 380px;
+    right: -80px;
+    bottom: -140px;
+    background: rgba(69, 111, 245, 0.25);
+  }
+
+  .topbar {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0 1rem;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+
+  .topbar-left {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .brand-link {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  .brand-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #f59e0b, #7c6aef);
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .brand-text {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    font-size: 1.12rem;
+    white-space: nowrap;
+  }
+
+  .desktop-nav {
+    display: none;
+    align-items: center;
+    gap: 0.45rem;
+    margin-left: 1rem;
+    padding: 0.28rem;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .desktop-nav-item {
+    text-decoration: none;
+    color: var(--text-dim);
+    padding: 0.45rem 0.78rem;
+    border-radius: 9px;
+    border: 1px solid transparent;
+    font-size: 0.87rem;
+    font-weight: 600;
+    transition:
+      background 0.2s ease,
+      border-color 0.2s ease,
+      color 0.2s ease;
+  }
+
+  .desktop-nav-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text);
+  }
+
+  .desktop-nav-item.active {
+    color: var(--text);
+    border-color: rgba(124, 106, 239, 0.4);
+    background: linear-gradient(
+      90deg,
+      rgba(124, 106, 239, 0.22),
+      rgba(124, 106, 239, 0.08)
+    );
+  }
+
+  .page-title {
+    display: none;
+  }
+
+  .topbar-right {
+    display: none;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .mobile-main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+    z-index: 2;
+  }
+
+  .mobile-nav {
+    display: flex;
+    background: rgba(22, 25, 34, 0.85);
+    border-top: 1px solid var(--border);
+    padding: 0.5rem 1rem;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    backdrop-filter: blur(14px);
+    position: relative;
+    z-index: 5;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 0.75rem;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+
+  .nav-item.active {
+    color: var(--accent);
+  }
+
+  @media (min-width: 768px) {
+    .app-shell {
+      padding: 0.9rem;
+      gap: 0;
+    }
+
+    .topbar {
+      padding: 0 1.5rem;
+      height: 68px;
+    }
+
+    .desktop-nav,
+    .topbar-right,
+    .topbar-search {
+      display: inline-flex;
+    }
+
+    .page-title {
+      display: block;
+      font-size: 1.02rem;
+      font-weight: 700;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+      max-width: 42vw;
+    }
+
+    .mobile-main {
+      padding: 1.4rem 1.5rem;
+      border-top: none;
+    }
+
+    .mobile-nav {
+      display: none;
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .mobile-main {
+      padding: 1.8rem 2rem;
+    }
+
+    .topbar {
+      padding: 0 2rem;
+    }
+
+    .page-title {
+      font-size: 1.2rem;
+      max-width: 52vw;
+    }
+  }
+</style>
