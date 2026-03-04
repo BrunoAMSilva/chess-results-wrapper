@@ -49,6 +49,12 @@ const isOptions = currentPath === "/options";
       <div class="ambient ambient-b"></div>
 
       <header class="topbar" transition:name="topbar" transition:animate="none">
+        <a href={`/?lang=${lang}`} class="topbar-home" aria-label="Search">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </a>
         <h1 class="page-title">{title}</h1>
         <div class="topbar-left">
           <nav class="desktop-nav" aria-label="Main" transition:name="desktop-nav" transition:animate="none">
@@ -76,6 +82,25 @@ const isOptions = currentPath === "/options";
       </main>
 
       <nav class="mobile-nav" transition:name="mobile-nav" transition:animate="none">
+        <a
+          href={`/?lang=${lang}`}
+          class="nav-item"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="22"
+            height="22"
+            stroke="currentColor"
+            stroke-width="2"
+            fill="none"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <span>Search</span>
+        </a>
         <a
           href={`/pairings?tid=${tid}&lang=${lang}`}
           class={`nav-item ${isPairings ? "active" : ""}`}
@@ -249,8 +274,33 @@ const isOptions = currentPath === "/options";
     background: var(--seg-active-bg);
   }
 
-  .page-title {
+  .topbar-home {
     display: none;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    text-decoration: none;
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    transition: color var(--duration-fast) var(--ease-in-out),
+                background var(--duration-fast) var(--ease-in-out);
+  }
+
+  .topbar-home:hover {
+    color: var(--accent-text);
+    background: var(--accent-subtle);
+  }
+
+  .page-title {
+    display: block;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
+    min-width: 0;
+    flex: 1;
   }
 
   .topbar-right {
@@ -310,19 +360,14 @@ const isOptions = currentPath === "/options";
 
     .desktop-nav,
     .topbar-right,
-    .topbar-search {
+    .topbar-search,
+    .topbar-home {
       display: inline-flex;
     }
 
     .page-title {
-      display: block;
       font-size: 1.02rem;
-      font-weight: var(--weight-bold);
       text-align: center;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      color: var(--text);
       max-width: 42vw;
     }
 

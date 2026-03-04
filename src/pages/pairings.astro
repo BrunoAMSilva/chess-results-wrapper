@@ -1,6 +1,7 @@
 ---
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import MobileMatchCard from "../components/ResponsiveMatchCard.astro";
+import TournamentSelector from "../components/TournamentSelector.astro";
 import { scrapePairings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
@@ -23,6 +24,7 @@ try {
 }
 
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
+const linkedTournaments = data?.info.linkedTournaments;
 ---
 
 <MobileLayout title={data?.info.name || t('site.title')} >
@@ -30,6 +32,15 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
     <div class="error-msg">
       <p>{error}</p>
     </div>
+  )}
+
+  {linkedTournaments && linkedTournaments.length > 0 && (
+    <TournamentSelector
+      currentId={tid}
+      currentLabel={data!.info.currentLabel || data!.info.name}
+      linkedTournaments={linkedTournaments}
+      lang={lang}
+    />
   )}
 
   {data && (
@@ -61,14 +72,12 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
 
 <style>
   .mobile-controls {
-    display: flex;
-    justify-content: center;
-    margin-bottom: var(--space-4);
     position: sticky;
     top: 0;
     z-index: 5;
     background: var(--bg);
     padding: var(--space-2) 0;
+    margin-bottom: var(--space-4);
   }
   .round-nav {
     display: flex;
@@ -80,6 +89,8 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
     width: 100%;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    mask-image: linear-gradient(to right, transparent, black var(--space-4), black calc(100% - var(--space-4)), transparent);
+    -webkit-mask-image: linear-gradient(to right, transparent, black var(--space-4), black calc(100% - var(--space-4)), transparent);
   }
   .round-nav::-webkit-scrollbar {
     display: none;
@@ -87,7 +98,7 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
   .round-pill {
     scroll-snap-align: center;
     flex-shrink: 0;
-    padding: var(--space-2) var(--space-4);
+    padding: var(--space-2) var(--space-3);
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-xl);
@@ -95,6 +106,10 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
     text-decoration: none;
     font-weight: var(--weight-semibold);
     font-size: var(--text-sm);
+    white-space: nowrap;
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
     transition: all var(--duration-fast) var(--ease-in-out);
   }
   .round-pill.active {
@@ -105,9 +120,15 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
   }
   .pairings-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(max(25vw, 360px), 1fr));
+    grid-template-columns: 1fr;
     gap: var(--space-4);
     padding-bottom: var(--space-8);
+  }
+
+  @media (min-width: 768px) {
+    .pairings-list {
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    }
   }
   .empty-state {
     text-align: center;

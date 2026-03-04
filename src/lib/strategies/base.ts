@@ -3,6 +3,7 @@ import type { Element } from 'domhandler';
 import type {
   TournamentInfo,
   TournamentType,
+  LinkedTournament,
   Standing,
   TournamentData,
   StandingsData,
@@ -65,7 +66,56 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
       .text()
       .trim() || '';
 
-  return { name, totalRounds, date, location };
+  const { linkedTournaments, currentLabel } = parseLinkedTournaments($);
+
+  return { name, totalRounds, date, location, linkedTournaments, currentLabel };
+}
+
+/**
+ * Parse the "Tournament selection" row to extract all tournaments
+ * belonging to the same event.
+ * The current tournament appears as bold/italic text; linked ones as <a> links.
+ */
+function parseLinkedTournaments($: cheerio.CheerioAPI): {
+  linkedTournaments?: LinkedTournament[];
+  currentLabel?: string;
+} {
+  const selectionLabels = [
+    'Tournament selection',
+    'Selecção de torneio',
+    'Turnierauswahl',
+    'Selección de torneo',
+    'Sélection du tournoi',
+  ];
+
+  let selectionCell: cheerio.Cheerio<Element> | null = null;
+
+  $('td.CRnowrap').each((_, el) => {
+    const text = $(el).text().trim();
+    if (selectionLabels.some((label) => text === label)) {
+      selectionCell = $(el).next('td.CR');
+    }
+  });
+
+  if (!selectionCell) return {};
+
+  // Current tournament's short label is in <i><b>...</b></i>
+  const currentLabel = $(selectionCell!).find('i > b').first().text().trim() || undefined;
+
+  const tournaments: LinkedTournament[] = [];
+
+  $(selectionCell!).find('a').each((_, el) => {
+    const href = $(el).attr('href') || '';
+    const match = href.match(/tnr(\d+)\.aspx/);
+    if (match) {
+      tournaments.push({ id: match[1], name: $(el).text().trim() });
+    }
+  });
+
+  return {
+    linkedTournaments: tournaments.length > 0 ? tournaments : undefined,
+    currentLabel,
+  };
 }
 
 /** Check if the HTML page contains an error message. */

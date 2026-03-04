@@ -276,6 +276,35 @@ const t = useTranslations(lang);
     text-overflow: ellipsis;
   }
 
+  .search-results :global(.event-pills) {
+    display: flex;
+    gap: var(--space-1);
+    flex-wrap: wrap;
+    margin-top: var(--space-1);
+  }
+
+  .search-results :global(.event-pill) {
+    font-size: var(--text-xs);
+    padding: var(--space-1) var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--surface-hover);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-in-out),
+                color var(--duration-fast) var(--ease-in-out);
+  }
+
+  .search-results :global(.event-pill:hover) {
+    background: var(--accent-subtle);
+    color: var(--accent-text);
+  }
+
+  .search-results :global(.event-pill.current) {
+    background: var(--accent-subtle);
+    color: var(--accent-text);
+    font-weight: var(--weight-semibold);
+  }
+
   .no-results {
     padding: var(--space-4);
     text-align: center;
@@ -413,6 +442,12 @@ const t = useTranslations(lang);
       }
     });
 
+    // Re-trigger search if input already has a value (e.g. back navigation)
+    const existing = input.value.trim();
+    if (existing && existing.length >= 2 && !/^\d+$/.test(existing) && !existing.includes('chess-results.com')) {
+      searchTournaments(existing);
+    }
+
     async function searchTournaments(query: string) {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
@@ -424,7 +459,7 @@ const t = useTranslations(lang);
       }
     }
 
-    function renderResults(results: { id: string; name: string; total_rounds: number; date: string; location: string }[]) {
+    function renderResults(results: { id: string; name: string; total_rounds: number; date: string; location: string; event_label: string; linked_tournaments: string }[]) {
       currentResults = results;
       activeIndex = -1;
 
@@ -447,6 +482,19 @@ const t = useTranslations(lang);
           .filter(Boolean)
           .join(' · ');
 
+        let linkedHtml = '';
+        const linked: { id: string; name: string }[] = (() => {
+          try { return JSON.parse(t.linked_tournaments || '[]'); } catch { return []; }
+        })();
+        if (linked.length > 0) {
+          const pills = linked
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((lt) =>
+              `<span class="event-pill" data-tid="${escapeHtml(lt.id)}">${escapeHtml(lt.name)}</span>`
+            ).join('');
+          linkedHtml = `<span class="event-pills">${pills}</span>`;
+        }
+
         item.innerHTML = `
           <svg class="result-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"></circle>
@@ -454,9 +502,20 @@ const t = useTranslations(lang);
           </svg>
           <span class="result-info">
             <span class="result-name">${escapeHtml(t.name)}</span>
+            ${linkedHtml}
             <span class="result-meta">${escapeHtml(meta)}</span>
           </span>
         `;
+
+        // Handle clicks on event pills to navigate to that specific tournament
+        item.querySelectorAll('.event-pill').forEach((pill) => {
+          pill.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const pillTid = (pill as HTMLElement).dataset.tid;
+            if (pillTid) navigateToTournament(pillTid);
+          });
+        });
 
         item.addEventListener('click', (e) => {
           e.preventDefault();

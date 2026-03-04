@@ -103,16 +103,17 @@ const bName = match.black ? match.black.name : '---';
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 64px;
+    width: var(--space-12);
     background: linear-gradient(180deg, rgba(255,255,255,0.05), transparent);
     border-right: 1px solid var(--border-light);
     position: relative;
     overflow: hidden;
+    flex-shrink: 0;
   }
   
   .board-number {
-    font-size: 1.85rem;
-    font-weight: 500;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-medium);
     color: var(--text-dim);
     opacity: 1;
   }
@@ -127,9 +128,9 @@ const bName = match.black ? match.black.name : '---';
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.65rem 1.25rem;
-    min-height: 54px;
-    transition: background-color 0.2s ease;
+    padding: var(--space-2) var(--space-3);
+    min-height: 44px;
+    transition: background-color var(--duration-fast) var(--ease-in-out);
   }
 
   .player-row:first-child {
@@ -159,9 +160,10 @@ const bName = match.black ? match.black.name : '---';
   .player-info {
     display: flex;
     align-items: center;
-    gap: 0.85rem;
+    gap: var(--space-2);
     flex: 1;
     min-width: 0;
+    overflow: hidden;
   }
 
   .piece-icon {
@@ -190,8 +192,8 @@ const bName = match.black ? match.black.name : '---';
 
   .player-name {
     display: block;
-    font-size: 0.95rem;
-    font-weight: 500;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
     color: var(--text);
     white-space: nowrap;
     overflow: hidden;
@@ -206,9 +208,9 @@ const bName = match.black ? match.black.name : '---';
   }
 
   .player-score {
-    font-size: 1.1rem;
-    font-weight: 700;
-    padding-left: 1rem;
+    font-size: var(--text-base);
+    font-weight: var(--weight-bold);
+    padding-left: var(--space-2);
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
     flex-shrink: 0;

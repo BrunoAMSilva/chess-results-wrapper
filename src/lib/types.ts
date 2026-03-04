@@ -7,6 +7,11 @@ export enum TournamentType {
   TeamRoundRobin = 'team-round-robin',
 }
 
+export interface LinkedTournament {
+  id: string;
+  name: string;
+}
+
 export interface TournamentInfo {
   name: string;
   round: number;
@@ -14,6 +19,9 @@ export interface TournamentInfo {
   date: string;
   location: string;
   type: TournamentType;
+  linkedTournaments?: LinkedTournament[];
+  /** Short label for this tournament from the event's "Tournament selection" row. */
+  currentLabel?: string;
 }
 
 // ─── Player / Standing ────────────────────────────────────────────────────────
@@ -80,6 +88,8 @@ export interface DbTournament {
   total_rounds: number;
   date: string;
   location: string;
+  event_label: string;
+  linked_tournaments: string;
   created_at: string;
   updated_at: string;
 }

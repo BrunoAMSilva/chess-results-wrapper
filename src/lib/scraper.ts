@@ -13,6 +13,7 @@ export type {
   StandingsData,
   Standing,
   TeamPairing,
+  LinkedTournament,
   Sex,
 } from './types';
 import type { TournamentData, StandingsData } from './types';

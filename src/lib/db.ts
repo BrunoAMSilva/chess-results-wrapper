@@ -35,6 +35,8 @@ db.exec(`
     total_rounds INTEGER NOT NULL DEFAULT 0,
     date TEXT NOT NULL DEFAULT '',
     location TEXT NOT NULL DEFAULT '',
+    event_label TEXT NOT NULL DEFAULT '',
+    linked_tournaments TEXT NOT NULL DEFAULT '[]',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -113,17 +115,24 @@ import type {
 // ── Tournaments ──
 
 export function upsertTournament(info: TournamentInfo, tournamentId: string): void {
+  // Migrate: add columns if they don't exist yet (no-op after first run)
+  try { db.exec('ALTER TABLE tournaments ADD COLUMN event_label TEXT NOT NULL DEFAULT \'\''); } catch (_) {}
+  try { db.exec('ALTER TABLE tournaments ADD COLUMN linked_tournaments TEXT NOT NULL DEFAULT \'[]\''); } catch (_) {}
+
+  const linkedJson = info.linkedTournaments ? JSON.stringify(info.linkedTournaments) : '[]';
   db.prepare(`
-    INSERT INTO tournaments (id, name, type, total_rounds, date, location, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, datetime('now'))
+    INSERT INTO tournaments (id, name, type, total_rounds, date, location, event_label, linked_tournaments, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       type = excluded.type,
       total_rounds = excluded.total_rounds,
       date = excluded.date,
       location = excluded.location,
+      event_label = excluded.event_label,
+      linked_tournaments = excluded.linked_tournaments,
       updated_at = datetime('now')
-  `).run(tournamentId, info.name, info.type, info.totalRounds, info.date, info.location);
+  `).run(tournamentId, info.name, info.type, info.totalRounds, info.date, info.location, info.currentLabel || '', linkedJson);
 }
 
 export function getTournament(tournamentId: string): DbTournament | undefined {

@@ -2,6 +2,7 @@
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import StandingRow from "../components/StandingRow.astro";
 import SegmentedControl from "../components/SegmentedControl.astro";
+import TournamentSelector from "../components/TournamentSelector.astro";
 import { scrapeStandings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
@@ -23,6 +24,7 @@ try {
 const allStandings = data?.standings || [];
 const womenStandings = data?.womenStandings || [];
 const hasWomen = womenStandings.length > 0;
+const linkedTournaments = data?.info.linkedTournaments;
 ---
 
 <MobileLayout title={data?.info.name || t('site.title')} lang={lang}>
@@ -30,6 +32,15 @@ const hasWomen = womenStandings.length > 0;
     <div class="error-msg">
       <p>{error}</p>
     </div>
+  )}
+
+  {linkedTournaments && linkedTournaments.length > 0 && (
+    <TournamentSelector
+      currentId={tid}
+      currentLabel={data!.info.currentLabel || data!.info.name}
+      linkedTournaments={linkedTournaments}
+      lang={lang}
+    />
   )}
 
   {hasWomen && (

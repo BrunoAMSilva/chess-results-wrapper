@@ -1,0 +1,47 @@
+---
+import type { LinkedTournament } from "../lib/types";
+import SegmentedControl from "./SegmentedControl.astro";
+
+interface Props {
+  currentId: string;
+  currentLabel: string;
+  linkedTournaments: LinkedTournament[];
+  lang: number;
+}
+
+const { currentId, currentLabel, linkedTournaments, lang } = Astro.props;
+const currentPath = Astro.url.pathname;
+
+const allTournaments = [
+  { id: currentId, name: currentLabel },
+  ...linkedTournaments,
+].sort((a, b) => a.name.localeCompare(b.name));
+
+const segments = allTournaments.map((t) => ({
+  value: t.id,
+  label: t.name,
+  href: t.id === currentId ? undefined : `${currentPath}?tid=${t.id}&lang=${lang}`,
+}));
+---
+
+<div class="tournament-selector-wrapper">
+  <SegmentedControl
+    name="tournament"
+    segments={segments}
+    active={currentId}
+  />
+</div>
+
+<style>
+  .tournament-selector-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-bottom: var(--space-4);
+    padding: 0 var(--space-4);
+  }
+
+  .tournament-selector-wrapper :global(.seg-control) {
+    width: 100%;
+    max-width: 480px;
+  }
+</style>
