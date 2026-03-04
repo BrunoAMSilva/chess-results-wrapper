@@ -34,7 +34,7 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
 
   {data && (
     <div class="mobile-controls">
-      <div class="round-nav" id="roundNav">
+      <div class="round-nav" id="roundNav" transition:name="round-nav" transition:animate="none">
         {rounds.map((r) => (
           <a
             href={`/?tid=${tid}&round=${r}&lang=${lang}`}
@@ -63,20 +63,20 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
   .mobile-controls {
     display: flex;
     justify-content: center;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-4);
     position: sticky;
     top: 0;
     z-index: 5;
     background: var(--bg);
-    padding: 0.5rem 0;
+    padding: var(--space-2) 0;
   }
   .round-nav {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    padding: 0.5rem 1rem;
+    padding: var(--space-2) var(--space-4);
     width: 100%;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
@@ -87,40 +87,43 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
   .round-pill {
     scroll-snap-align: center;
     flex-shrink: 0;
-    padding: 0.5rem 1rem;
+    padding: var(--space-2) var(--space-4);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 20px;
+    border-radius: var(--radius-xl);
     color: var(--text-dim);
     text-decoration: none;
-    font-weight: 600;
-    transition: all 0.2s;
+    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm);
+    transition: all var(--duration-fast) var(--ease-in-out);
   }
   .round-pill.active {
-    background: #fff;
-    color: var(--bg);
-    border-color: #fff;
-    box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 15px var(--accent-glow);
   }
   .pairings-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(max(25vw, 360px), 1fr));
-    gap: 1rem;
-    padding-bottom: 2rem;
+    gap: var(--space-4);
+    padding-bottom: var(--space-8);
   }
   .empty-state {
     text-align: center;
     color: var(--text-dim);
-    margin-top: 2rem;
+    margin-top: var(--space-8);
   }
 </style>
 
 <script>
   // Center active round pill on load
-  document.addEventListener('DOMContentLoaded', () => {
+  function centerActivePill() {
     const activePill = document.querySelector('.round-pill.active');
     if (activePill) {
       activePill.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
     }
-  });
+  }
+  document.addEventListener('DOMContentLoaded', centerActivePill);
+  document.addEventListener('astro:after-swap', centerActivePill);
 </script>

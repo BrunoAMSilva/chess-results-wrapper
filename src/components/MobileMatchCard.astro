@@ -91,12 +91,12 @@ const bName = match.black ? match.black.name : '---';
   .match-card {
     display: flex;
     background: var(--surface);
-    border-radius: 16px;
+    border-radius: var(--radius-xl);
     border: 1px solid var(--border-light);
     overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    box-shadow: var(--shadow-card);
     margin-bottom: 0px;
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+    transition: transform var(--duration-normal) var(--ease-out), box-shadow var(--duration-normal) var(--ease-out), border-color var(--duration-fast) ease;
   }
 
   .board-number-column {
@@ -104,7 +104,7 @@ const bName = match.black ? match.black.name : '---';
     align-items: center;
     justify-content: center;
     width: 64px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+    background: linear-gradient(180deg, rgba(255,255,255,0.05), transparent);
     border-right: 1px solid var(--border-light);
     position: relative;
     overflow: hidden;
@@ -133,17 +133,17 @@ const bName = match.black ? match.black.name : '---';
   }
 
   .player-row:first-child {
-    background: rgb(255 255 255 / 0.1);
+    background: rgba(255, 255, 255, 0.1);
   }
-  
+
 
   .winner-row .player-name,
   .winner-row .player-score {
-    color: #fcd34d;
+    color: var(--accent-text);
   }
 
   .winner-row.player-row {
-    background: linear-gradient(90deg, rgba(245, 158, 11, 0.24), rgba(245, 158, 11, 0.1) 65%, rgba(255,255,255,0.01));
+    background: linear-gradient(90deg, var(--accent-subtle), transparent 65%);
   }
   
   .player-row:hover {
@@ -172,12 +172,12 @@ const bName = match.black ? match.black.name : '---';
   }
   
   .white-piece {
-    background: linear-gradient(135deg, #fff 0%, #e0e0e0 100%);
+    background: linear-gradient(135deg, var(--white-piece) 0%, #e0e0e0 100%);
     box-shadow: 0 2px 4px rgba(0,0,0,0.2), inset 0 -2px 0 rgba(0,0,0,0.1);
   }
   
   .black-piece {
-    background: linear-gradient(135deg, #444 0%, #222 100%);
+    background: linear-gradient(135deg, var(--black-piece) 0%, #222 100%);
     border: 1px solid #111;
     box-shadow: 0 2px 4px rgba(0,0,0,0.4), inset 0 2px 0 rgba(255,255,255,0.1);
   }

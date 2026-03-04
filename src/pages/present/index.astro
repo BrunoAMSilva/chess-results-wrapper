@@ -2,6 +2,8 @@
 import Layout from "../../layouts/Layout.astro";
 import MatchCard from "../../components/MatchCard.astro";
 import StandingRow from "../../components/StandingRow.astro";
+import TabsControl from "../../components/TabsControl.astro";
+import SegmentedControl from "../../components/SegmentedControl.astro";
 import { scrapePairings, scrapeStandings } from "../../lib/scraper";
 import { useTranslations } from "../../i18n/ui";
 import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
@@ -133,10 +135,14 @@ const autoRefresh = isTournamentLive(data?.info.date);
     {data && allPairings.length === 0 && playerList.length > 0 && (
       <section class="matches-section">
         {hasWomenPlayers && (
-          <div class="standings-tabs" id="standingsTabs">
-            <button class="standings-tab active" data-tab="open">{t('standings.open')}</button>
-            <button class="standings-tab" data-tab="women">{t('standings.women')}</button>
-          </div>
+          <TabsControl
+            name="standings"
+            tabs={[
+              { value: "open", label: t('standings.open') },
+              { value: "women", label: t('standings.women') },
+            ]}
+            active="open"
+          />
         )}
         <div id="openStandings" data-carousel-group>
           <div class="column-headers">
@@ -261,12 +267,14 @@ const autoRefresh = isTournamentLive(data?.info.date);
     </button>
     <div class="config-body" id="configBody">
       <div class="view-switch-panel">
-        <span class="switch-btn active">
-          {t('nav.pairings')}
-        </span>
-        <a href={`/present/standings?tid=${tid}&lang=${lang}`} class="switch-btn">
-          {t('nav.standings')}
-        </a>
+        <SegmentedControl
+          name="view-switch"
+          segments={[
+            { value: "pairings", label: t('nav.pairings') },
+            { value: "standings", label: t('nav.standings'), href: `/present/standings?tid=${tid}&lang=${lang}` },
+          ]}
+          active="pairings"
+        />
       </div>
       <label class="config-label">
         {t('config.tid')}
@@ -319,51 +327,22 @@ const autoRefresh = isTournamentLive(data?.info.date);
   .header-right-group {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: var(--space-6);
     flex-shrink: 0;
-  }
-
-  .view-switch {
-    display: flex;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 4px;
-    gap: 4px;
-  }
-
-  .icon-sm {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    opacity: 0.6;
-  }
-
-  .info-row {
-    display: flex;
-    align-items: center;
-    gap: 1.2rem;
-  }
-
-  .info-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.85rem;
-    color: var(--text-dim);
   }
 
   .toolbar-stats {
     display: flex;
     align-items: center;
-    gap: 2rem;
+    gap: var(--space-8);
   }
 
   .round-nav {
     display: flex;
     align-items: center;
     gap: 0.25rem;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 6px;
+    background: var(--seg-bg);
+    border-radius: var(--radius-sm);
     padding: 2px;
   }
 
@@ -373,14 +352,14 @@ const autoRefresh = isTournamentLive(data?.info.date);
     justify-content: center;
     width: 32px;
     height: 32px;
-    color: #ffffff;
+    color: var(--text);
     border-radius: 4px;
-    transition: background 0.2s;
+    transition: background var(--duration-fast) var(--ease-in-out);
     opacity: 0.8;
   }
 
   .nav-btn:hover:not(.disabled) {
-    background: rgba(255, 255, 255, 0.1);
+    background: var(--surface-hover);
     opacity: 1;
   }
 
@@ -392,7 +371,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
   .stat-pill {
     display: flex;
     align-items: center;
-    gap: 1.5rem;
+    gap: var(--space-6);
     padding: 0;
     background: transparent;
     border: none;
@@ -405,24 +384,14 @@ const autoRefresh = isTournamentLive(data?.info.date);
     justify-content: center;
     gap: 0.2rem;
     padding: 0;
-    color: #ffffff;
-    border-right: 1px solid rgba(255,255,255,0.2);
-    padding-right: 1.5rem;
+    color: var(--text);
+    border-right: 1px solid var(--border-strong);
+    padding-right: var(--space-6);
   }
 
   .stat-group:last-of-type {
     border-right: none;
     padding-right: 0;
-    background: transparent;
-    margin-left: 0;
-    flex-direction: column;
-    gap: 0.2rem;
-    box-shadow: none;
-  }
-  
-  .stat-group:last-of-type .stat-label {
-    color: rgba(255, 255, 255, 0.6) !important;
-    opacity: 1;
   }
 
   .stat-divider {
@@ -430,18 +399,18 @@ const autoRefresh = isTournamentLive(data?.info.date);
   }
 
   .stat-label {
-    font-size: 0.75rem;
-    font-weight: 700;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.6) !important;
-    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    letter-spacing: var(--tracking-wide);
   }
 
   .stat-value {
-    font-size: 1.4rem;
-    font-weight: 800;
-    color: #ffffff !important;
-    line-height: 1;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-extrabold);
+    color: var(--text);
+    line-height: var(--leading-none);
   }
 
   .column-headers {
@@ -449,8 +418,8 @@ const autoRefresh = isTournamentLive(data?.info.date);
     grid-template-columns: 1fr 100px 1fr;
     align-items: center;
     padding: 0;
-    background: #111;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
 
@@ -470,35 +439,6 @@ const autoRefresh = isTournamentLive(data?.info.date);
   .col-black {
     text-align: left;
     padding: 0.6rem 2rem 0.6rem 1rem;
-  }
-
-  .standings-tabs {
-    display: flex;
-    gap: 0;
-    background: #111;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    padding: 0 2rem;
-  }
-
-  .standings-tab {
-    padding: 0.6rem 1.2rem;
-    background: none;
-    border: none;
-    color: rgba(255,255,255,0.4);
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: color 0.2s, border-color 0.2s;
-  }
-
-  .standings-tab:hover {
-    color: rgba(255,255,255,0.7);
-  }
-
-  .standings-tab.active {
-    color: #fff;
-    border-bottom-color: var(--accent, #60a5fa);
   }
 
   .hidden {

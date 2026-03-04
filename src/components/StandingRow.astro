@@ -64,8 +64,8 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     padding: 0 0.5rem 0 0;
-    animation: fadeInUp 0.4s ease both;
-    color: #ffffff;
+    animation: fadeInUp var(--duration-slow) ease both;
+    color: var(--text);
     gap: 0;
     flex: 1;
     min-height: 60px;
@@ -76,22 +76,22 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
   }
 
   .standing-row.top-3 {
-    background: linear-gradient(90deg, rgba(124, 106, 239, 0.15) 0%, var(--surface) 100%);
+    background: linear-gradient(90deg, var(--accent-subtle) 0%, var(--surface) 100%);
     border-left: 4px solid var(--accent);
   }
 
   .standing-row.rank-1 {
-    border-left-color: #FFD700;
+    border-left-color: var(--medal-gold);
     background: linear-gradient(90deg, rgba(255, 215, 0, 0.15) 0%, var(--surface) 100%);
   }
 
   .standing-row.rank-2 {
-    border-left-color: #C0C0C0;
+    border-left-color: var(--medal-silver);
     background: linear-gradient(90deg, rgba(192, 192, 192, 0.15) 0%, var(--surface) 100%);
   }
 
   .standing-row.rank-3 {
-    border-left-color: #CD7F32;
+    border-left-color: var(--medal-bronze);
     background: linear-gradient(90deg, rgba(205, 127, 50, 0.15) 0%, var(--surface) 100%);
   }
 
@@ -106,32 +106,32 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
   }
 
   .rank-1 .rank-col {
-    color: #FFD700;
+    color: var(--medal-gold);
     text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
   }
 
   .rank-2 .rank-col {
-    color: #C0C0C0;
+    color: var(--medal-silver);
     text-shadow: 0 0 20px rgba(192, 192, 192, 0.4);
   }
 
   .rank-3 .rank-col {
-    color: #CD7F32;
+    color: var(--medal-bronze);
     text-shadow: 0 0 20px rgba(205, 127, 50, 0.4);
   }
 
   .rank-1 .points {
-    color: #FFD700;
+    color: var(--medal-gold);
     text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
   }
 
   .rank-2 .points {
-    color: #C0C0C0;
+    color: var(--medal-silver);
     text-shadow: 0 0 20px rgba(192, 192, 192, 0.4);
   }
 
   .rank-3 .points {
-    color: #CD7F32;
+    color: var(--medal-bronze);
     text-shadow: 0 0 20px rgba(205, 127, 50, 0.4);
   }
 
@@ -154,7 +154,7 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: #ffffff;
+    color: var(--text);
     line-height: 1.1;
     margin-bottom: 0.2rem;
   }
@@ -197,13 +197,13 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     font-size: 1.5rem;
     font-weight: 800;
 
-    color: #fff;
+    color: var(--text);
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
   
   .accent-text {
-    color: var(--accent);
+    color: var(--accent-text);
   }
 
   .stat-label {
@@ -232,7 +232,7 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
   .tb-val {
     font-size: 1.5rem;
     font-weight: 700;
-    color: rgba(255, 255, 255, 0.95);
+    color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
   }
 

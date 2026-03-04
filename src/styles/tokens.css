@@ -1,0 +1,299 @@
+/* ============================================================
+   Design System Tokens — Chess Results Wrapper
+   ============================================================
+   Brand: Gold (#fcd34d)
+   Modes: Dark (default) + Light
+   Uses system preference, overridable via [data-theme]
+   ============================================================ */
+
+/* ── Base tokens (mode-agnostic) ──────────────────────────── */
+:root {
+  /* ── Typography ─────────────────────────────────────────── */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", monospace;
+
+  /* Font sizes */
+  --text-xs: 0.75rem;   /* 12px */
+  --text-sm: 0.875rem;  /* 14px */
+  --text-base: 1rem;    /* 16px */
+  --text-lg: 1.125rem;  /* 18px */
+  --text-xl: 1.25rem;   /* 20px */
+  --text-2xl: 1.5rem;   /* 24px */
+  --text-3xl: 1.875rem; /* 30px */
+  --text-4xl: 2.25rem;  /* 36px */
+
+  /* Font weights */
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-extrabold: 800;
+
+  /* Line heights */
+  --leading-none: 1;
+  --leading-tight: 1.15;
+  --leading-normal: 1.5;
+
+  /* Letter spacing */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-wider: 0.1em;
+
+  /* ── Spacing ────────────────────────────────────────────── */
+  --space-0: 0;
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+
+  /* ── Radii ──────────────────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* ── Brand / Gold palette ───────────────────────────────── */
+  --gold-50:  #fffbeb;
+  --gold-100: #fef3c7;
+  --gold-200: #fde68a;
+  --gold-300: #fcd34d;
+  --gold-400: #fbbf24;
+  --gold-500: #f59e0b;
+  --gold-600: #d97706;
+  --gold-700: #b45309;
+  --gold-800: #92400e;
+  --gold-900: #78350f;
+
+  /* ── Neutral palette ────────────────────────────────────── */
+  --neutral-50:  #fafafa;
+  --neutral-100: #f5f5f5;
+  --neutral-200: #e5e5e5;
+  --neutral-300: #d4d4d4;
+  --neutral-400: #a3a3a3;
+  --neutral-500: #737373;
+  --neutral-600: #525252;
+  --neutral-700: #404040;
+  --neutral-800: #262626;
+  --neutral-900: #171717;
+  --neutral-950: #0a0a0a;
+
+  /* ── Semantic (result) colors ────────────────────────────── */
+  --green-400: #4ade80;
+  --green-500: #22c55e;
+  --green-600: #16a34a;
+  --red-400:   #f87171;
+  --red-500:   #ef4444;
+  --amber-400: #fbbf24;
+
+  /* ── Shadows ────────────────────────────────────────────── */
+  --shadow-sm:  0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md:  0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg:  0 8px 30px rgba(0, 0, 0, 0.15);
+  --shadow-xl:  0 12px 40px rgba(0, 0, 0, 0.25);
+
+  /* ── Transitions ────────────────────────────────────────── */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Chess piece colors ─────────────────────────────────── */
+  --white-piece: #f0d9b5;
+  --black-piece: #b58863;
+
+  /* ── Medal colors ───────────────────────────────────────── */
+  --medal-gold:   #FFD700;
+  --medal-silver: #C0C0C0;
+  --medal-bronze: #CD7F32;
+}
+
+/* ============================================================
+   DARK THEME (default)
+   ============================================================ */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:           #0f0f14;
+  --bg-subtle:    #141419;
+  --surface:      #1a1a24;
+  --surface-hover: #22222e;
+  --surface-raised: #252533;
+  --border:       rgba(255, 255, 255, 0.08);
+  --border-light: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.15);
+  --ring:         rgba(252, 211, 77, 0.4);
+
+  --text:         #ffffff;
+  --text-secondary: #d4d4d8;
+  --text-dim:     #9ca3b5;
+  --text-muted:   #6b7280;
+
+  --accent:       var(--gold-300);
+  --accent-hover: var(--gold-400);
+  --accent-subtle: rgba(252, 211, 77, 0.12);
+  --accent-glow:  rgba(252, 211, 77, 0.15);
+  --accent-text:  var(--gold-300);
+
+  --on-accent:    #1a1a24;
+
+  --win:          var(--green-400);
+  --loss:         var(--red-400);
+  --draw:         var(--amber-400);
+
+  --shadow-card:  0 4px 15px rgba(0, 0, 0, 0.15);
+  --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.3);
+
+  /* Segmented control */
+  --seg-bg:       rgba(255, 255, 255, 0.06);
+  --seg-active-bg: rgba(252, 211, 77, 0.15);
+  --seg-active-border: rgba(252, 211, 77, 0.35);
+  --seg-active-text: var(--gold-300);
+
+  /* Tab bar */
+  --tab-indicator: var(--gold-400);
+  --tab-text:     var(--text-dim);
+  --tab-active:   var(--text);
+
+  /* Input */
+  --input-bg:     rgba(0, 0, 0, 0.2);
+  --input-border: var(--border);
+  --input-focus:  var(--gold-400);
+  --input-focus-ring: rgba(252, 211, 77, 0.2);
+
+  /* Mobile nav */
+  --nav-bg:       rgba(22, 25, 34, 0.85);
+  --nav-active:   var(--gold-400);
+
+  /* Ambient blurs */
+  --ambient-a: rgba(252, 211, 77, 0.12);
+  --ambient-b: rgba(245, 158, 11, 0.08);
+}
+
+/* ============================================================
+   LIGHT THEME
+   ============================================================ */
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:           #fafaf9;
+  --bg-subtle:    #f5f5f4;
+  --surface:      #ffffff;
+  --surface-hover: #f5f5f4;
+  --surface-raised: #ffffff;
+  --border:       rgba(0, 0, 0, 0.08);
+  --border-light: rgba(0, 0, 0, 0.05);
+  --border-strong: rgba(0, 0, 0, 0.15);
+  --ring:         rgba(217, 119, 6, 0.35);
+
+  --text:         #1c1917;
+  --text-secondary: #44403c;
+  --text-dim:     #78716c;
+  --text-muted:   #a8a29e;
+
+  --accent:       var(--gold-500);
+  --accent-hover: var(--gold-600);
+  --accent-subtle: rgba(245, 158, 11, 0.1);
+  --accent-glow:  rgba(245, 158, 11, 0.08);
+  --accent-text:  var(--gold-700);
+
+  --on-accent:    #ffffff;
+
+  --win:          var(--green-600);
+  --loss:         var(--red-500);
+  --draw:         var(--gold-500);
+
+  --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+  /* Segmented control */
+  --seg-bg:       rgba(0, 0, 0, 0.04);
+  --seg-active-bg: #ffffff;
+  --seg-active-border: rgba(0, 0, 0, 0.08);
+  --seg-active-text: var(--gold-700);
+
+  /* Tab bar */
+  --tab-indicator: var(--gold-500);
+  --tab-text:     var(--text-dim);
+  --tab-active:   var(--text);
+
+  /* Input */
+  --input-bg:     #ffffff;
+  --input-border: var(--border-strong);
+  --input-focus:  var(--gold-500);
+  --input-focus-ring: rgba(245, 158, 11, 0.2);
+
+  /* Mobile nav */
+  --nav-bg:       rgba(255, 255, 255, 0.9);
+  --nav-active:   var(--gold-600);
+
+  /* Ambient blurs */
+  --ambient-a: rgba(252, 211, 77, 0.08);
+  --ambient-b: rgba(245, 158, 11, 0.05);
+}
+
+/* ── System preference fallback ─────────────────────────── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+
+    --bg:           #fafaf9;
+    --bg-subtle:    #f5f5f4;
+    --surface:      #ffffff;
+    --surface-hover: #f5f5f4;
+    --surface-raised: #ffffff;
+    --border:       rgba(0, 0, 0, 0.08);
+    --border-light: rgba(0, 0, 0, 0.05);
+    --border-strong: rgba(0, 0, 0, 0.15);
+    --ring:         rgba(217, 119, 6, 0.35);
+
+    --text:         #1c1917;
+    --text-secondary: #44403c;
+    --text-dim:     #78716c;
+    --text-muted:   #a8a29e;
+
+    --accent:       var(--gold-500);
+    --accent-hover: var(--gold-600);
+    --accent-subtle: rgba(245, 158, 11, 0.1);
+    --accent-glow:  rgba(245, 158, 11, 0.08);
+    --accent-text:  var(--gold-700);
+
+    --on-accent:    #ffffff;
+
+    --win:          var(--green-600);
+    --loss:         var(--red-500);
+    --draw:         var(--gold-500);
+
+    --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
+
+    --seg-bg:       rgba(0, 0, 0, 0.04);
+    --seg-active-bg: #ffffff;
+    --seg-active-border: rgba(0, 0, 0, 0.08);
+    --seg-active-text: var(--gold-700);
+
+    --tab-indicator: var(--gold-500);
+    --tab-text:     var(--text-dim);
+    --tab-active:   var(--text);
+
+    --input-bg:     #ffffff;
+    --input-border: var(--border-strong);
+    --input-focus:  var(--gold-500);
+    --input-focus-ring: rgba(245, 158, 11, 0.2);
+
+    --nav-bg:       rgba(255, 255, 255, 0.9);
+    --nav-active:   var(--gold-600);
+
+    --ambient-a: rgba(252, 211, 77, 0.08);
+    --ambient-b: rgba(245, 158, 11, 0.05);
+  }
+}

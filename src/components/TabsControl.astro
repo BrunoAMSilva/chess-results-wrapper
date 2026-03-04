@@ -1,0 +1,115 @@
+---
+/**
+ * TabsControl — underlined tab bar, ideal for presentational views.
+ *
+ * Usage:
+ *   <TabsControl
+ *     name="standings"
+ *     tabs={[
+ *       { value: "open", label: "Open" },
+ *       { value: "women", label: "Women" },
+ *     ]}
+ *     active="open"
+ *   />
+ *
+ * Emits a custom `tab-change` event on the container with `detail.value`.
+ */
+interface Tab {
+  value: string;
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  name: string;
+  tabs: Tab[];
+  active?: string;
+  class?: string;
+}
+
+const { name, tabs, active, class: className = "" } = Astro.props;
+---
+
+<div
+  class:list={["tabs-control", className]}
+  data-tabs-control={name}
+  role="tablist"
+  transition:name={`tabs-${name}`}
+>
+  {tabs.map((tab) => {
+    const isActive = tab.value === active;
+    const Tag = tab.href ? "a" : "button";
+    return (
+      <Tag
+        class:list={["tab-item", { active: isActive }]}
+        data-tab-value={tab.value}
+        role="tab"
+        aria-selected={isActive ? "true" : "false"}
+        {...(tab.href ? { href: tab.href } : { type: "button" })}
+      >
+        {tab.label}
+      </Tag>
+    );
+  })}
+</div>
+
+<style>
+  .tabs-control {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 var(--space-8);
+    background: var(--surface);
+  }
+
+  .tab-item {
+    position: relative;
+    padding: 0.6rem 1.2rem;
+    background: none;
+    border: none;
+    color: var(--tab-text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color var(--duration-fast) var(--ease-in-out),
+                border-color var(--duration-fast) var(--ease-in-out);
+    text-decoration: none;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+
+  .tab-item:hover:not(.active) {
+    color: var(--text-secondary);
+  }
+
+  .tab-item.active {
+    color: var(--tab-active);
+    border-bottom-color: var(--tab-indicator);
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-tabs-control]").forEach((ctrl) => {
+    const items = ctrl.querySelectorAll<HTMLElement>(".tab-item");
+
+    items.forEach((item) => {
+      if (item.tagName === "A") return; // links navigate; no JS needed
+      item.addEventListener("click", () => {
+        items.forEach((i) => {
+          i.classList.remove("active");
+          i.setAttribute("aria-selected", "false");
+        });
+        item.classList.add("active");
+        item.setAttribute("aria-selected", "true");
+
+        ctrl.dispatchEvent(
+          new CustomEvent("tab-change", {
+            bubbles: true,
+            detail: { value: item.dataset.tabValue },
+          })
+        );
+      });
+    });
+  });
+</script>

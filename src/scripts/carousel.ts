@@ -95,31 +95,51 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Tab switching for standings
-const tabContainer = document.getElementById("standingsTabs");
+// Tab switching for standings — supports both old standingsTabs and new TabsControl
+const tabContainer = document.getElementById("standingsTabs") || document.querySelector('[data-tabs-control="standings"]');
 if (tabContainer) {
-  const tabs = tabContainer.querySelectorAll<HTMLElement>(".standings-tab");
   const openSection = document.getElementById("openStandings");
   const womenSection = document.getElementById("womenStandings");
 
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      const target = tab.dataset.tab;
-      tabs.forEach((t) => t.classList.toggle("active", t === tab));
+  // Listen for the new TabsControl custom event
+  tabContainer.addEventListener("tab-change", ((e: CustomEvent) => {
+    const target = e.detail.value;
 
-      if (target === "open") {
-        openSection?.classList.remove("hidden");
-        womenSection?.classList.add("hidden");
-        instances.get("womenCarousel")?.stop();
-        instances.get("carousel")?.start();
-      } else {
-        openSection?.classList.add("hidden");
-        womenSection?.classList.remove("hidden");
-        instances.get("carousel")?.stop();
-        instances.get("womenCarousel")?.start();
-      }
+    if (target === "open") {
+      openSection?.classList.remove("hidden");
+      womenSection?.classList.add("hidden");
+      instances.get("womenCarousel")?.stop();
+      instances.get("carousel")?.start();
+    } else {
+      openSection?.classList.add("hidden");
+      womenSection?.classList.remove("hidden");
+      instances.get("carousel")?.stop();
+      instances.get("womenCarousel")?.start();
+    }
+  }) as EventListener);
+
+  // Also support old-style standalone tabs (fallback)
+  const oldTabs = tabContainer.querySelectorAll<HTMLElement>(".standings-tab");
+  if (oldTabs.length > 0) {
+    oldTabs.forEach((tab) => {
+      tab.addEventListener("click", () => {
+        const target = tab.dataset.tab;
+        oldTabs.forEach((t) => t.classList.toggle("active", t === tab));
+
+        if (target === "open") {
+          openSection?.classList.remove("hidden");
+          womenSection?.classList.add("hidden");
+          instances.get("womenCarousel")?.stop();
+          instances.get("carousel")?.start();
+        } else {
+          openSection?.classList.add("hidden");
+          womenSection?.classList.remove("hidden");
+          instances.get("carousel")?.stop();
+          instances.get("womenCarousel")?.start();
+        }
+      });
     });
-  });
+  }
 
   // Stop women carousel initially (it starts hidden)
   instances.get("womenCarousel")?.stop();

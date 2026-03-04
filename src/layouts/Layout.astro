@@ -1,5 +1,7 @@
 ---
+import { ViewTransitions } from "astro:transitions";
 import { languages } from "../i18n/ui";
+import "../styles/global.css";
 
 interface Props {
   title: string;
@@ -22,6 +24,17 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <ViewTransitions />
+    <script>
+      // Inline theme script to prevent FOUC
+      (function() {
+        const stored = (() => { try { return localStorage.getItem('theme'); } catch { return null; } })();
+        if (stored === 'light' || stored === 'dark') {
+          document.documentElement.setAttribute('data-theme', stored);
+        }
+      })();
+    </script>
+    <script src="../scripts/theme.ts"></script>
   </head>
   <body>
     <slot />
@@ -36,39 +49,9 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
 </html>
 
 <style is:global>
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-  }
-
-  :root {
-    --bg: #0f0f13;
-    --surface: #1a1a24;
-    --surface-hover: #22222e;
-    --border: #2a2a3a;
-    --text: #ffffff;
-    --text-dim: #a0a0b0;
-    --white-piece: #f0d9b5;
-    --black-piece: #b58863;
-    --accent: #7c6aef;
-    --accent-glow: rgba(124, 106, 239, 0.15);
-    --win: #4ade80;
-    --loss: #f87171;
-    --draw: #fbbf24;
-    --radius: 12px;
-    --font: "Inter", -apple-system, sans-serif;
-  }
-
   body {
-    font-family: var(--font);
-    background: var(--bg);
-    color: var(--text);
     height: 100vh;
     overflow: hidden;
-    -webkit-font-smoothing: antialiased;
   }
 
   @keyframes fadeInUp {
@@ -139,20 +122,20 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   .icon-logo {
     width: 28px;
     height: 28px;
-    color: var(--accent);
+    color: var(--accent-text);
     flex-shrink: 0;
   }
 
   .title {
-    font-size: 1.8rem;
-    font-weight: 800;
-    line-height: 1.1;
-    color: #ffffff;
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-extrabold);
+    line-height: var(--leading-tight);
+    color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     text-transform: uppercase;
-    letter-spacing: -0.02em;
+    letter-spacing: var(--tracking-tight);
   }
 
   /* Carousel */
@@ -214,12 +197,12 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   }
 
   .page-dot.active {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--accent-text);
+    border-color: var(--accent-text);
   }
 
   .page-dot:hover {
-    border-color: var(--accent);
+    border-color: var(--accent-text);
   }
 
   .progress-bar {
@@ -233,7 +216,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   .progress-fill {
     height: 100%;
     width: 0%;
-    background: var(--accent);
+    background: var(--accent-text);
     border-radius: 2px;
   }
 
@@ -243,17 +226,17 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     display: flex;
     flex-direction: column;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
     overflow: hidden;
     min-height: 0;
   }
 
   .col-label {
-    font-size: 1rem;
-    font-weight: 800;
+    font-size: var(--text-base);
+    font-weight: var(--weight-extrabold);
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: #ffffff;
+    color: var(--text);
     opacity: 0.7;
   }
 
@@ -261,8 +244,8 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   .error-card {
     background: rgba(248, 113, 113, 0.1);
     border: 1px solid rgba(248, 113, 113, 0.3);
-    border-radius: var(--radius);
-    padding: 1.5rem;
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
     text-align: center;
   }
 
@@ -318,7 +301,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   }
 
   .config-toggle:hover {
-    border-color: var(--accent);
+    border-color: var(--accent-text);
     transform: rotate(90deg);
   }
 
@@ -329,12 +312,12 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     width: 260px;
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
     display: none;
     flex-direction: column;
-    gap: 0.75rem;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    gap: var(--space-3);
+    box-shadow: var(--shadow-elevated);
     animation: fadeInUp 0.3s ease both;
   }
 
@@ -371,8 +354,8 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
 
   .switch-btn.active {
     background: var(--accent);
-    color: #fff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    color: var(--on-accent);
+    box-shadow: var(--shadow-sm);
   }
 
   .config-label {
@@ -396,15 +379,16 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
 
   .config-input:focus {
     outline: none;
-    border-color: var(--accent);
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
   }
 
   .config-btn {
     padding: 0.5rem;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     border: none;
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 600;
     font-size: 0.85rem;
     cursor: pointer;

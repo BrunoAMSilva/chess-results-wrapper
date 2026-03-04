@@ -1,6 +1,7 @@
 ---
 import MobileLayout from "../layouts/MobileLayout.astro";
 import StandingRow from "../components/StandingRow.astro";
+import SegmentedControl from "../components/SegmentedControl.astro";
 import { scrapeStandings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
@@ -32,9 +33,15 @@ const hasWomen = womenStandings.length > 0;
   )}
 
   {hasWomen && (
-    <div class="standings-mobile-tabs" id="mobileStandingsTabs">
-      <button class="mobile-tab active" data-tab="open">{t('standings.open')}</button>
-      <button class="mobile-tab" data-tab="women">{t('standings.women')}</button>
+    <div class="standings-seg-wrapper">
+      <SegmentedControl
+        name="standings"
+        segments={[
+          { value: "open", label: t('standings.open') },
+          { value: "women", label: t('standings.women') },
+        ]}
+        active="open"
+      />
     </div>
   )}
 
@@ -58,71 +65,60 @@ const hasWomen = womenStandings.length > 0;
 </MobileLayout>
 
 <style>
-  .standings-mobile-tabs {
+  .standings-seg-wrapper {
     display: flex;
-    background: var(--surface);
-    border-radius: 8px;
-    padding: 0.25rem;
-    margin-bottom: 1rem;
+    justify-content: center;
+    margin-bottom: var(--space-4);
     position: sticky;
     top: 55px;
     z-index: 5;
+    padding: var(--space-1) 0;
   }
-  .mobile-tab {
-    flex: 1;
-    text-align: center;
-    padding: 0.5rem;
-    border-radius: 6px;
-    border: none;
-    background: none;
-    color: var(--text-dim);
-    font-weight: 600;
-    cursor: pointer;
+
+  .standings-seg-wrapper :global(.seg-control) {
+    width: 100%;
+    max-width: 360px;
   }
-  .mobile-tab.active {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.15);
-}
+
   .standings-list {
     display: flex;
     flex-direction: column;
-    padding-bottom: 2rem;
+    padding-bottom: var(--space-8);
     background: var(--surface);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     overflow: hidden;
   }
+
   .standings-list.hidden {
     display: none;
   }
-  .standings-header {
-    display: none;
-  }
+
   .empty-state {
     text-align: center;
-    padding: 2rem;
+    padding: var(--space-8);
     color: var(--text-dim);
   }
 </style>
 
 <script>
-  const tabs = document.querySelectorAll('.mobile-tab');
-  const openList = document.getElementById('openStandingsList');
-  const womenList = document.getElementById('womenStandingsList');
+  function initStandingsTabs() {
+    const wrapper = document.querySelector('[data-seg-control="standings"]');
+    if (!wrapper) return;
 
-  tabs.forEach(tab => {
-    tab.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      tabs.forEach(t => t.classList.remove('active'));
-      target.classList.add('active');
+    const openList = document.getElementById('openStandingsList');
+    const womenList = document.getElementById('womenStandingsList');
 
-      if (target.dataset.tab === 'open') {
+    wrapper.addEventListener('segmented-change', ((e: CustomEvent) => {
+      if (e.detail.value === 'open') {
         openList?.classList.remove('hidden');
         womenList?.classList.add('hidden');
       } else {
         openList?.classList.add('hidden');
         womenList?.classList.remove('hidden');
       }
-    });
-  });
+    }) as EventListener);
+  }
+
+  initStandingsTabs();
+  document.addEventListener('astro:after-swap', initStandingsTabs);
 </script>

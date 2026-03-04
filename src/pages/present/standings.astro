@@ -1,6 +1,8 @@
 ---
 import Layout from "../../layouts/Layout.astro";
 import StandingRow from "../../components/StandingRow.astro";
+import TabsControl from "../../components/TabsControl.astro";
+import SegmentedControl from "../../components/SegmentedControl.astro";
 import { scrapeStandings } from "../../lib/scraper";
 import { useTranslations } from "../../i18n/ui";
 import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
@@ -92,10 +94,14 @@ const autoRefresh = isTournamentLive(data?.info.date);
     {data && allStandings.length > 0 && (
       <section class="matches-section">
         {hasWomen && (
-          <div class="standings-tabs" id="standingsTabs">
-            <button class="standings-tab active" data-tab="open">{t('standings.open')}</button>
-            <button class="standings-tab" data-tab="women">{t('standings.women')}</button>
-          </div>
+          <TabsControl
+            name="standings"
+            tabs={[
+              { value: "open", label: t('standings.open') },
+              { value: "women", label: t('standings.women') },
+            ]}
+            active="open"
+          />
         )}
         <div id="openStandings" data-carousel-group>
           <div class="column-headers">
@@ -175,12 +181,14 @@ const autoRefresh = isTournamentLive(data?.info.date);
     </button>
     <div class="config-body" id="configBody">
       <div class="view-switch-panel">
-        <a href={`/present?tid=${tid}&lang=${lang}`} class="switch-btn">
-          {t('nav.pairings')}
-        </a>
-        <span class="switch-btn active">
-          {t('nav.standings')}
-        </span>
+        <SegmentedControl
+          name="view-switch"
+          segments={[
+            { value: "pairings", label: t('nav.pairings'), href: `/present?tid=${tid}&lang=${lang}` },
+            { value: "standings", label: t('nav.standings') },
+          ]}
+          active="standings"
+        />
       </div>
       <label class="config-label">
         {t('config.tid')}
@@ -221,35 +229,6 @@ const autoRefresh = isTournamentLive(data?.info.date);
 </script>
 
 <style>
-  .standings-tabs {
-    display: flex;
-    gap: 0;
-    background: #111;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    padding: 0 2rem;
-  }
-
-  .standings-tab {
-    padding: 0.6rem 1.2rem;
-    background: none;
-    border: none;
-    color: rgba(255,255,255,0.4);
-    font-size: 0.85rem;
-    font-weight: 500;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: color 0.2s, border-color 0.2s;
-  }
-
-  .standings-tab:hover {
-    color: rgba(255,255,255,0.7);
-  }
-
-  .standings-tab.active {
-    color: #fff;
-    border-bottom-color: var(--accent, #60a5fa);
-  }
-
   .hidden {
     display: none !important;
   }
@@ -258,11 +237,11 @@ const autoRefresh = isTournamentLive(data?.info.date);
     display: grid;
     grid-template-columns: 80px 1fr 280px;
     align-items: center;
-    padding: 0.6rem 2rem;
-    background: #111;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
+    padding: 0.6rem var(--space-8);
+    background: var(--bg-subtle);
+    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    gap: 1.5rem;
+    gap: var(--space-6);
   }
 
   .col-rank {
@@ -271,7 +250,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
 
   .col-name {
     text-align: left;
-    padding-left: 0.5rem;
+    padding-left: var(--space-2);
   }
 
   .col-stats {

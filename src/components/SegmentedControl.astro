@@ -1,0 +1,129 @@
+---
+/**
+ * SegmentedControl — iOS/macOS-style segmented control.
+ *
+ * Usage:
+ *   <SegmentedControl
+ *     name="standings"
+ *     segments={[
+ *       { value: "open", label: "Open" },
+ *       { value: "women", label: "Women" },
+ *     ]}
+ *     active="open"
+ *   />
+ *
+ * Emits a custom `segmented-change` event on the container with `detail.value`.
+ */
+interface Segment {
+  value: string;
+  label: string;
+  href?: string;
+}
+
+interface Props {
+  name: string;
+  segments: Segment[];
+  active?: string;
+  class?: string;
+}
+
+const { name, segments, active, class: className = "" } = Astro.props;
+---
+
+<div
+  class:list={["seg-control", className]}
+  data-seg-control={name}
+  role="tablist"
+  transition:name={`seg-${name}`}
+>
+  {segments.map((seg) => {
+    const isActive = seg.value === active;
+    const Tag = seg.href ? "a" : "button";
+    return (
+      <Tag
+        class:list={["seg-item", { active: isActive }]}
+        data-seg-value={seg.value}
+        role="tab"
+        aria-selected={isActive ? "true" : "false"}
+        {...(seg.href ? { href: seg.href } : { type: "button" })}
+      >
+        {seg.label}
+      </Tag>
+    );
+  })}
+  <div class="seg-indicator" aria-hidden="true" />
+</div>
+
+<style>
+  .seg-control {
+    display: inline-flex;
+    position: relative;
+    background: var(--seg-bg);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    gap: 2px;
+  }
+
+  .seg-item {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    text-align: center;
+    padding: 0.45rem 1rem;
+    border-radius: calc(var(--radius-md) - 2px);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-dim);
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid transparent;
+    background: transparent;
+    white-space: nowrap;
+    transition: color var(--duration-fast) var(--ease-in-out),
+                background var(--duration-fast) var(--ease-in-out),
+                border-color var(--duration-fast) var(--ease-in-out);
+    font-family: inherit;
+  }
+
+  .seg-item:hover:not(.active) {
+    color: var(--text-secondary);
+  }
+
+  .seg-item.active {
+    color: var(--seg-active-text);
+    background: var(--seg-active-bg);
+    border-color: var(--seg-active-border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* The indicator is a sliding background; JS positions it */
+  .seg-indicator {
+    display: none; /* Hidden until JS-animated if needed */
+  }
+</style>
+
+<script>
+  // Wire up click events
+  document.querySelectorAll<HTMLElement>("[data-seg-control]").forEach((ctrl) => {
+    const items = ctrl.querySelectorAll<HTMLElement>(".seg-item");
+
+    items.forEach((item) => {
+      if (item.tagName === "A") return; // links navigate; no JS needed
+      item.addEventListener("click", () => {
+        items.forEach((i) => {
+          i.classList.remove("active");
+          i.setAttribute("aria-selected", "false");
+        });
+        item.classList.add("active");
+        item.setAttribute("aria-selected", "true");
+
+        ctrl.dispatchEvent(
+          new CustomEvent("segmented-change", {
+            bubbles: true,
+            detail: { value: item.dataset.segValue },
+          })
+        );
+      });
+    });
+  });
+</script>

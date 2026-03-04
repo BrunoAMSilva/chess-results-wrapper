@@ -54,8 +54,8 @@ const isBye = !pairing.black;
     border-bottom: 1px solid var(--border);
     flex: 1;
     min-height: 0;
-    animation: fadeInUp 0.4s ease both;
-    color: #ffffff;
+    animation: fadeInUp var(--duration-slow) ease both;
+    color: var(--text);
   }
 
   .match-row:last-child {
@@ -71,36 +71,36 @@ const isBye = !pairing.black;
 
   /* Winner highlight — :global needed for dynamic classes */
   .match-row:global(.white-wins) .white-side {
-    background: #d4a824;
+    background: var(--accent);
   }
 
   .match-row:global(.white-wins) .white-side .player-name {
-    color: #000 !important;
+    color: var(--on-accent) !important;
     text-shadow: none;
     font-weight: 800;
   }
 
   .match-row:global(.black-wins) .black-side {
-    background: #d4a824;
+    background: var(--accent);
   }
 
   .match-row:global(.black-wins) .black-side .player-name {
-    color: #000 !important;
+    color: var(--on-accent) !important;
     text-shadow: none;
     font-weight: 800;
   }
 
   .match-row:global(.draw) .white-side {
-    background: rgb(213, 192, 255);
+    background: var(--accent-subtle);
   }
 
   .match-row:global(.draw) .white-side .player-name {
-    color: #1a1a24;
+    color: var(--text);
     text-shadow: none;
   }
 
   .match-row:global(.draw) .black-side {
-    background: rgba(158, 36, 251, 0.12);
+    background: var(--accent-subtle);
   }
 
   .player {
@@ -118,7 +118,7 @@ const isBye = !pairing.black;
   }
 
   .white-side .player-name {
-    color: #1a1a24 !important;
+    color: var(--on-accent) !important;
     text-shadow: none;
   }
 
@@ -133,7 +133,7 @@ const isBye = !pairing.black;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: #ffffff !important;
+    color: var(--text) !important;
     text-shadow: 0 2px 4px rgba(0,0,0,0.8);
     letter-spacing: -0.01em;
   }
@@ -143,15 +143,15 @@ const isBye = !pairing.black;
     align-items: center;
     justify-content: center;
     width: 100px;
-    background: #111;
-    border-left: 1px solid rgba(255,255,255,0.1);
-    border-right: 1px solid rgba(255,255,255,0.1);
+    background: var(--bg);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
   }
 
   .table-num {
     font-size: 3.2rem;
     font-weight: 900;
-    color: #ffffff;
+    color: var(--text);
     line-height: 1;
     letter-spacing: -0.05em;
   }

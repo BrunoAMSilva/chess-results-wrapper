@@ -1,5 +1,6 @@
 ---
 import MobileLayout from "../layouts/MobileLayout.astro";
+import ThemeToggle from "../components/ThemeToggle.astro";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
 
@@ -40,6 +41,11 @@ const t = useTranslations(lang);
             </select>
           </div>
         </div>
+
+        <div class="option-group">
+          <label class="option-label">Appearance</label>
+          <ThemeToggle />
+        </div>
       </div>
 
       <div class="actions-row">
@@ -72,10 +78,10 @@ const t = useTranslations(lang);
 <style>
   .options-grid {
     display: grid;
-    gap: 2rem;
+    gap: var(--space-8);
     grid-template-columns: 1fr;
     max-width: 800px;
-    animation: fadeInUp 0.4s ease out;
+    animation: fadeInUp var(--duration-slow) var(--ease-out) both;
   }
 
   @media (min-width: 800px) {
@@ -87,14 +93,14 @@ const t = useTranslations(lang);
   .options-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 2rem;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-8);
+    box-shadow: var(--shadow-elevated);
   }
 
   .secondary-card {
-    background: linear-gradient(180deg, var(--surface) 0%, rgba(26,26,36,0.5) 100%);
-    border-color: rgba(124, 106, 239, 0.2);
+    background: linear-gradient(180deg, var(--surface) 0%, var(--bg-subtle) 100%);
+    border-color: var(--accent-subtle);
     display: flex;
     flex-direction: column;
   }
@@ -103,14 +109,14 @@ const t = useTranslations(lang);
     display: flex;
     align-items: center;
     gap: 1.2rem;
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-8);
   }
 
   .icon-wrapper {
     width: 48px;
     height: 48px;
-    border-radius: 12px;
-    background: rgba(255,255,255,0.05);
+    border-radius: var(--radius-md);
+    background: var(--seg-bg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -118,50 +124,50 @@ const t = useTranslations(lang);
   }
 
   .icon-wrapper.accent {
-    background: rgba(124, 106, 239, 0.15);
-    color: var(--accent);
+    background: var(--accent-subtle);
+    color: var(--accent-text);
   }
 
   h2 {
-    font-size: 1.4rem;
-    font-weight: 700;
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
     margin-bottom: 0.2rem;
   }
 
   .card-desc {
     color: var(--text-dim);
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
     line-height: 1.4;
   }
 
   .form-grid {
     display: grid;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
+    gap: var(--space-6);
+    margin-bottom: var(--space-8);
   }
 
   .option-group {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: var(--space-3);
   }
 
   .option-label {
-    font-size: 0.9rem;
+    font-size: var(--text-sm);
     color: var(--text-dim);
-    font-weight: 600;
+    font-weight: var(--weight-semibold);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-wide);
   }
 
   .option-input {
-    padding: 1rem;
- border-radius: 10px;
-    border: 1px solid var(--border);
-    background: rgba(0,0,0,0.2);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
     color: var(--text);
-    font-size: 1.1rem;
-    transition: all 0.2s;
+    font-size: var(--text-lg);
+    transition: all var(--duration-fast) var(--ease-in-out);
     width: 100%;
     appearance: none;
     font-family: inherit;
@@ -175,7 +181,7 @@ const t = useTranslations(lang);
     content: "▼";
     position: absolute;
     right: 1.2rem;
-  top: 50%;
+    top: 50%;
     transform: translateY(-50%);
     font-size: 0.8rem;
     color: var(--text-dim);
@@ -184,79 +190,85 @@ const t = useTranslations(lang);
 
   .option-input:focus {
     outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(124, 106, 239, 0.2);
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
   }
 
   .actions-row {
     display: flex;
     justify-content: flex-end;
     border-top: 1px solid var(--border-light);
-    padding-top: 1.5rem;
+    padding-top: var(--space-6);
   }
 
   .save-btn {
     padding: 0.9rem 1.8rem;
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     border: none;
-    border-radius: 30px;
-    font-weight: 600;
-    font-size: 1rem;
+    border-radius: var(--radius-full);
+    font-weight: var(--weight-semibold);
+    font-size: var(--text-base);
     cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 0.8rem;
-    transition: all 0.2s;
-    box-shadow: 0 4px 15px rgba(124, 106, 239, 0.4);
+    gap: var(--space-3);
+    transition: all var(--duration-fast) var(--ease-in-out);
+    box-shadow: 0 4px 15px var(--accent-glow);
   }
   
   .save-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(124, 106, 239, 0.6);
+    background: var(--accent-hover);
+    box-shadow: 0 6px 20px var(--accent-glow);
   }
 
   .help-text {
     flex: 1;
     color: var(--text-dim);
     line-height: 1.6;
-    margin-bottom: 2rem;
-    font-size: 0.95rem;
+    margin-bottom: var(--space-8);
+    font-size: var(--text-base);
   }
 
   .presenter-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.8rem;
-    padding: 1rem;
-    background: rgba(255,255,255,0.05);
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--seg-bg);
     color: var(--text);
     text-decoration: none;
     border: 1px solid var(--border-light);
-    border-radius: 12px;
-    font-weight: 600;
-    transition: all 0.2s;
+    border-radius: var(--radius-md);
+    font-weight: var(--weight-semibold);
+    transition: all var(--duration-fast) var(--ease-in-out);
   }
 
   .presenter-btn:hover {
-    background: rgba(124, 106, 239, 0.15);
-    border-color: var(--accent);
-    color: #fff;
+    background: var(--accent-subtle);
+    border-color: var(--accent-text);
+    color: var(--accent-text);
     transform: translateY(-2px);
   }
 </style>
 
 <script>
-  const saveBtn = document.getElementById('saveBtn');
-  const inputTid = document.getElementById('inputTid') as HTMLInputElement;
-  const inputLang = document.getElementById('inputLang') as HTMLSelectElement;
-	  if (saveBtn) {
-    saveBtn.addEventListener('click', () => {
-      const url = new URL(window.location.href);
-      url.searchParams.set('tid', inputTid.value);
-      url.searchParams.set('lang', inputLang.value);
-      window.location.href = url.toString();
-    });
+  function initOptions() {
+    const saveBtn = document.getElementById('saveBtn');
+    const inputTid = document.getElementById('inputTid') as HTMLInputElement;
+    const inputLang = document.getElementById('inputLang') as HTMLSelectElement;
+    if (saveBtn) {
+      saveBtn.addEventListener('click', () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('tid', inputTid.value);
+        url.searchParams.set('lang', inputLang.value);
+        window.location.href = url.toString();
+      });
+    }
   }
+
+  initOptions();
+  document.addEventListener('astro:after-swap', initOptions);
 </script>
