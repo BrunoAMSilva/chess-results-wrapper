@@ -12,7 +12,7 @@ const { title, lang = 1 } = Astro.props;
 const langCode = languages[lang as keyof typeof languages] || "en";
 const currentPath = Astro.url.pathname;
 const tid = Astro.url.searchParams.get("tid") || "";
-const isPairings = currentPath === "/" || currentPath === "/present";
+const isPairings = currentPath === "/pairings" || currentPath === "/present";
 const isStandings = currentPath === "/standings";
 const isOptions = currentPath === "/options";
 ---
@@ -53,7 +53,7 @@ const isOptions = currentPath === "/options";
         <div class="topbar-left">
           <nav class="desktop-nav" aria-label="Main" transition:name="desktop-nav" transition:animate="none">
             <a
-              href={`/?tid=${tid}&lang=${lang}`}
+              href={`/pairings?tid=${tid}&lang=${lang}`}
               class={`desktop-nav-item ${isPairings ? "active" : ""}`}
               >Pairings</a
             >
@@ -77,7 +77,7 @@ const isOptions = currentPath === "/options";
 
       <nav class="mobile-nav" transition:name="mobile-nav" transition:animate="none">
         <a
-          href={`/?tid=${tid}&lang=${lang}`}
+          href={`/pairings?tid=${tid}&lang=${lang}`}
           class={`nav-item ${isPairings ? "active" : ""}`}
         >
           <svg

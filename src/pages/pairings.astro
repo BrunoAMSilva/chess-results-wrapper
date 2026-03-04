@@ -1,0 +1,129 @@
+---
+import MobileLayout from "../layouts/ResponsiveLayout.astro";
+import MobileMatchCard from "../components/ResponsiveMatchCard.astro";
+import { scrapePairings } from "../lib/scraper";
+import { useTranslations } from "../i18n/ui";
+import { DEFAULT_TOURNAMENT } from "../lib/constants";
+
+const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
+const round = parseInt(Astro.url.searchParams.get("round") || "1");
+const lang = parseInt(Astro.url.searchParams.get("lang") || "1");
+
+const t = useTranslations(lang);
+
+let data;
+let error: string | null = null;
+let allPairings: import("../lib/scraper").Pairing[] = [];
+
+try {
+  data = await scrapePairings(tid, round, lang);
+  allPairings = data.pairings || [];
+} catch (e) {
+  error = e instanceof Error ? e.message : t('error.load');
+}
+
+const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
+---
+
+<MobileLayout title={data?.info.name || t('site.title')} >
+  {error && (
+    <div class="error-msg">
+      <p>{error}</p>
+    </div>
+  )}
+
+  {data && (
+    <div class="mobile-controls">
+      <div class="round-nav" id="roundNav" transition:name="round-nav" transition:animate="none">
+        {rounds.map((r) => (
+          <a
+            href={`/pairings?tid=${tid}&round=${r}&lang=${lang}`}
+            class={`round-pill ${r === round ? 'active' : ''}`}
+            data-round={r}
+          >
+            {t('header.round')} {r}
+          </a>
+        ))}
+      </div>
+    </div>
+  )}
+
+  <div class="pairings-list animate-enter" style="animation-delay: 100ms">
+    {allPairings.length > 0 ? (
+      allPairings.map((pairing: any) => <MobileMatchCard match={pairing}  />)
+    ) : (
+      <div class="empty-state">
+        <p>{t('empty.pairings')}</p>
+      </div>
+    )}
+  </div>
+</MobileLayout>
+
+<style>
+  .mobile-controls {
+    display: flex;
+    justify-content: center;
+    margin-bottom: var(--space-4);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg);
+    padding: var(--space-2) 0;
+  }
+  .round-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding: var(--space-2) var(--space-4);
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .round-nav::-webkit-scrollbar {
+    display: none;
+  }
+  .round-pill {
+    scroll-snap-align: center;
+    flex-shrink: 0;
+    padding: var(--space-2) var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    color: var(--text-dim);
+    text-decoration: none;
+    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm);
+    transition: all var(--duration-fast) var(--ease-in-out);
+  }
+  .round-pill.active {
+    background: var(--accent);
+    color: var(--on-accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 15px var(--accent-glow);
+  }
+  .pairings-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(max(25vw, 360px), 1fr));
+    gap: var(--space-4);
+    padding-bottom: var(--space-8);
+  }
+  .empty-state {
+    text-align: center;
+    color: var(--text-dim);
+    margin-top: var(--space-8);
+  }
+</style>
+
+<script>
+  // Center active round pill on load
+  function centerActivePill() {
+    const activePill = document.querySelector('.round-pill.active');
+    if (activePill) {
+      activePill.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
+    }
+  }
+  document.addEventListener('DOMContentLoaded', centerActivePill);
+  document.addEventListener('astro:after-swap', centerActivePill);
+</script>

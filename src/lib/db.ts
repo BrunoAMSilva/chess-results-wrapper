@@ -312,3 +312,14 @@ export function persistPairings(
   });
   txn();
 }
+
+// ── Search ──
+
+export function searchTournaments(query: string, limit = 10): DbTournament[] {
+  return db.prepare(`
+    SELECT * FROM tournaments
+    WHERE name LIKE '%' || ? || '%'
+    ORDER BY updated_at DESC
+    LIMIT ?
+  `).all(query, limit) as DbTournament[];
+}
