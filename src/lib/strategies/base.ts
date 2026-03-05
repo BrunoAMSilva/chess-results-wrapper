@@ -58,7 +58,21 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
     .next()
     .text()
     .trim();
-  const totalRounds = parseInt(totalRoundsText) || 0;
+  let totalRounds = parseInt(totalRoundsText) || 0;
+
+  // Fallback: derive totalRounds from rd= links on the page
+  if (totalRounds === 0) {
+    let maxRd = 0;
+    $('a[href*="rd="]').each((_, el) => {
+      const href = $(el).attr('href') || '';
+      const rdMatch = href.match(/[?&]rd=(\d+)/);
+      if (rdMatch) {
+        const rd = parseInt(rdMatch[1], 10);
+        if (rd > maxRd) maxRd = rd;
+      }
+    });
+    totalRounds = maxRd;
+  }
 
   const location =
     $('td.CR a')
