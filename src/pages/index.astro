@@ -4,8 +4,10 @@ import ThemeToggle from "../components/ThemeToggle.astro";
 import { useTranslations } from "../i18n/ui";
 import "../styles/global.css";
 
-const lang = parseInt(Astro.url.searchParams.get("lang") || "1");
+const langParam = Astro.url.searchParams.get("lang");
+const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
 const t = useTranslations(lang);
+if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' });
 ---
 
 <!doctype html>
@@ -30,6 +32,7 @@ const t = useTranslations(lang);
         }
       })();
     </script>
+
     <script src="../scripts/theme.ts"></script>
     <script>
       if ('serviceWorker' in navigator) {
@@ -548,7 +551,11 @@ const t = useTranslations(lang);
     }
 
     function navigateToTournament(tid: string) {
-      window.location.href = `/pairings?tid=${encodeURIComponent(tid)}`;
+      const langMatch = document.cookie.match(/(?:^|;\s*)lang=([^;]*)/);
+      const savedLang = langMatch ? langMatch[1] : null;
+      const params = new URLSearchParams({ tid });
+      if (savedLang) params.set('lang', savedLang);
+      window.location.href = `/pairings?${params.toString()}`;
     }
   }
 

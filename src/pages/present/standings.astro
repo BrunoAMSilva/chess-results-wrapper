@@ -8,7 +8,9 @@ import { useTranslations } from "../../i18n/ui";
 import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
-const lang = parseInt(Astro.url.searchParams.get("lang") || "1");
+const langParam = Astro.url.searchParams.get("lang");
+const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
+if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' });
 const rowsPerPage = parseInt(Astro.url.searchParams.get("rows") || String(ROWS_PER_PAGE));
 
 const t = useTranslations(lang);
@@ -66,8 +68,8 @@ const autoRefresh = isTournamentLive(data?.info.date);
       <div class="header-right" style="display: flex; align-items: center;">
         <div class="qr-code-container" style="display: flex; align-items: center; gap: 1rem; background: var(--surface); padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border);">
           <div style="font-size: 0.8rem; text-align: right; line-height: 1.2;">
-            <div style="color: var(--text-dim); text-transform: uppercase;">Scan for</div>
-            <div style="font-weight: bold; color: var(--accent);">Mobile View</div>
+            <div style="color: var(--text-dim); text-transform: uppercase;">{t('scan.label')}</div>
+            <div style="font-weight: bold; color: var(--accent);">{t('scan.hint')}</div>
           </div>
           <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(Astro.url.origin + '/?tid=' + tid)}`} alt="QR Code" width="48" height="48" style="border-radius: 4px;" />
         </div>
