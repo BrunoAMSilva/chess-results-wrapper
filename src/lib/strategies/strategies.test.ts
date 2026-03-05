@@ -291,3 +291,22 @@ liveDescribe('Cross-strategy detection consistency', { timeout: 30000 }, () => {
     expect(results.teamRoundRobin).toBe(TournamentType.TeamRoundRobin);
   });
 });
+
+describe('detectTournamentType regressions', () => {
+  it('treats single-round-header pairings pages as Swiss', () => {
+    const html = `
+      <table class="CRs1">
+        <tr class="CRg1b"><td colspan="8">Round 3 on 2026/03/01 at 10:00</td></tr>
+        <tr>
+          <th>Bo.</th><th>No.</th><th>White</th><th>Pts.</th><th>Result</th><th>Pts.</th><th>Black</th><th>No.</th>
+        </tr>
+        <tr class="CRg1">
+          <td>1</td><td>1</td><td>Alice</td><td>2</td><td>1 - 0</td><td>2</td><td>Bob</td><td>2</td>
+        </tr>
+      </table>
+    `;
+
+    const $ = cheerio.load(html);
+    expect(detectTournamentType($)).toBe(TournamentType.Swiss);
+  });
+});

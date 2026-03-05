@@ -112,7 +112,10 @@ export function detectTournamentType($: cheerio.CheerioAPI): TournamentType {
 
     if (hasTeamHeaders && hasRoundHeaders) return TournamentType.TeamRoundRobin;
     if (hasTeamHeaders) return TournamentType.TeamSwiss;
-    if (hasRoundHeaders) return TournamentType.RoundRobin;
+
+    // Swiss pairings pages can contain a single "Round N" separator row.
+    // Only multi-round separator pages are reliable round-robin indicators,
+    // already handled above by `roundHeaderCount >= 2`.
   }
 
   // Team tournament without round separators

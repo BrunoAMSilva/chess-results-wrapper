@@ -56,6 +56,16 @@ To discover and import federation tournaments for a given year into the local DB
 npm run seed:por2026
 ```
 
+For the easiest server import workflow (auto-uses your Turniersuche export if present):
+
+```sh
+npm run seed:por2026:server
+```
+
+This checks `~/Downloads/Chess-Results.com - Turniersuche.html` first and uses it
+to import the full search result set. If the file is missing, it falls back to
+live discovery automatically.
+
 This command crawls the `fed=POR` listing, filters 2026 tournaments, and hydrates
 standings and pairings into `data/chess-results.db`.
 
@@ -70,6 +80,12 @@ Optional flags:
 - `--max-pages 200` to crawl more federation pages
 - `--no-pairings` to import only standings
 - `--strict-title-year` to keep only titles explicitly containing the year
+
+You can pass the same flags to the server wrapper command, for example:
+
+```sh
+npm run seed:por2026:server -- --max 25 --no-pairings
+```
 
 ## License
 

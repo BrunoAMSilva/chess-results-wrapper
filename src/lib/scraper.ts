@@ -18,6 +18,134 @@ export type {
 } from './types';
 import type { TournamentData, StandingsData } from './types';
 
+const S2_BASE_URL = 'https://s2.chess-results.com';
+
+class SimpleCookieJar {
+  private readonly jar = new Map<string, string>();
+
+  updateFromResponse(res: Response): void {
+    const headersObj = res.headers as unknown as {
+      getSetCookie?: () => string[];
+      raw?: () => Record<string, string[]>;
+    };
+
+    let setCookies: string[] = [];
+    if (typeof headersObj.getSetCookie === 'function') {
+      setCookies = headersObj.getSetCookie();
+    } else if (typeof headersObj.raw === 'function') {
+      setCookies = headersObj.raw()['set-cookie'] || [];
+    } else {
+      const fallback = res.headers.get('set-cookie') || '';
+      if (fallback) {
+        setCookies = fallback.split(/,(?=\s*[^;,\s]+=)/g).map((s) => s.trim());
+      }
+    }
+
+    for (const raw of setCookies) {
+      const firstPart = raw.split(';')[0] || '';
+      const eqIdx = firstPart.indexOf('=');
+      if (eqIdx <= 0) continue;
+      const name = firstPart.slice(0, eqIdx).trim();
+      const value = firstPart.slice(eqIdx + 1).trim();
+      if (name) {
+        this.jar.set(name, value);
+      }
+    }
+  }
+
+  toHeader(): string {
+    return Array.from(this.jar.entries()).map(([k, v]) => `${k}=${v}`).join('; ');
+  }
+}
+
+function isOldTournamentGate(html: string): boolean {
+  return /LinkButton2|mais de 2 semanas|more than 2 weeks|mehr als 2 Wochen|m[aá]s de 2 semanas/i.test(html);
+}
+
+function extractHiddenFields(html: string): Map<string, string> {
+  const $ = cheerio.load(html);
+  const fields = new Map<string, string>();
+
+  $('input[type="hidden"]').each((_, el) => {
+    const name = ($(el).attr('name') || '').trim();
+    const value = $(el).attr('value') || '';
+    if (name) {
+      fields.set(name, value);
+    }
+  });
+
+  return fields;
+}
+
+async function fetchTournamentHtml(url: string, tournamentId: string, lang: number): Promise<string> {
+  const primaryRes = await fetch(url);
+  if (!primaryRes.ok) {
+    throw new Error(`Failed to fetch tournament page: HTTP ${primaryRes.status} for tournament ${tournamentId}`);
+  }
+
+  const primaryHtml = await primaryRes.text();
+  if (!isOldTournamentGate(primaryHtml)) {
+    return primaryHtml;
+  }
+
+  const s2Url = url.replace(BASE_URL, S2_BASE_URL);
+  const s2Get = await fetch(s2Url);
+  if (s2Get.ok) {
+    const s2Html = await s2Get.text();
+    if (!isOldTournamentGate(s2Html)) {
+      return s2Html;
+    }
+  }
+
+  const gateUrl = `${S2_BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&turdet=YES&SNode=S0`;
+  const jar = new SimpleCookieJar();
+
+  const gateGet = await fetch(gateUrl);
+  if (!gateGet.ok) {
+    return primaryHtml;
+  }
+
+  jar.updateFromResponse(gateGet);
+  const gateHtml = await gateGet.text();
+  if (!isOldTournamentGate(gateHtml)) {
+    return gateHtml;
+  }
+
+  const body = new URLSearchParams();
+  for (const [k, v] of extractHiddenFields(gateHtml).entries()) {
+    body.set(k, v);
+  }
+  body.set('__EVENTTARGET', 'ctl00$P1$LinkButton2');
+  body.set('__EVENTARGUMENT', '');
+
+  const postRes = await fetch(gateUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Cookie: jar.toHeader(),
+      Referer: gateUrl,
+    },
+    body: body.toString(),
+  });
+  if (!postRes.ok) {
+    return primaryHtml;
+  }
+
+  jar.updateFromResponse(postRes);
+
+  const unlockedRes = await fetch(s2Url, {
+    headers: {
+      Cookie: jar.toHeader(),
+      Referer: gateUrl,
+    },
+  });
+  if (!unlockedRes.ok) {
+    return primaryHtml;
+  }
+
+  return unlockedRes.text();
+}
+
 function buildUrl(tournamentId: string, round: number, lang = 1): string {
   return `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=2&rd=${round}&turdet=YES`;
 }
@@ -32,9 +160,7 @@ export async function scrapePairings(
   if (cached) return cached;
 
   const url = buildUrl(tournamentId, round, lang);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Failed to fetch pairings: HTTP ${res.status} for tournament ${tournamentId}`);
-  const html = await res.text();
+  const html = await fetchTournamentHtml(url, tournamentId, lang);
 
   try {
     const data = parseHtml(html, round);
@@ -65,9 +191,7 @@ export async function scrapeStandings(
   // Try crosstable first (art=4), fall back to standard list (art=1)
   for (const art of [4, 1]) {
     const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=${art}&turdet=YES`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Failed to fetch standings: HTTP ${res.status} for tournament ${tournamentId}`);
-    const html = await res.text();
+    const html = await fetchTournamentHtml(url, tournamentId, lang);
 
     try {
       const data = parseStandingsHtml(html);
@@ -92,13 +216,10 @@ export async function scrapeStandings(
   if (usedArt !== 1 && result.standings.length > 0 && result.womenStandings.length === 0) {
     try {
       const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=1&turdet=YES`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const html = await res.text();
-        const fallback = parseStandingsHtml(html);
-        if (fallback.womenStandings.length > 0) {
-          result = { ...result, womenStandings: fallback.womenStandings };
-        }
+      const html = await fetchTournamentHtml(url, tournamentId, lang);
+      const fallback = parseStandingsHtml(html);
+      if (fallback.womenStandings.length > 0) {
+        result = { ...result, womenStandings: fallback.womenStandings };
       }
     } catch (_) { /* best-effort: women's standings are optional */ }
   }

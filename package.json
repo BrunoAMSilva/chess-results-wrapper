@@ -12,7 +12,8 @@
     "test": "vitest run src/lib/scraper.test.ts",
     "test:live": "vitest run src/lib/scraper.test.ts",
     "test:unit": "SKIP_LIVE=1 vitest run src/lib/scraper.test.ts",
-    "seed:por2026": "tsx scripts/import-federation-year.ts --fed POR --year 2026 --lang 10"
+    "seed:por2026": "tsx scripts/import-federation-year.ts --fed POR --year 2026 --lang 10",
+    "seed:por2026:server": "./scripts/import-por2026-server.sh"
   },
   "dependencies": {
     "@astrojs/node": "^9.5.4",
