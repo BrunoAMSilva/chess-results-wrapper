@@ -9,7 +9,7 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=4321
-      - DATABASE_PATH=/app/data/cache.db
+      - DATABASE_PATH=/app/data/chess-results.db
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:4321/"]

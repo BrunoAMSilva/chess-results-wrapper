@@ -65,5 +65,4 @@ jobs:
             cd /var/www/chess-placard
             docker compose pull
             docker compose down
-            rm -f data/cache.db
             docker compose up -d
