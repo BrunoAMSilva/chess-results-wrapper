@@ -1,0 +1,360 @@
+---
+import MobileLayout from "../layouts/ResponsiveLayout.astro";
+import PlayerRoundRow from "../components/PlayerRoundRow.astro";
+import { scrapePairings, scrapeStandings } from "../lib/scraper";
+import { reverseName } from "../lib/utils";
+import { useTranslations } from "../i18n/ui";
+import { DEFAULT_TOURNAMENT } from "../lib/constants";
+import type { Pairing } from "../lib/types";
+
+const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
+const playerParam = Astro.url.searchParams.get("name") || "";
+const langParam = Astro.url.searchParams.get("lang");
+const lang = parseInt(langParam || Astro.cookies.get("lang")?.value || "1");
+if (langParam) Astro.cookies.set("lang", langParam, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+
+const t = useTranslations(lang);
+
+let error: string | null = null;
+let playerName = "";
+let playerRating = "";
+let playerFed = "";
+let playerClub = "";
+let playerRank = 0;
+let playerPoints = "";
+let tieBreak1 = "";
+let tieBreak2 = "";
+let tieBreak3 = "";
+let totalRounds = 0;
+
+interface RoundResult {
+  round: number;
+  opponent: string;
+  result: string;
+  table: number;
+  color: "white" | "black";
+  isBye: boolean;
+}
+
+const rounds: RoundResult[] = [];
+
+if (!playerParam) {
+  error = t("player.empty");
+} else {
+  try {
+    // Get standings for player metadata
+    const standingsData = await scrapeStandings(tid, lang);
+    totalRounds = standingsData.info.totalRounds;
+
+    const standing = standingsData.standings.find(
+      (s) => s.name === playerParam
+    );
+    if (standing) {
+      playerName = reverseName(standing.name);
+      playerRating = standing.rating;
+      playerFed = standing.fed;
+      playerClub = standing.club;
+      playerRank = standing.rank;
+      playerPoints = standing.points;
+      tieBreak1 = standing.tieBreak1;
+      tieBreak2 = standing.tieBreak2;
+      tieBreak3 = standing.tieBreak3;
+    }
+
+    // Fallback: use the param name if standings didn't match
+    if (!playerName) {
+      playerName = reverseName(playerParam);
+    }
+
+    // If standings didn't provide totalRounds, discover it from pairings round 1
+    if (!totalRounds) {
+      try {
+        const r1 = await scrapePairings(tid, 1, lang);
+        totalRounds = r1.info.totalRounds;
+      } catch (_) { /* best-effort */ }
+    }
+
+    // Fetch all rounds and find this player's games
+    const roundPromises = Array.from({ length: totalRounds }, (_, i) =>
+      scrapePairings(tid, i + 1, lang).catch(() => null)
+    );
+    const allRounds = await Promise.all(roundPromises);
+
+    for (let i = 0; i < allRounds.length; i++) {
+      const roundData = allRounds[i];
+      if (!roundData) {
+        rounds.push({
+          round: i + 1,
+          opponent: "",
+          result: "",
+          table: 0,
+          color: "white",
+          isBye: false,
+        });
+        continue;
+      }
+
+      const pairing = roundData.pairings.find(
+        (p: Pairing) =>
+          p.white?.name === playerParam || p.black?.name === playerParam
+      );
+
+      if (!pairing) {
+        rounds.push({
+          round: i + 1,
+          opponent: "",
+          result: "",
+          table: 0,
+          color: "white",
+          isBye: false,
+        });
+        continue;
+      }
+
+      const isWhite = pairing.white?.name === playerParam;
+      const opponent = isWhite ? pairing.black : pairing.white;
+      const isBye = !opponent || (!pairing.black && /bye|spielfrei/i.test(pairing.unpairedLabel || ""));
+
+      rounds.push({
+        round: i + 1,
+        opponent: opponent?.name || "",
+        result: pairing.result,
+        table: pairing.table,
+        color: isWhite ? "white" : "black",
+        isBye,
+      });
+
+      // If we didn't get the player name from standings, grab it from pairings
+      if (!playerName) {
+        const self = isWhite ? pairing.white : pairing.black;
+        if (self) playerName = reverseName(self.name);
+      }
+    }
+  } catch (e) {
+    error = e instanceof Error ? e.message : t("error.load");
+  }
+}
+
+const pageTitle = playerName || t("player.progress");
+---
+
+<MobileLayout title={pageTitle} lang={lang}>
+  {error && (
+    <div class="error-msg">
+      <p>{error}</p>
+    </div>
+  )}
+
+  {playerName && (
+    <div class="player-header">
+      <div class="player-identity">
+        <h2 class="player-name">{playerName}</h2>
+        <span class="player-meta">
+          {playerFed}
+          {playerRating && playerRating !== "0" && <Fragment> • {playerRating}</Fragment>}
+          {playerClub && <Fragment> • {playerClub}</Fragment>}
+        </span>
+      </div>
+
+      {playerPoints && (
+        <div class="player-stats">
+          <div class="stat-block primary">
+            <span class="stat-value">{playerPoints}</span>
+            <span class="stat-label">{t("standings.pts")}</span>
+          </div>
+          <div class="stat-block">
+            <span class="stat-value">#{playerRank}</span>
+            <span class="stat-label">{t("standings.rank")}</span>
+          </div>
+          <div class="tb-stats">
+            <div class="tb-item">
+              <span class="tb-value">{tieBreak1}</span>
+              <span class="tb-label">TB1</span>
+            </div>
+            <div class="tb-item">
+              <span class="tb-value">{tieBreak2}</span>
+              <span class="tb-label">TB2</span>
+            </div>
+            <div class="tb-item">
+              <span class="tb-value">{tieBreak3}</span>
+              <span class="tb-label">TB3</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )}
+
+  {!error && (
+    <div class="rounds-section">
+      <div class="rounds-header">
+        <span class="col-label round-label">{t("player.round")}</span>
+        <span class="col-label opponent-label">{t("player.opponent")}</span>
+        <span class="col-label result-label">{t("player.result")}</span>
+        <span class="col-label table-label">{t("player.table")}</span>
+      </div>
+
+      <div class="rounds-list">
+        {rounds.length > 0 ? (
+          rounds.map((r, i) => (
+            <PlayerRoundRow
+              round={r.round}
+              opponent={r.opponent}
+              result={r.result}
+              table={r.table}
+              color={r.color}
+              isBye={r.isBye}
+              index={i}
+              lang={lang}
+            />
+          ))
+        ) : (
+          <div class="empty-state">
+            <p>{t("player.empty")}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+</MobileLayout>
+
+<style>
+  .player-header {
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-light);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    box-shadow: var(--shadow-card);
+  }
+
+  .player-identity {
+    margin-bottom: var(--space-3);
+  }
+
+  .player-name {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
+    color: var(--text);
+    margin: 0;
+    line-height: var(--leading-tight);
+  }
+
+  .player-meta {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .player-stats {
+    display: flex;
+    align-items: stretch;
+    gap: var(--space-3);
+  }
+
+  .stat-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-2) var(--space-3);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
+  }
+
+  .stat-block.primary {
+    background: var(--accent-subtle);
+  }
+
+  .stat-value {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-extrabold);
+    color: var(--text);
+    line-height: var(--leading-none);
+  }
+
+  .stat-block.primary .stat-value {
+    color: var(--accent-text);
+  }
+
+  .stat-label {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .tb-stats {
+    display: flex;
+    gap: var(--space-2);
+    margin-left: auto;
+  }
+
+  .tb-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-1) var(--space-2);
+  }
+
+  .tb-value {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    color: var(--text);
+    line-height: var(--leading-none);
+  }
+
+  .tb-label {
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+  }
+
+  .rounds-section {
+    background: var(--surface);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-light);
+    overflow: hidden;
+    box-shadow: var(--shadow-card);
+    margin-bottom: var(--space-8);
+  }
+
+  .rounds-header {
+    display: grid;
+    grid-template-columns: 48px 1fr 48px 48px;
+    align-items: center;
+    padding: var(--space-2) 0;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .col-label {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    text-align: center;
+  }
+
+  .opponent-label {
+    text-align: left;
+    padding-left: var(--space-2);
+  }
+
+  .rounds-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-dim);
+    padding: var(--space-8);
+  }
+</style>

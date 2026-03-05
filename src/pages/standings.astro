@@ -61,7 +61,7 @@ const linkedTournaments = data?.info.linkedTournaments;
   <div class="standings-list" id="openStandingsList">
     {allStandings.length > 0 ? (
       allStandings.map((standing: any, i: number) => (
-        <StandingRow standing={standing} index={i} lang={lang} />
+        <StandingRow standing={standing} index={i} lang={lang} tid={tid} />
       ))
     ) : (
       !error && <div class="empty-state"><p>No standings available</p></div>
@@ -71,7 +71,7 @@ const linkedTournaments = data?.info.linkedTournaments;
   {hasWomen && (
     <div class="standings-list hidden" id="womenStandingsList">
       {womenStandings.map((standing: any, i: number) => (
-        <StandingRow standing={standing} index={i} lang={lang} />
+        <StandingRow standing={standing} index={i} lang={lang} tid={tid} />
       ))}
     </div>
   )}

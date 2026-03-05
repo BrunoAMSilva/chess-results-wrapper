@@ -5,9 +5,11 @@ import { reverseName } from '../lib/utils';
 interface Props {
   match: Pairing;
   delay?: number;
+  tid?: string;
+  lang?: number;
 }
 
-const { match, delay = 0 } = Astro.props;
+const { match, delay = 0, tid, lang = 1 } = Astro.props;
 
 // Process the match.result (e.g., '1 - 0', '0 - 1', '½ - ½')
 let whiteScoreText = '-';
@@ -57,7 +59,11 @@ const bName = match.black ? match.black.name : '---';
       <div class="player-info">
         <span class="piece-icon white-piece"></span>
         <div class="name-wrapper">
-          <span class="player-name">{reverseName(wName)}</span>
+          {tid ? (
+            <a class="player-name" href={`/player?tid=${tid}&name=${encodeURIComponent(match.white?.name || '')}&lang=${lang}`}>{reverseName(wName)}</a>
+          ) : (
+            <span class="player-name">{reverseName(wName)}</span>
+          )}
         </div>
       </div>
       <div class="player-score" style={`color: ${whiteScoreColor}`}>
@@ -75,6 +81,8 @@ const bName = match.black ? match.black.name : '---';
             <span class="player-name bye-text">BYE</span>
           ) : !match.black ? (
             <span class="player-name bye-text">{unpairedLabel}</span>
+          ) : tid ? (
+            <a class="player-name" href={`/player?tid=${tid}&name=${encodeURIComponent(match.black?.name || '')}&lang=${lang}`}>{reverseName(bName)}</a>
           ) : (
             <span class="player-name">{reverseName(bName)}</span>
           )}
@@ -199,6 +207,11 @@ const bName = match.black ? match.black.name : '---';
     overflow: hidden;
     text-overflow: ellipsis;
     letter-spacing: -0.01em;
+    text-decoration: none;
+  }
+
+  a.player-name:active {
+    opacity: 0.7;
   }
 
   .bye-text {

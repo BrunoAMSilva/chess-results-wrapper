@@ -1,0 +1,216 @@
+---
+import { reverseName } from "../lib/utils";
+import { useTranslations } from "../i18n/ui";
+
+interface Props {
+  round: number;
+  opponent: string;
+  result: string;
+  table: number;
+  color: "white" | "black";
+  isBye: boolean;
+  index: number;
+  lang: number;
+}
+
+const { round, opponent, result, table, color, isBye, index, lang } = Astro.props;
+const t = useTranslations(lang);
+
+const isWhite = color === "white";
+
+// Determine result class for styling
+type ResultType = "win" | "loss" | "draw" | "pending";
+let resultType: ResultType = "pending";
+
+if (result) {
+  const normalize = result.replace(/\s+/g, "");
+  if (normalize.includes("1-0") || normalize.includes("1:0")) {
+    resultType = isWhite ? "win" : "loss";
+  } else if (normalize.includes("0-1") || normalize.includes("0:1")) {
+    resultType = isWhite ? "loss" : "win";
+  } else if (normalize.includes("½") || normalize.includes("1/2") || normalize.includes("0.5")) {
+    resultType = "draw";
+  }
+}
+
+// Extract the player's score from the result
+let playerScore = "-";
+if (result) {
+  const normalize = result.replace(/\s+/g, "");
+  if (normalize.includes("1-0") || normalize.includes("1:0")) {
+    playerScore = isWhite ? "1" : "0";
+  } else if (normalize.includes("0-1") || normalize.includes("0:1")) {
+    playerScore = isWhite ? "0" : "1";
+  } else if (normalize.includes("½") || normalize.includes("1/2") || normalize.includes("0.5")) {
+    playerScore = "½";
+  }
+}
+
+const displayName = isBye ? t("player.bye") : reverseName(opponent);
+---
+
+<div
+  class:list={["round-row", resultType]}
+  style={`--delay: ${index * 50}ms`}
+>
+  <div class="round-col">
+    <span class="round-num">{round}</span>
+  </div>
+
+  <div class="opponent-col">
+    <div class="opponent-info">
+      <span class="piece-icon" class:list={[{ "white-piece": isWhite, "black-piece": !isWhite }]}></span>
+      <span class:list={["opponent-name", { "bye-text": isBye }]}>{displayName}</span>
+    </div>
+  </div>
+
+  <div class="result-col">
+    <span class:list={["result-badge", resultType]}>{playerScore}</span>
+  </div>
+
+  <div class="table-col">
+    <span class="table-num">{isBye ? "-" : table}</span>
+  </div>
+</div>
+
+<style>
+  .round-row {
+    display: grid;
+    grid-template-columns: 48px 1fr 48px 48px;
+    align-items: center;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    min-height: 52px;
+    animation: fadeInUp var(--duration-slow) ease both;
+    animation-delay: var(--delay);
+    color: var(--text);
+  }
+
+  .round-row:last-child {
+    border-bottom: none;
+  }
+
+  .round-row.win {
+    border-left: 3px solid var(--win);
+  }
+
+  .round-row.loss {
+    border-left: 3px solid var(--loss);
+  }
+
+  .round-row.draw {
+    border-left: 3px solid var(--draw);
+  }
+
+  .round-row.pending {
+    border-left: 3px solid var(--border);
+  }
+
+  .round-col {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .round-num {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    color: var(--text-dim);
+  }
+
+  .opponent-col {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0 var(--space-2);
+  }
+
+  .opponent-info {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .piece-icon {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .white-piece {
+    background: linear-gradient(135deg, var(--white-piece) 0%, #e0e0e0 100%);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+  }
+
+  .black-piece {
+    background: linear-gradient(135deg, var(--black-piece) 0%, #222 100%);
+    border: 1px solid #111;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+
+  .opponent-name {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bye-text {
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .result-col {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .result-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+  }
+
+  .result-badge.win {
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--win);
+  }
+
+  .result-badge.loss {
+    background: rgba(248, 113, 113, 0.15);
+    color: var(--loss);
+  }
+
+  .result-badge.draw {
+    background: rgba(251, 191, 36, 0.15);
+    color: var(--draw);
+  }
+
+  .result-badge.pending {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-dim);
+  }
+
+  .table-col {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .table-num {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    font-weight: var(--weight-medium);
+  }
+</style>

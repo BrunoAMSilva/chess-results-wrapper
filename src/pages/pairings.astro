@@ -57,7 +57,7 @@ const linkedTournaments = data?.info.linkedTournaments;
 
   <div class="pairings-list animate-enter" style="animation-delay: 100ms">
     {allPairings.length > 0 ? (
-      allPairings.map((pairing: any) => <MobileMatchCard match={pairing}  />)
+      allPairings.map((pairing: any) => <MobileMatchCard match={pairing} tid={tid} lang={lang} />)
     ) : (
       <div class="empty-state">
         <p>{t('empty.pairings')}</p>

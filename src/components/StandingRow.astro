@@ -7,9 +7,10 @@ interface Props {
   standing: Standing;
   index: number;
   lang: number;
+  tid?: string;
 }
 
-const { standing, index, lang } = Astro.props;
+const { standing, index, lang, tid } = Astro.props;
 const t = useTranslations(lang);
 
 const isTop3 = standing.rank <= 3;
@@ -25,7 +26,11 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
   </div>
 
   <div class="player-info">
-    <span class="player-name">{reverseName(standing.name)}</span>
+    {tid ? (
+      <a class="player-name" href={`/player?tid=${tid}&name=${encodeURIComponent(standing.name)}&lang=${lang}`}>{reverseName(standing.name)}</a>
+    ) : (
+      <span class="player-name">{reverseName(standing.name)}</span>
+    )}
     <span class="player-fed">
       {standing.fed}
       {standing.rating && standing.rating !== "0" && <Fragment> • {standing.rating}</Fragment>}
@@ -157,6 +162,12 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     color: var(--text);
     line-height: 1.1;
     margin-bottom: 0.2rem;
+    text-decoration: none;
+    display: block;
+  }
+
+  .player-name:active {
+    opacity: 0.7;
   }
 
   .player-fed {
