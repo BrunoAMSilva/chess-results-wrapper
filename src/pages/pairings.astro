@@ -1,6 +1,7 @@
 ---
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import MobileMatchCard from "../components/ResponsiveMatchCard.astro";
+import RoundSelector from "../components/RoundSelector.astro";
 import TournamentSelector from "../components/TournamentSelector.astro";
 import { scrapePairings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
@@ -44,19 +45,12 @@ const linkedTournaments = data?.info.linkedTournaments;
   )}
 
   {data && (
-    <div class="mobile-controls">
-      <div class="round-nav" id="roundNav" transition:name="round-nav" transition:animate="none">
-        {rounds.map((r) => (
-          <a
-            href={`/pairings?tid=${tid}&round=${r}&lang=${lang}`}
-            class={`round-pill ${r === round ? 'active' : ''}`}
-            data-round={r}
-          >
-            {t('header.round')} {r}
-          </a>
-        ))}
-      </div>
-    </div>
+      <RoundSelector
+        rounds={rounds}
+        activeRound={round}
+        baseUrl={`/pairings?tid=${tid}&lang=${lang}`}
+        label={t('header.round')}
+      />
   )}
 
   <div class="pairings-list animate-enter" style="animation-delay: 100ms">
@@ -79,45 +73,6 @@ const linkedTournaments = data?.info.linkedTournaments;
     padding: var(--space-2) 0;
     margin-bottom: var(--space-4);
   }
-  .round-nav {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    padding: var(--space-2) var(--space-4);
-    width: 100%;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    mask-image: linear-gradient(to right, transparent, black var(--space-4), black calc(100% - var(--space-4)), transparent);
-    -webkit-mask-image: linear-gradient(to right, transparent, black var(--space-4), black calc(100% - var(--space-4)), transparent);
-  }
-  .round-nav::-webkit-scrollbar {
-    display: none;
-  }
-  .round-pill {
-    scroll-snap-align: center;
-    flex-shrink: 0;
-    padding: var(--space-2) var(--space-3);
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    color: var(--text-dim);
-    text-decoration: none;
-    font-weight: var(--weight-semibold);
-    font-size: var(--text-sm);
-    white-space: nowrap;
-    min-height: 36px;
-    display: inline-flex;
-    align-items: center;
-    transition: all var(--duration-fast) var(--ease-in-out);
-  }
-  .round-pill.active {
-    background: var(--accent);
-    color: var(--on-accent);
-    border-color: var(--accent);
-    box-shadow: 0 0 15px var(--accent-glow);
-  }
   .pairings-list {
     display: grid;
     grid-template-columns: 1fr;
@@ -137,14 +92,4 @@ const linkedTournaments = data?.info.linkedTournaments;
   }
 </style>
 
-<script>
-  // Center active round pill on load
-  function centerActivePill() {
-    const activePill = document.querySelector('.round-pill.active');
-    if (activePill) {
-      activePill.scrollIntoView({ behavior: 'auto', block: 'nearest', inline: 'center' });
-    }
-  }
-  document.addEventListener('DOMContentLoaded', centerActivePill);
-  document.addEventListener('astro:after-swap', centerActivePill);
-</script>
+

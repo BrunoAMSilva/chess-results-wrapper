@@ -1,0 +1,129 @@
+---
+/**
+ * RoundSelector — Horizontal scrolling round picker with compact numbered pills.
+ *
+ * Displays a "Round" label followed by numbered buttons in a segmented-control
+ * style container. The active round is highlighted with the accent color.
+ * Automatically scrolls the active pill into view on mount.
+ */
+interface Props {
+  rounds: number[];
+  activeRound: number;
+  baseUrl: string;
+  label?: string;
+}
+
+const { rounds, activeRound, baseUrl, label = "Round" } = Astro.props;
+---
+
+<div class="round-selector">
+  <span class="round-label">{label}</span>
+  <div class="round-track" id="roundTrack">
+    {rounds.map((r) => (
+      <a
+        href={`${baseUrl}&round=${r}`}
+        class:list={["round-pill", { active: r === activeRound }]}
+        data-round={r}
+      >
+        {r}
+      </a>
+    ))}
+  </div>
+</div>
+
+<style>
+  .round-selector {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border: solid var(--border) 1px;
+    margin-block-end: 1rem;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    background: rgb(255 255 255 / 0.1);
+    backdrop-filter: blur(14px) saturate(2.2);
+    -webkit-backdrop-filter: blur(14px) saturate(2.2);
+    border-radius: var(--radius-lg);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .round-label {
+    flex-shrink: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    padding-left: var(--space-1);
+  }
+
+  .round-track {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    overflow-x: auto;
+    padding: var(--space-1) var(--space-2);
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .round-track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .round-pill {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    color: var(--text-dim);
+    text-decoration: none;
+    cursor: pointer;
+    transition:
+      color var(--duration-fast) var(--ease-in-out),
+      background var(--duration-fast) var(--ease-in-out),
+      border-color var(--duration-fast) var(--ease-in-out),
+      box-shadow var(--duration-fast) var(--ease-in-out);
+  }
+
+  .round-pill:hover:not(.active) {
+    color: var(--text);
+    background: var(--surface-hover);
+    border-color: var(--border-strong);
+  }
+
+  .round-pill.active {
+    color: var(--on-accent);
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
+    font-weight: var(--weight-bold);
+  }
+</style>
+
+<script>
+  function centerActiveRound() {
+    const track = document.getElementById("roundTrack");
+    const active = track?.querySelector(".round-pill.active");
+    if (track && active) {
+      const trackRect = track.getBoundingClientRect();
+      const itemRect = active.getBoundingClientRect();
+      const offset =
+        itemRect.left -
+        trackRect.left -
+        trackRect.width / 2 +
+        itemRect.width / 2;
+      track.scrollBy({ left: offset, behavior: "auto" });
+    }
+  }
+  document.addEventListener("DOMContentLoaded", centerActiveRound);
+  document.addEventListener("astro:after-swap", centerActiveRound);
+</script>

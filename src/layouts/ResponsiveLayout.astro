@@ -23,7 +23,7 @@ const isOptions = currentPath === "/options";
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
@@ -234,6 +234,7 @@ const isOptions = currentPath === "/options";
     justify-content: space-between;
     gap: 1rem;
     padding: 0 1rem;
+    padding-top: env(safe-area-inset-top, 0px);
     position: sticky;
     top: 0;
     z-index: 5;
@@ -300,7 +301,7 @@ const isOptions = currentPath === "/options";
 
   .page-title {
     display: block;
-    font-size: var(--text-sm);
+    font-size: var(--text-lg);
     font-weight: var(--weight-bold);
     white-space: nowrap;
     overflow: hidden;
@@ -330,7 +331,7 @@ const isOptions = currentPath === "/options";
     background: var(--nav-bg);
     border-top: 1px solid var(--border);
     padding: 0.5rem 1rem;
-    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
     position: relative;
@@ -373,7 +374,7 @@ const isOptions = currentPath === "/options";
     }
 
     .page-title {
-      font-size: 1.02rem;
+      font-size: var(--text-xl);
       text-align: center;
       max-width: 42vw;
     }
@@ -398,7 +399,7 @@ const isOptions = currentPath === "/options";
     }
 
     .page-title {
-      font-size: 1.2rem;
+      font-size: var(--text-2xl);
       max-width: 52vw;
     }
   }
