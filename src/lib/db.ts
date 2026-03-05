@@ -222,9 +222,9 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       type = excluded.type,
-      total_rounds = excluded.total_rounds,
-      date = excluded.date,
-      location = excluded.location,
+      total_rounds = CASE WHEN excluded.total_rounds > 0 THEN excluded.total_rounds ELSE tournaments.total_rounds END,
+      date = CASE WHEN excluded.date != '' THEN excluded.date ELSE tournaments.date END,
+      location = CASE WHEN excluded.location != '' THEN excluded.location ELSE tournaments.location END,
       event_label = excluded.event_label,
       linked_tournaments = excluded.linked_tournaments,
       updated_at = datetime('now')

@@ -60,7 +60,7 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
     .trim();
   let totalRounds = parseInt(totalRoundsText) || 0;
 
-  // Fallback: derive totalRounds from rd= links on the page
+  // Fallback 1: derive totalRounds from rd= links on the page
   if (totalRounds === 0) {
     let maxRd = 0;
     $('a[href*="rd="]').each((_, el) => {
@@ -72,6 +72,30 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
       }
     });
     totalRounds = maxRd;
+  }
+
+  // Fallback 2: count round separator rows (round-robin pages show all rounds
+  // on one page with "N. Round" / "N. Ronda" / "N. Runde" headers)
+  if (totalRounds === 0) {
+    let maxRd = 0;
+    $('table.CRs1 tr').each((_, row) => {
+      const text = $(row).text().trim();
+      const m = text.match(/^(\d+)\.\s*(?:Ronda|Round|Runde|Tour)\b/i);
+      if (m) {
+        const rd = parseInt(m[1], 10);
+        if (rd > maxRd) maxRd = rd;
+      }
+    });
+    totalRounds = maxRd;
+  }
+
+  // Fallback 3: "after N rounds" text (e.g. "após 5 rondas", "after 9 rounds")
+  if (totalRounds === 0) {
+    const pageText = $.text();
+    const m = pageText.match(/(?:após|after|nach)\s+(\d+)\s+(?:rondas|rounds|Runden)/i);
+    if (m) {
+      totalRounds = parseInt(m[1], 10) || 0;
+    }
   }
 
   const location =

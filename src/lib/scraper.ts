@@ -59,7 +59,13 @@ class SimpleCookieJar {
 }
 
 function isOldTournamentGate(html: string): boolean {
-  return /LinkButton2|mais de 2 semanas|more than 2 weeks|mehr als 2 Wochen|m[aá]s de 2 semanas/i.test(html);
+  const hasGateText = /LinkButton2|mais de 2 semanas|more than 2 weeks|mehr als 2 Wochen|m[aá]s de 2 semanas/i.test(html);
+  if (!hasGateText) return false;
+  // Some old tournament pages show the gate warning banner but still contain
+  // actual data (CRs1 table with results).  Only treat it as a real gate when
+  // the page lacks tournament data.
+  const hasData = /class="CRs1"/.test(html);
+  return !hasData;
 }
 
 function extractHiddenFields(html: string): Map<string, string> {
