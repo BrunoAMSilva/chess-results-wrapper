@@ -19,12 +19,14 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#fcd34d" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
     <title>{title}</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <ViewTransitions />
     <script>
       // Inline theme script to prevent FOUC
       (function() {
@@ -35,6 +37,11 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
       })();
     </script>
     <script src="../scripts/theme.ts"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js');
+      }
+    </script>
   </head>
   <body>
     <slot />
