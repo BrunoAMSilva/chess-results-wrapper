@@ -135,3 +135,29 @@ export interface DbStanding {
   tie_break_2: string;
   tie_break_3: string;
 }
+
+export interface DbPlayerTournamentHistory {
+  tournament_id: string;
+  tournament_name: string;
+  event_label: string;
+  date: string;
+  location: string;
+  type: TournamentType;
+  total_rounds: number;
+  updated_at: string;
+  rank: number | null;
+  points: string | null;
+  tie_break_1: string | null;
+  tie_break_2: string | null;
+  tie_break_3: string | null;
+  starting_number: number;
+  tournament_rating: number | null;
+  tournament_club: string;
+}
+
+export interface DbPlayerResultEntry {
+  tournament_id: string;
+  white_player_id: number | null;
+  black_player_id: number | null;
+  result: string;
+}

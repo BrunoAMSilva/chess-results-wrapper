@@ -27,7 +27,7 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
 
   <div class="player-info">
     {tid ? (
-      <a class="player-name" href={`/player?tid=${tid}&name=${encodeURIComponent(standing.name)}&lang=${lang}`}>{reverseName(standing.name)}</a>
+      <a class="player-name" href={`/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(standing.name)}&lang=${lang}`}>{reverseName(standing.name)}</a>
     ) : (
       <span class="player-name">{reverseName(standing.name)}</span>
     )}

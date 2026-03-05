@@ -24,6 +24,16 @@ import type {
 export class RoundRobinStrategy implements TournamentStrategy {
   readonly type = TournamentType.RoundRobin;
 
+  private extractRoundNumber(text: string): number | null {
+    const patternA = text.match(/(?:Round|Ronda|Runde|Tour)\s+(\d+)/i);
+    if (patternA) return parseInt(patternA[1]);
+
+    const patternB = text.match(/\b(\d+)\.?\s*(?:Round|Ronda|Runde|Tour)\b/i);
+    if (patternB) return parseInt(patternB[1]);
+
+    return null;
+  }
+
   parsePairings(
     $: cheerio.CheerioAPI,
     round: number,
@@ -41,9 +51,9 @@ export class RoundRobinStrategy implements TournamentStrategy {
       // Detect round separator rows
       if ($row.hasClass('CRg1b') || $row.hasClass('CRng1b')) {
         const text = $row.text().trim();
-        const roundMatch = text.match(/(?:Round|Ronda|Runde|Tour)\s+(\d+)/i);
-        if (roundMatch) {
-          currentRound = parseInt(roundMatch[1]);
+        const extractedRound = this.extractRoundNumber(text);
+        if (extractedRound !== null) {
+          currentRound = extractedRound;
         }
         return;
       }

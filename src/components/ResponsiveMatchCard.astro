@@ -60,7 +60,7 @@ const bName = match.black ? match.black.name : '---';
         <span class="piece-icon white-piece"></span>
         <div class="name-wrapper">
           {tid ? (
-            <a class="player-name" href={`/player?tid=${tid}&name=${encodeURIComponent(match.white?.name || '')}&lang=${lang}`}>{reverseName(wName)}</a>
+            <a class="player-name" href={`/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(match.white?.name || '')}&lang=${lang}`}>{reverseName(wName)}</a>
           ) : (
             <span class="player-name">{reverseName(wName)}</span>
           )}
@@ -82,7 +82,7 @@ const bName = match.black ? match.black.name : '---';
           ) : !match.black ? (
             <span class="player-name bye-text">{unpairedLabel}</span>
           ) : tid ? (
-            <a class="player-name" href={`/player?tid=${tid}&name=${encodeURIComponent(match.black?.name || '')}&lang=${lang}`}>{reverseName(bName)}</a>
+            <a class="player-name" href={`/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(match.black?.name || '')}&lang=${lang}`}>{reverseName(bName)}</a>
           ) : (
             <span class="player-name">{reverseName(bName)}</span>
           )}

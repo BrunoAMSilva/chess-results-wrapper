@@ -1,0 +1,292 @@
+---
+import { useTranslations } from "../i18n/ui";
+
+interface HistoryEntry {
+  tournament_id: string;
+  tournament_name: string;
+  event_label: string;
+  date: string;
+  location: string;
+  type: string;
+  total_rounds: number;
+  rank: number | null;
+  points: string | null;
+  tie_break_1: string | null;
+  tie_break_2: string | null;
+  tie_break_3: string | null;
+  starting_number: number;
+  tournament_rating: number | null;
+  tournament_club: string;
+}
+
+interface Props {
+  entry: HistoryEntry;
+  playerName: string;
+  lang: number;
+  wins?: number;
+  draws?: number;
+  losses?: number;
+}
+
+const {
+  entry,
+  playerName,
+  lang,
+  wins = 0,
+  draws = 0,
+  losses = 0,
+} = Astro.props;
+const t = useTranslations(lang);
+const isPodium = !!entry.rank && entry.rank <= 3;
+const rankClass = entry.rank ? `rank-${entry.rank}` : "";
+const tournamentLabel = entry.event_label || entry.tournament_name;
+const tournamentType = entry.type.replaceAll("-", " ");
+---
+
+<article class:list={["history-row", { podium: isPodium }, rankClass]}>
+  <div class="head">
+    <div class="title-wrap">
+      <h3 class="title">{tournamentLabel}</h3>
+      <p class="meta">
+        {entry.date || "-"}
+        {entry.location && <Fragment> • {entry.location}</Fragment>}
+      </p>
+    </div>
+    <div class="rank-box">
+      <span class="rank-value">{entry.rank ? `#${entry.rank}` : "-"}</span>
+      <span class="rank-label">{t("standings.rank")}</span>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-item">
+      <span class="stat-value">{entry.points || "-"}</span>
+      <span class="stat-label">{t("standings.pts")}</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value">{entry.tie_break_1 || "-"}</span>
+      <span class="stat-label">TB1</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value">{entry.tie_break_2 || "-"}</span>
+      <span class="stat-label">TB2</span>
+    </div>
+    <div class="stat-item">
+      <span class="stat-value">{entry.tie_break_3 || "-"}</span>
+      <span class="stat-label">TB3</span>
+    </div>
+  </div>
+
+  <div class="detail-grid">
+    <div class="detail-item">
+      <span class="detail-label">{t("player.profile.startNo")}</span>
+      <span class="detail-value">{entry.starting_number || "-"}</span>
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">{t("player.profile.rounds")}</span>
+      <span class="detail-value">{entry.total_rounds || "-"}</span>
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">{t("player.profile.type")}</span>
+      <span class="detail-value">{tournamentType || "-"}</span>
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">{t("player.profile.rating")}</span>
+      <span class="detail-value">{entry.tournament_rating ?? "-"}</span>
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">{t("player.profile.club")}</span>
+      <span class="detail-value">{entry.tournament_club || "-"}</span>
+    </div>
+    <div class="detail-item">
+      <span class="detail-label">{t("player.profile.record")}</span>
+      <span class="detail-value">{wins}-{draws}-{losses}</span>
+    </div>
+  </div>
+
+  <div class="actions">
+    <a class="link-btn" href={`/standings?tid=${entry.tournament_id}&lang=${lang}`}>{t("player.profile.openStandings")}</a>
+    <a class="link-btn" href={`/pairings?tid=${entry.tournament_id}&lang=${lang}`}>{t("player.profile.openPairings")}</a>
+    <a class="link-btn" href={`/player?tid=${entry.tournament_id}&name=${encodeURIComponent(playerName)}&lang=${lang}`}>{t("player.profile.openTournamentPlayer")}</a>
+  </div>
+</article>
+
+<style>
+  .history-row {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    box-shadow: var(--shadow-card);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .history-row.podium {
+    border-color: var(--accent);
+    background: linear-gradient(90deg, var(--accent-subtle), var(--surface));
+  }
+
+  .history-row.rank-1 {
+    border-color: var(--medal-gold);
+  }
+
+  .history-row.rank-2 {
+    border-color: var(--medal-silver);
+  }
+
+  .history-row.rank-3 {
+    border-color: var(--medal-bronze);
+  }
+
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .title-wrap {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .title {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    color: var(--text);
+  }
+
+  .meta {
+    margin: var(--space-1) 0 0;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .rank-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--space-12);
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background: var(--surface-hover);
+  }
+
+  .rank-value {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-none);
+    color: var(--text);
+  }
+
+  .rank-label {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    background: var(--bg-subtle);
+  }
+
+  .stat-value {
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+  }
+
+  .stat-label {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .actions {
+    display: flex;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .detail-item {
+    display: flex;
+    flex-direction: column;
+    padding: var(--space-2);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    background: var(--surface-hover);
+    min-width: 0;
+  }
+
+  .detail-label {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .detail-value {
+    font-size: var(--text-sm);
+    color: var(--text);
+    font-weight: var(--weight-semibold);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .link-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    transition: background-color var(--duration-fast) var(--ease-in-out), border-color var(--duration-fast) var(--ease-in-out);
+  }
+
+  .link-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--border-strong);
+  }
+
+  @media (max-width: 480px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .detail-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+</style>

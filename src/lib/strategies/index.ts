@@ -28,6 +28,13 @@ const strategies: Record<TournamentType, TournamentStrategy> = {
  * and may have "Team" or equivalent in the tournament type metadata.
  */
 export function detectTournamentType($: cheerio.CheerioAPI): TournamentType {
+  const hasRoundHeader = (text: string): boolean => {
+    return (
+      /(?:Round|Ronda|Runde|Tour)\s+\d+/i.test(text) ||
+      /\b\d+\.?\s*(?:Round|Ronda|Runde|Tour)\b/i.test(text)
+    );
+  };
+
   // 1. Check the tournament details metadata for explicit system info
   let systemText = '';
   $('td.CR').each((_, el) => {
@@ -56,16 +63,29 @@ export function detectTournamentType($: cheerio.CheerioAPI): TournamentType {
     systemText.includes('berger') ||
     systemText.includes('all-play-all');
 
-  if (isTeam && isRoundRobin) return TournamentType.TeamRoundRobin;
-  if (isTeam) return TournamentType.TeamSwiss;
-  if (isRoundRobin) return TournamentType.RoundRobin;
-
   // 2. HTML heuristic: check for "Team" column headers (team tournaments)
   const hasTeamColumns = isTeamPairingsPage($);
 
-  // 3. Heuristic: if pairings page has round separator rows, it's round-robin
-  const hasRoundSeparators =
-    $('table.CRs1 tr.CRg1b, table.CRs1 tr.CRng1b').length > 0;
+  // 3. Heuristic: if pairings page has multiple round headers, it's round-robin
+  // even if metadata text is inconsistent.
+  const separatorRows = $('table.CRs1 tr.CRg1b, table.CRs1 tr.CRng1b');
+  const hasRoundSeparators = separatorRows.length > 0;
+  let roundHeaderCount = 0;
+
+  separatorRows.each((_, row) => {
+    const text = $(row).text().trim();
+    if (hasRoundHeader(text)) {
+      roundHeaderCount++;
+    }
+  });
+
+  if (roundHeaderCount >= 2) {
+    return hasTeamColumns ? TournamentType.TeamRoundRobin : TournamentType.RoundRobin;
+  }
+
+  if (isTeam && isRoundRobin) return TournamentType.TeamRoundRobin;
+  if (isTeam) return TournamentType.TeamSwiss;
+  if (isRoundRobin) return TournamentType.RoundRobin;
 
   if (hasRoundSeparators) {
     // Check if any separator row looks like a team match (contains " - ")
@@ -73,9 +93,9 @@ export function detectTournamentType($: cheerio.CheerioAPI): TournamentType {
     let hasTeamHeaders = false;
     let hasRoundHeaders = false;
 
-    $('table.CRs1 tr.CRg1b, table.CRs1 tr.CRng1b').each((_, row) => {
+    separatorRows.each((_, row) => {
       const text = $(row).text().trim();
-      if (/(?:Round|Ronda|Runde|Tour)\s+\d+/i.test(text)) {
+      if (hasRoundHeader(text)) {
         hasRoundHeaders = true;
       } else if (text.includes(' - ')) {
         hasTeamHeaders = true;

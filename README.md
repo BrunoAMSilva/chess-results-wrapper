@@ -48,6 +48,29 @@ Example: `/?tid=1361358&round=1&lang=10`
    npm run preview
    ```
 
+### Bulk Seed (Federation + Year)
+
+To discover and import federation tournaments for a given year into the local DB:
+
+```sh
+npm run seed:por2026
+```
+
+This command crawls the `fed=POR` listing, filters 2026 tournaments, and hydrates
+standings and pairings into `data/chess-results.db`.
+
+For custom runs:
+
+```sh
+npx tsx scripts/import-federation-year.ts --fed POR --year 2026 --lang 10
+```
+
+Optional flags:
+- `--max 20` to cap imports
+- `--max-pages 200` to crawl more federation pages
+- `--no-pairings` to import only standings
+- `--strict-title-year` to keep only titles explicitly containing the year
+
 ## License
 
 MIT

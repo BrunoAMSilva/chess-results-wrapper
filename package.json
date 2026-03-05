@@ -11,7 +11,8 @@
     "typecheck": "astro check",
     "test": "vitest run src/lib/scraper.test.ts",
     "test:live": "vitest run src/lib/scraper.test.ts",
-    "test:unit": "SKIP_LIVE=1 vitest run src/lib/scraper.test.ts"
+    "test:unit": "SKIP_LIVE=1 vitest run src/lib/scraper.test.ts",
+    "seed:por2026": "tsx scripts/import-federation-year.ts --fed POR --year 2026 --lang 10"
   },
   "dependencies": {
     "@astrojs/node": "^9.5.4",
@@ -26,6 +27,7 @@
     "@types/better-sqlite3": "^7.6.13",
     "playwright": "^1.58.2",
     "typescript": "^5.9.3",
+    "tsx": "^4.20.5",
     "vitest": "^4.0.18"
   }
 }

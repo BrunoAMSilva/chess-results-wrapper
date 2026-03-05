@@ -136,6 +136,7 @@ if (!playerParam) {
 }
 
 const pageTitle = playerName || t("player.progress");
+const profileHref = `/player-profile?name=${encodeURIComponent(playerParam)}${playerFed ? `&fed=${encodeURIComponent(playerFed)}` : ""}&lang=${lang}`;
 ---
 
 <MobileLayout title={pageTitle} lang={lang}>
@@ -154,6 +155,7 @@ const pageTitle = playerName || t("player.progress");
           {playerRating && playerRating !== "0" && <Fragment> • {playerRating}</Fragment>}
           {playerClub && <Fragment> • {playerClub}</Fragment>}
         </span>
+        <a class="profile-link" href={profileHref}>{t("player.profile.openProfile")}</a>
       </div>
 
       {playerPoints && (
@@ -252,6 +254,15 @@ const pageTitle = playerName || t("player.progress");
     display: flex;
     align-items: stretch;
     gap: var(--space-3);
+  }
+
+  .profile-link {
+    display: inline-flex;
+    text-decoration: none;
+    margin-top: var(--space-2);
+    color: var(--accent-text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
   }
 
   .stat-block {

@@ -25,11 +25,13 @@ const segments = allTournaments.map((t) => ({
 ---
 
 <div class="tournament-selector-wrapper">
-  <SegmentedControl
-    name="tournament"
-    segments={segments}
-    active={currentId}
-  />
+  <div class="tournament-selector-scroll">
+    <SegmentedControl
+      name="tournament"
+      segments={segments}
+      active={currentId}
+    />
+  </div>
 </div>
 
 <style>
@@ -40,8 +42,34 @@ const segments = allTournaments.map((t) => ({
     padding: 0 var(--space-4);
   }
 
-  .tournament-selector-wrapper :global(.seg-control) {
+  .tournament-selector-scroll {
     width: 100%;
-    max-width: 480px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-light) transparent;
+  }
+
+  .tournament-selector-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .tournament-selector-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .tournament-selector-scroll::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: var(--radius-full);
+  }
+
+  .tournament-selector-wrapper :global(.seg-control) {
+    width: max-content;
+    max-width: none;
+  }
+
+  .tournament-selector-wrapper :global(.seg-item) {
+    flex: 0 0 auto;
   }
 </style>

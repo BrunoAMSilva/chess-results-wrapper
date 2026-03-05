@@ -98,6 +98,100 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_players_fide ON players(fide_id) WHERE fide_id IS NOT NULL;
 `);
 
+function playerRichnessScore(row: DbPlayer): number {
+  let score = 0;
+  if (row.federation) score += 8;
+  if (row.sex) score += 4;
+  if (row.fide_id) score += 6;
+  if (row.rating !== null && row.rating !== undefined) score += 3;
+  if (row.club) score += 2;
+  return score;
+}
+
+/**
+ * Merge duplicate placeholder player rows into a richer canonical row.
+ *
+ * Safety rules:
+ * - only merge rows with the same exact name
+ * - prefer rows with federation/metadata as canonical
+ * - avoid merging across clearly different federations
+ */
+function migrateDeduplicatePlayers(): void {
+  const names = db.prepare(`
+    SELECT name
+    FROM players
+    GROUP BY name
+    HAVING COUNT(*) > 1
+  `).all() as Array<{ name: string }>;
+
+  if (names.length === 0) return;
+
+  const txn = db.transaction(() => {
+    for (const { name } of names) {
+      const rows = db.prepare(`
+        SELECT *
+        FROM players
+        WHERE name = ?
+      `).all(name) as DbPlayer[];
+
+      if (rows.length < 2) continue;
+
+      const withFederation = rows.filter((r) => !!r.federation);
+      const uniqueFederations = new Set(withFederation.map((r) => r.federation));
+
+      // If multiple explicit federations exist, skip migration for this name.
+      if (uniqueFederations.size > 1) continue;
+
+      const ordered = [...rows].sort((a, b) => {
+        const scoreDiff = playerRichnessScore(b) - playerRichnessScore(a);
+        if (scoreDiff !== 0) return scoreDiff;
+        return (b.updated_at || '').localeCompare(a.updated_at || '');
+      });
+
+      const target = ordered[0];
+      if (!target.id) continue;
+
+      const sources = ordered.slice(1).filter((r) => !!r.id);
+      for (const source of sources) {
+        const sourceId = source.id!;
+        if (sourceId === target.id) continue;
+
+        // Avoid unique conflicts by removing overlapping source links first.
+        db.prepare(`
+          DELETE FROM tournament_players
+          WHERE player_id = ?
+            AND tournament_id IN (
+              SELECT tournament_id FROM tournament_players WHERE player_id = ?
+            )
+        `).run(sourceId, target.id);
+
+        db.prepare(`
+          DELETE FROM standings
+          WHERE player_id = ?
+            AND tournament_id IN (
+              SELECT tournament_id FROM standings WHERE player_id = ?
+            )
+        `).run(sourceId, target.id);
+
+        db.prepare('UPDATE tournament_players SET player_id = ? WHERE player_id = ?').run(target.id, sourceId);
+        db.prepare('UPDATE standings SET player_id = ? WHERE player_id = ?').run(target.id, sourceId);
+        db.prepare('UPDATE results SET white_player_id = ? WHERE white_player_id = ?').run(target.id, sourceId);
+        db.prepare('UPDATE results SET black_player_id = ? WHERE black_player_id = ?').run(target.id, sourceId);
+
+        db.prepare('DELETE FROM players WHERE id = ?').run(sourceId);
+      }
+    }
+  });
+
+  txn();
+}
+
+try {
+  migrateDeduplicatePlayers();
+} catch (_) {
+  // Non-critical migration; keep app startup resilient.
+}
+
 export default db;
 
 // ─── Repository helpers ───────────────────────────────────────────────────────
@@ -110,6 +204,8 @@ import type {
   TournamentInfo,
   TournamentType,
   Pairing,
+  DbPlayerTournamentHistory,
+  DbPlayerResultEntry,
 } from './types';
 
 // ── Tournaments ──
@@ -149,9 +245,48 @@ export function upsertPlayer(
   rating: number | null = null,
   fideId: string | null = null,
 ): number {
+  const normalizedName = name.trim();
+  const normalizedFed = federation.trim();
+  const normalizedClub = club.trim();
+  const normalizedFideId = fideId?.trim() || null;
+
+  // Strongest identity signal when available.
+  if (normalizedFideId) {
+    const byFideId = db.prepare(
+      'SELECT id FROM players WHERE fide_id = ? LIMIT 1',
+    ).get(normalizedFideId) as { id: number } | undefined;
+    if (byFideId) {
+      db.prepare(`
+        UPDATE players SET
+          name = CASE WHEN ? != '' THEN ? ELSE name END,
+          federation = CASE WHEN ? != '' THEN ? ELSE federation END,
+          sex = CASE WHEN ? != '' THEN ? ELSE sex END,
+          club = CASE WHEN ? != '' THEN ? ELSE club END,
+          rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
+          fide_id = ?,
+          updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        normalizedName,
+        normalizedName,
+        normalizedFed,
+        normalizedFed,
+        sex,
+        sex,
+        normalizedClub,
+        normalizedClub,
+        rating,
+        rating,
+        normalizedFideId,
+        byFideId.id,
+      );
+      return byFideId.id;
+    }
+  }
+
   const existing = db.prepare(
     'SELECT id FROM players WHERE name = ? AND federation = ?',
-  ).get(name, federation) as { id: number } | undefined;
+  ).get(normalizedName, normalizedFed) as { id: number } | undefined;
 
   if (existing) {
     // Update fields that may have changed
@@ -163,14 +298,87 @@ export function upsertPlayer(
         fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
         updated_at = datetime('now')
       WHERE id = ?
-    `).run(sex, sex, club, club, rating, rating, fideId, fideId, existing.id);
+    `).run(
+      sex,
+      sex,
+      normalizedClub,
+      normalizedClub,
+      rating,
+      rating,
+      normalizedFideId,
+      normalizedFideId,
+      existing.id,
+    );
     return existing.id;
+  }
+
+  // If federation is unknown (pairings pages), reuse an existing unique player by name.
+  if (!normalizedFed) {
+    const sameName = db.prepare(
+      `SELECT id, federation
+       FROM players
+       WHERE name = ?
+       ORDER BY CASE WHEN federation = '' THEN 1 ELSE 0 END, updated_at DESC`,
+    ).all(normalizedName) as Array<{ id: number; federation: string }>;
+
+    if (sameName.length === 1) {
+      db.prepare(`
+        UPDATE players SET
+          sex = CASE WHEN ? != '' THEN ? ELSE sex END,
+          club = CASE WHEN ? != '' THEN ? ELSE club END,
+          rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
+          fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
+          updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        sex,
+        sex,
+        normalizedClub,
+        normalizedClub,
+        rating,
+        rating,
+        normalizedFideId,
+        normalizedFideId,
+        sameName[0].id,
+      );
+      return sameName[0].id;
+    }
+  } else {
+    // If we now know the federation, adopt a previous placeholder entry.
+    const placeholder = db.prepare(
+      "SELECT id FROM players WHERE name = ? AND federation = '' LIMIT 1",
+    ).get(normalizedName) as { id: number } | undefined;
+
+    if (placeholder) {
+      db.prepare(`
+        UPDATE players SET
+          federation = ?,
+          sex = CASE WHEN ? != '' THEN ? ELSE sex END,
+          club = CASE WHEN ? != '' THEN ? ELSE club END,
+          rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
+          fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
+          updated_at = datetime('now')
+        WHERE id = ?
+      `).run(
+        normalizedFed,
+        sex,
+        sex,
+        normalizedClub,
+        normalizedClub,
+        rating,
+        rating,
+        normalizedFideId,
+        normalizedFideId,
+        placeholder.id,
+      );
+      return placeholder.id;
+    }
   }
 
   const result = db.prepare(`
     INSERT INTO players (name, federation, sex, club, rating, fide_id)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(name, federation, sex, club, rating, fideId);
+  `).run(normalizedName, normalizedFed, sex, normalizedClub, rating, normalizedFideId);
 
   return Number(result.lastInsertRowid);
 }
@@ -331,4 +539,82 @@ export function searchTournaments(query: string, limit = 10): DbTournament[] {
     ORDER BY updated_at DESC
     LIMIT ?
   `).all(query, limit) as DbTournament[];
+}
+
+export function getPlayerById(playerId: number): DbPlayer | undefined {
+  return db.prepare('SELECT * FROM players WHERE id = ?').get(playerId) as DbPlayer | undefined;
+}
+
+export function findPlayerByIdentity(name: string, federation = ''): DbPlayer | undefined {
+  const normalizedName = name.trim();
+  const normalizedFed = federation.trim();
+
+  if (normalizedFed) {
+    const exact = db.prepare(
+      'SELECT * FROM players WHERE name = ? AND federation = ? LIMIT 1',
+    ).get(normalizedName, normalizedFed) as DbPlayer | undefined;
+    if (exact) return exact;
+  }
+
+  if (!normalizedFed) {
+    return db.prepare(
+      `SELECT *
+       FROM players
+       WHERE name = ?
+       ORDER BY
+         CASE
+           WHEN federation != '' THEN 0
+           WHEN sex != '' THEN 1
+           WHEN fide_id IS NOT NULL THEN 2
+           WHEN rating IS NOT NULL THEN 3
+           ELSE 4
+         END,
+         updated_at DESC
+       LIMIT 1`,
+    ).get(normalizedName) as DbPlayer | undefined;
+  }
+
+  return db.prepare(
+    `SELECT *
+     FROM players
+     WHERE name = ?
+     ORDER BY CASE WHEN federation = ? THEN 0 WHEN federation != '' THEN 1 ELSE 2 END,
+              updated_at DESC
+     LIMIT 1`,
+  ).get(normalizedName, normalizedFed) as DbPlayer | undefined;
+}
+
+export function getPlayerTournamentHistory(playerId: number) {
+  return db.prepare(`
+    SELECT
+      t.id AS tournament_id,
+      t.name AS tournament_name,
+      t.event_label,
+      t.date,
+      t.location,
+      t.type,
+      t.total_rounds,
+      t.updated_at,
+      s.rank,
+      s.points,
+      s.tie_break_1,
+      s.tie_break_2,
+      s.tie_break_3,
+      tp.starting_number,
+      tp.rating AS tournament_rating,
+      tp.club AS tournament_club
+    FROM tournament_players tp
+    JOIN tournaments t ON t.id = tp.tournament_id
+    LEFT JOIN standings s ON s.tournament_id = tp.tournament_id AND s.player_id = tp.player_id
+    WHERE tp.player_id = ?
+    ORDER BY datetime(t.updated_at) DESC
+  `).all(playerId) as DbPlayerTournamentHistory[];
+}
+
+export function getPlayerResultRows(playerId: number) {
+  return db.prepare(`
+    SELECT tournament_id, white_player_id, black_player_id, result
+    FROM results
+    WHERE white_player_id = ? OR black_player_id = ?
+  `).all(playerId, playerId) as DbPlayerResultEntry[];
 }

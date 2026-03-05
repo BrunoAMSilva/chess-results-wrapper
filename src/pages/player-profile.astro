@@ -1,0 +1,305 @@
+---
+import MobileLayout from "../layouts/ResponsiveLayout.astro";
+import PlayerTournamentHistoryRow from "../components/PlayerTournamentHistoryRow.astro";
+import { useTranslations } from "../i18n/ui";
+import { findPlayerByIdentity, getPlayerById, getPlayerResultRows, getPlayerTournamentHistory } from "../lib/db";
+import { scrapeStandings } from "../lib/scraper";
+import { reverseName } from "../lib/utils";
+import type { DbPlayer, DbPlayerTournamentHistory } from "../lib/types";
+
+const idParam = Astro.url.searchParams.get("id") || "";
+const nameParam = Astro.url.searchParams.get("name") || "";
+const fedParam = Astro.url.searchParams.get("fed") || "";
+const langParam = Astro.url.searchParams.get("lang");
+const lang = parseInt(langParam || Astro.cookies.get("lang")?.value || "1", 10);
+if (langParam) Astro.cookies.set("lang", langParam, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+
+const t = useTranslations(lang);
+
+let error: string | null = null;
+let player: DbPlayer | undefined;
+let history: DbPlayerTournamentHistory[] = [];
+const resultStatsByTournament = new Map<string, { wins: number; draws: number; losses: number }>();
+
+const playerId = Number.parseInt(idParam, 10);
+if (Number.isFinite(playerId) && playerId > 0) {
+  player = getPlayerById(playerId);
+}
+
+if (!player && nameParam.trim()) {
+  player = findPlayerByIdentity(nameParam, fedParam);
+}
+
+if (!player) {
+  error = t("player.profile.notFound");
+} else {
+  let resolvedPlayer = player;
+  history = getPlayerTournamentHistory(resolvedPlayer.id!);
+
+  const needsEnrichment = !resolvedPlayer.federation || !resolvedPlayer.sex || resolvedPlayer.rating === null || !resolvedPlayer.club;
+  if (needsEnrichment && history.length > 0) {
+    // Re-scrape known tournaments to backfill local DB metadata if needed.
+    for (const entry of history.slice(0, 5)) {
+      try {
+        await scrapeStandings(entry.tournament_id, lang);
+      } catch (_) {
+        // best-effort enrichment
+      }
+    }
+    resolvedPlayer = getPlayerById(resolvedPlayer.id!) || resolvedPlayer;
+    history = getPlayerTournamentHistory(resolvedPlayer.id!);
+  }
+
+  const rows = getPlayerResultRows(resolvedPlayer.id!);
+  for (const row of rows) {
+    const current = resultStatsByTournament.get(row.tournament_id) || { wins: 0, draws: 0, losses: 0 };
+    const normalized = row.result.replace(/\s+/g, "").toLowerCase();
+    const isWhite = row.white_player_id === resolvedPlayer.id;
+
+    if (normalized.includes("1-0") || normalized.includes("1:0")) {
+      if (isWhite) current.wins += 1;
+      else current.losses += 1;
+    } else if (normalized.includes("0-1") || normalized.includes("0:1")) {
+      if (isWhite) current.losses += 1;
+      else current.wins += 1;
+    } else if (normalized.includes("1/2") || normalized.includes("0.5") || normalized.includes("\u00bd")) {
+      current.draws += 1;
+    }
+
+    resultStatsByTournament.set(row.tournament_id, current);
+  }
+
+  player = resolvedPlayer;
+}
+
+const profileTitle = player ? reverseName(player.name) : t("player.profile.title");
+const rankedEntries = history.filter((entry) => typeof entry.rank === "number");
+const totalWins = Array.from(resultStatsByTournament.values()).reduce((sum, item) => sum + item.wins, 0);
+const totalDraws = Array.from(resultStatsByTournament.values()).reduce((sum, item) => sum + item.draws, 0);
+const totalLosses = Array.from(resultStatsByTournament.values()).reduce((sum, item) => sum + item.losses, 0);
+const bestRank = rankedEntries.length
+  ? String(Math.min(...rankedEntries.map((entry) => Number(entry.rank))))
+  : "-";
+const averageRank = rankedEntries.length
+  ? (rankedEntries.reduce((sum, entry) => sum + Number(entry.rank), 0) / rankedEntries.length).toFixed(1)
+  : "-";
+const latestSeen = history.length > 0 ? history[0].updated_at : "-";
+---
+
+<MobileLayout title={profileTitle} lang={lang}>
+  {error && (
+    <div class="error-msg">
+      <p>{error}</p>
+    </div>
+  )}
+
+  {player && (
+    <section class="identity-card">
+      <div class="identity-head">
+        <h2 class="name">{reverseName(player.name)}</h2>
+        <p class="subtitle">{t("player.profile.identity")}</p>
+      </div>
+
+      <dl class="identity-grid">
+        <div class="identity-item">
+          <dt>{t("player.profile.fideId")}</dt>
+          <dd>{player.fide_id || "-"}</dd>
+        </div>
+        <div class="identity-item">
+          <dt>{t("player.profile.federation")}</dt>
+          <dd>{player.federation || "-"}</dd>
+        </div>
+        <div class="identity-item">
+          <dt>{t("player.profile.sex")}</dt>
+          <dd>{player.sex || "-"}</dd>
+        </div>
+        <div class="identity-item">
+          <dt>{t("player.profile.rating")}</dt>
+          <dd>{player.rating ?? "-"}</dd>
+        </div>
+        <div class="identity-item">
+          <dt>{t("player.profile.club")}</dt>
+          <dd>{player.club || "-"}</dd>
+        </div>
+        <div class="identity-item">
+          <dt>{t("player.profile.lastSeen")}</dt>
+          <dd>{latestSeen || "-"}</dd>
+        </div>
+      </dl>
+
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span class="summary-value">{history.length}</span>
+          <span class="summary-label">{t("player.profile.total")}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-value">{averageRank}</span>
+          <span class="summary-label">{t("player.profile.avgRank")}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-value">{bestRank}</span>
+          <span class="summary-label">{t("player.profile.bestRank")}</span>
+        </div>
+        <div class="summary-item">
+          <span class="summary-value">{totalWins}-{totalDraws}-{totalLosses}</span>
+          <span class="summary-label">{t("player.profile.record")}</span>
+        </div>
+      </div>
+    </section>
+  )}
+
+  {player && (
+    <section class="history-section">
+      <h3 class="section-title">{t("player.profile.tournaments")}</h3>
+      {history.length > 0 ? (
+        <div class="history-list">
+          {history.map((entry) => (
+            <PlayerTournamentHistoryRow
+              entry={entry}
+              playerName={player!.name}
+              lang={lang}
+              wins={resultStatsByTournament.get(entry.tournament_id)?.wins || 0}
+              draws={resultStatsByTournament.get(entry.tournament_id)?.draws || 0}
+              losses={resultStatsByTournament.get(entry.tournament_id)?.losses || 0}
+            />
+          ))}
+        </div>
+      ) : (
+        <div class="empty-state">
+          <p>{t("player.profile.noHistory")}</p>
+        </div>
+      )}
+    </section>
+  )}
+</MobileLayout>
+
+<style>
+  .identity-card {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-card);
+    padding: var(--space-4);
+    margin-bottom: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
+  .identity-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .name {
+    margin: 0;
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-extrabold);
+    line-height: var(--leading-tight);
+    color: var(--text);
+  }
+
+  .subtitle {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+  }
+
+  .identity-grid {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .identity-item {
+    margin: 0;
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background: var(--bg-subtle);
+  }
+
+  .identity-item dt {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .identity-item dd {
+    margin: var(--space-1) 0 0;
+    font-size: var(--text-base);
+    color: var(--text);
+    font-weight: var(--weight-semibold);
+    word-break: break-word;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+  }
+
+  .summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border);
+    background: var(--surface-hover);
+  }
+
+  .summary-value {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    color: var(--accent-text);
+    line-height: var(--leading-none);
+  }
+
+  .summary-label {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .history-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding-bottom: var(--space-8);
+  }
+
+  .section-title {
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    color: var(--text);
+  }
+
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .empty-state {
+    background: var(--surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  @media (max-width: 480px) {
+    .identity-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

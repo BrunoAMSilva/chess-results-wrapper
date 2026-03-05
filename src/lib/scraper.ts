@@ -27,7 +27,7 @@ export async function scrapePairings(
   round: number,
   lang = 1,
 ): Promise<TournamentData> {
-  const cacheKey = `pairings:${tournamentId}:${round}:${lang}`;
+  const cacheKey = `pairings:v2:${tournamentId}:${round}:${lang}`;
   const cached = getCache<TournamentData>(cacheKey);
   if (cached) return cached;
 
@@ -55,7 +55,7 @@ export async function scrapeStandings(
   tournamentId: string,
   lang = 1,
 ): Promise<StandingsData> {
-  const cacheKey = `standings:${tournamentId}:${lang}`;
+  const cacheKey = `standings:v2:${tournamentId}:${lang}`;
   const cached = getCache<StandingsData>(cacheKey);
   if (cached) return cached;
 
@@ -103,14 +103,28 @@ export async function scrapeStandings(
     } catch (_) { /* best-effort: women's standings are optional */ }
   }
 
-  setCache(cacheKey, result, CACHE_TTL);
+  // Some tournaments expose women standings separately; mark those players as F
+  // when the main standings entry is missing sex.
+  const womenNames = new Set(result.womenStandings.map((s) => s.name));
+  const enrichedStandings = result.standings.map((s) => (
+    womenNames.has(s.name) && !s.sex
+      ? { ...s, sex: 'F' as const }
+      : s
+  ));
+
+  const enrichedResult: StandingsData = {
+    ...result,
+    standings: enrichedStandings,
+  };
+
+  setCache(cacheKey, enrichedResult, CACHE_TTL);
 
   // Persist to database (best-effort)
   try {
-    persistStandings(tournamentId, result.info, result.standings);
+    persistStandings(tournamentId, enrichedResult.info, enrichedResult.standings);
   } catch (_) { /* DB write is non-critical */ }
 
-  return result;
+  return enrichedResult;
 }
 
 // ─── Parsing functions (delegate to strategy) ─────────────────────────────────
