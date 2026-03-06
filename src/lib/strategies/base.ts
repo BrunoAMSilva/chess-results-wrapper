@@ -188,6 +188,9 @@ export function parseStandingsTable(
   let tb1Idx = -1;
   let tb2Idx = -1;
   let tb3Idx = -1;
+  let tb4Idx = -1;
+  let tb5Idx = -1;
+  let tb6Idx = -1;
   let nameIdx = 2;
   let fedIdx = 4;
   let rtgIdx = -1;
@@ -205,6 +208,9 @@ export function parseStandingsTable(
     if (text.includes('TB1') || text.includes('Desp1')) tb1Idx = i;
     if (text.includes('TB2') || text.includes('Desp2')) tb2Idx = i;
     if (text.includes('TB3') || text.includes('Desp3')) tb3Idx = i;
+    if (text.includes('TB4') || text.includes('Desp4')) tb4Idx = i;
+    if (text.includes('TB5') || text.includes('Desp5')) tb5Idx = i;
+    if (text.includes('TB6') || text.includes('Desp6')) tb6Idx = i;
     if (text === 'Name' || text === 'Nome' || text === 'Nombre') nameIdx = i;
     if (text === 'FED') fedIdx = i;
     if (text === 'Rtg' || text === 'RtgI' || text === 'Elo') rtgIdx = i;
@@ -242,6 +248,9 @@ export function parseStandingsTable(
     const tb1 = tb1Idx !== -1 && cells[tb1Idx] ? $(cells[tb1Idx]).text().trim() : '';
     const tb2 = tb2Idx !== -1 && cells[tb2Idx] ? $(cells[tb2Idx]).text().trim() : '';
     const tb3 = tb3Idx !== -1 && cells[tb3Idx] ? $(cells[tb3Idx]).text().trim() : '';
+    const tb4 = tb4Idx !== -1 && cells[tb4Idx] ? $(cells[tb4Idx]).text().trim() : '';
+    const tb5 = tb5Idx !== -1 && cells[tb5Idx] ? $(cells[tb5Idx]).text().trim() : '';
+    const tb6 = tb6Idx !== -1 && cells[tb6Idx] ? $(cells[tb6Idx]).text().trim() : '';
 
     standings.push({
       rank,
@@ -255,6 +264,9 @@ export function parseStandingsTable(
       tieBreak1: tb1,
       tieBreak2: tb2,
       tieBreak3: tb3,
+      tieBreak4: tb4,
+      tieBreak5: tb5,
+      tieBreak6: tb6,
     });
   });
 

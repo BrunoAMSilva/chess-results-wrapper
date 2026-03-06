@@ -1,6 +1,7 @@
 ---
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import PlayerRoundRow from "../components/PlayerRoundRow.astro";
+import TieBreaks from "../components/TieBreaks.astro";
 import { scrapePairings, scrapeStandings } from "../lib/scraper";
 import { reverseName } from "../lib/utils";
 import { useTranslations } from "../i18n/ui";
@@ -25,6 +26,9 @@ let playerPoints = "";
 let tieBreak1 = "";
 let tieBreak2 = "";
 let tieBreak3 = "";
+let tieBreak4 = "";
+let tieBreak5 = "";
+let tieBreak6 = "";
 let totalRounds = 0;
 
 interface RoundResult {
@@ -59,6 +63,9 @@ if (!playerParam) {
       tieBreak1 = standing.tieBreak1;
       tieBreak2 = standing.tieBreak2;
       tieBreak3 = standing.tieBreak3;
+      tieBreak4 = standing.tieBreak4;
+      tieBreak5 = standing.tieBreak5;
+      tieBreak6 = standing.tieBreak6;
     }
 
     // Fallback: use the param name if standings didn't match
@@ -169,18 +176,7 @@ const profileHref = `/player-profile?name=${encodeURIComponent(playerParam)}${pl
             <span class="stat-label">{t("standings.rank")}</span>
           </div>
           <div class="tb-stats">
-            <div class="tb-item">
-              <span class="tb-value">{tieBreak1}</span>
-              <span class="tb-label">TB1</span>
-            </div>
-            <div class="tb-item">
-              <span class="tb-value">{tieBreak2}</span>
-              <span class="tb-label">TB2</span>
-            </div>
-            <div class="tb-item">
-              <span class="tb-value">{tieBreak3}</span>
-              <span class="tb-label">TB3</span>
-            </div>
+            <TieBreaks values={[tieBreak1, tieBreak2, tieBreak3, tieBreak4, tieBreak5, tieBreak6]} />
           </div>
         </div>
       )}
@@ -300,30 +296,7 @@ const profileHref = `/player-profile?name=${encodeURIComponent(playerParam)}${pl
 
   .tb-stats {
     display: flex;
-    gap: var(--space-2);
     margin-left: auto;
-  }
-
-  .tb-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-1) var(--space-2);
-  }
-
-  .tb-value {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-    color: var(--text);
-    line-height: var(--leading-none);
-  }
-
-  .tb-label {
-    font-size: 0.6rem;
-    color: var(--text-dim);
-    font-weight: var(--weight-semibold);
-    text-transform: uppercase;
   }
 
   .rounds-section {

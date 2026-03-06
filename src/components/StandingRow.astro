@@ -2,6 +2,7 @@
 import type { Standing } from "../lib/scraper";
 import { reverseName } from "../lib/utils";
 import { useTranslations } from "../i18n/ui";
+import TieBreaks from "./TieBreaks.astro";
 
 interface Props {
   standing: Standing;
@@ -44,20 +45,7 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
         <span class="stat-label">{t('standings.pts')}</span>
     </div>
     
-    <div class="tie-breaks">
-        <div class="tb-group">
-            <span class="tb-val">{standing.tieBreak1}</span>
-            <span class="tb-lbl">TB1</span>
-        </div>
-        <div class="tb-group">
-            <span class="tb-val">{standing.tieBreak2}</span>
-            <span class="tb-lbl">TB2</span>
-        </div>
-        <div class="tb-group">
-            <span class="tb-val">{standing.tieBreak3}</span>
-            <span class="tb-lbl">TB3</span>
-        </div>
-    </div>
+    <TieBreaks values={[standing.tieBreak1, standing.tieBreak2, standing.tieBreak3, standing.tieBreak4, standing.tieBreak5, standing.tieBreak6]} />
   </div>
 </div>
 
@@ -226,39 +214,7 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     margin-top: 0.2rem;
   }
 
-  .tie-breaks {
-    display: flex;
-    gap: 0.8rem;
-    padding-left: 1rem;
-    align-self: center;
-  }
-
-  .tb-group {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 44px;
-  }
-
-  .tb-val {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text-secondary);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .tb-lbl {
-    font-size: 0.6rem;
-    font-weight: 600;
-    color: var(--text-dim);
-    opacity: 0.6;
-    margin-top: 0.1rem;
-  }
-
   @media (max-width: 480px) {
-    .tie-breaks {
-      display: none;
-    }
     .standing-row {
       grid-template-columns: 40px minmax(0, 1fr) auto;
     }
@@ -290,9 +246,6 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
       width: 100px;
       margin-right: 0.5rem;
       padding: 1rem 0;
-    }
-    .tie-breaks {
-      gap: 0.8rem;
     }
   }
 </style>

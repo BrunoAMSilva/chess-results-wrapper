@@ -1,0 +1,65 @@
+---
+interface Props {
+  values: (string | null | undefined)[];
+}
+
+const { values } = Astro.props;
+
+const tieBreaks = values
+  .map((val, i) => ({ label: `TB${i + 1}`, value: val?.trim() || "" }))
+  .filter((tb) => tb.value !== "");
+---
+
+{tieBreaks.length > 0 && (
+  <div class="tie-breaks">
+    {tieBreaks.map((tb) => (
+      <div class="tb-group">
+        <span class="tb-val">{tb.value || "–"}</span>
+        <span class="tb-lbl">{tb.label}</span>
+      </div>
+    ))}
+  </div>
+)}
+
+<style>
+  .tie-breaks {
+    display: flex;
+    gap: var(--space-3);
+    padding-left: var(--space-4);
+    align-self: center;
+  }
+
+  .tb-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 44px;
+  }
+
+  .tb-val {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tb-lbl {
+    font-size: 0.6rem;
+    font-weight: var(--weight-semibold);
+    color: var(--text-dim);
+    opacity: 0.6;
+    margin-top: 0.1rem;
+  }
+
+  @media (max-width: 480px) {
+    .tie-breaks {
+      display: none;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .tie-breaks {
+      gap: var(--space-3);
+    }
+  }
+</style>

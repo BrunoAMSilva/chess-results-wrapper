@@ -40,6 +40,9 @@ export interface Standing {
   tieBreak1: string;
   tieBreak2: string;
   tieBreak3: string;
+  tieBreak4: string;
+  tieBreak5: string;
+  tieBreak6: string;
 }
 
 export interface StandingsData {
@@ -150,6 +153,9 @@ export interface DbPlayerTournamentHistory {
   tie_break_1: string | null;
   tie_break_2: string | null;
   tie_break_3: string | null;
+  tie_break_4: string | null;
+  tie_break_5: string | null;
+  tie_break_6: string | null;
   starting_number: number;
   tournament_rating: number | null;
   tournament_club: string;

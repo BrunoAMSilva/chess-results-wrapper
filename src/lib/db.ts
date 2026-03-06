@@ -88,6 +88,9 @@ db.exec(`
     tie_break_1 TEXT NOT NULL DEFAULT '',
     tie_break_2 TEXT NOT NULL DEFAULT '',
     tie_break_3 TEXT NOT NULL DEFAULT '',
+    tie_break_4 TEXT NOT NULL DEFAULT '',
+    tie_break_5 TEXT NOT NULL DEFAULT '',
+    tie_break_6 TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (tournament_id, player_id)
   );
 
@@ -437,6 +440,11 @@ export function getResults(tournamentId: string, round: number) {
 
 // ── Standings ──
 
+// Migrate: add TB4-TB6 columns if they don't exist yet (no-op after first run)
+try { db.exec("ALTER TABLE standings ADD COLUMN tie_break_4 TEXT NOT NULL DEFAULT ''"); } catch (_) {}
+try { db.exec("ALTER TABLE standings ADD COLUMN tie_break_5 TEXT NOT NULL DEFAULT ''"); } catch (_) {}
+try { db.exec("ALTER TABLE standings ADD COLUMN tie_break_6 TEXT NOT NULL DEFAULT ''"); } catch (_) {}
+
 export function upsertStanding(
   tournamentId: string,
   playerId: number,
@@ -445,17 +453,23 @@ export function upsertStanding(
   tb1 = '',
   tb2 = '',
   tb3 = '',
+  tb4 = '',
+  tb5 = '',
+  tb6 = '',
 ): void {
   db.prepare(`
-    INSERT INTO standings (tournament_id, player_id, rank, points, tie_break_1, tie_break_2, tie_break_3)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO standings (tournament_id, player_id, rank, points, tie_break_1, tie_break_2, tie_break_3, tie_break_4, tie_break_5, tie_break_6)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(tournament_id, player_id) DO UPDATE SET
       rank = excluded.rank,
       points = excluded.points,
       tie_break_1 = excluded.tie_break_1,
       tie_break_2 = excluded.tie_break_2,
-      tie_break_3 = excluded.tie_break_3
-  `).run(tournamentId, playerId, rank, points, tb1, tb2, tb3);
+      tie_break_3 = excluded.tie_break_3,
+      tie_break_4 = excluded.tie_break_4,
+      tie_break_5 = excluded.tie_break_5,
+      tie_break_6 = excluded.tie_break_6
+  `).run(tournamentId, playerId, rank, points, tb1, tb2, tb3, tb4, tb5, tb6);
 }
 
 export function getStandings(tournamentId: string) {
@@ -464,6 +478,7 @@ export function getStandings(tournamentId: string) {
            COALESCE(tp.rating, p.rating, 0) AS rating,
            COALESCE(tp.club, p.club, '') AS club,
            s.points, s.tie_break_1, s.tie_break_2, s.tie_break_3,
+           s.tie_break_4, s.tie_break_5, s.tie_break_6,
            tp.starting_number
     FROM standings s
     JOIN players p ON s.player_id = p.id
@@ -497,7 +512,7 @@ export function persistStandings(
         s.rating ? parseInt(s.rating) || null : null,
         s.club,
       );
-      upsertStanding(tournamentId, playerId, s.rank, s.points, s.tieBreak1, s.tieBreak2, s.tieBreak3);
+      upsertStanding(tournamentId, playerId, s.rank, s.points, s.tieBreak1, s.tieBreak2, s.tieBreak3, s.tieBreak4, s.tieBreak5, s.tieBreak6);
     }
   });
   txn();
@@ -600,6 +615,9 @@ export function getPlayerTournamentHistory(playerId: number) {
       s.tie_break_1,
       s.tie_break_2,
       s.tie_break_3,
+      s.tie_break_4,
+      s.tie_break_5,
+      s.tie_break_6,
       tp.starting_number,
       tp.rating AS tournament_rating,
       tp.club AS tournament_club
