@@ -46,15 +46,7 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
   const date = dateMatch ? dateMatch[1] : '';
 
   const totalRoundsText = $('td.CR')
-    .filter((_, el) => {
-      const text = $(el).text();
-      return (
-        text.includes('Number of rounds') ||
-        text.includes('Número de rondas') ||
-        text.includes('Rundenanzahl') ||
-        text.includes('Nombre de rondes')
-      );
-    })
+    .filter((_, el) => $(el).text().includes('Number of rounds'))
     .next()
     .text()
     .trim();
@@ -75,12 +67,12 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
   }
 
   // Fallback 2: count round separator rows (round-robin pages show all rounds
-  // on one page with "N. Round" / "N. Ronda" / "N. Runde" headers)
+  // on one page with "Round N" headers)
   if (totalRounds === 0) {
     let maxRd = 0;
     $('table.CRs1 tr').each((_, row) => {
       const text = $(row).text().trim();
-      const m = text.match(/^(\d+)\.\s*(?:Ronda|Round|Runde|Tour)\b/i);
+      const m = text.match(/^Round\s+(\d+)\b/i);
       if (m) {
         const rd = parseInt(m[1], 10);
         if (rd > maxRd) maxRd = rd;
@@ -89,10 +81,10 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
     totalRounds = maxRd;
   }
 
-  // Fallback 3: "after N rounds" text (e.g. "após 5 rondas", "after 9 rounds")
+  // Fallback 3: "after N rounds" text (e.g. "after 9 rounds")
   if (totalRounds === 0) {
     const pageText = $.text();
-    const m = pageText.match(/(?:após|after|nach)\s+(\d+)\s+(?:rondas|rounds|Runden)/i);
+    const m = pageText.match(/after\s+(\d+)\s+rounds/i);
     if (m) {
       totalRounds = parseInt(m[1], 10) || 0;
     }
@@ -120,10 +112,6 @@ function parseLinkedTournaments($: cheerio.CheerioAPI): {
 } {
   const selectionLabels = [
     'Tournament selection',
-    'Selecção de torneio',
-    'Turnierauswahl',
-    'Selección de torneo',
-    'Sélection du tournoi',
   ];
 
   let selectionCell: cheerio.Cheerio<Element> | null = null;
@@ -311,9 +299,9 @@ export function detectPairingColumns($: cheerio.CheerioAPI): PairingColumnIndice
   headerRow.find('th, td').each((i, el) => {
     const text = $(el).text().trim();
     if (text === 'Bo.') boIdx = i;
-    if (text === 'White' || text === 'Brancas' || text === 'Blancas' || text === 'Weiß' || text === 'Blancs') whiteIdx = i;
-    if (text === 'Black' || text === 'Negras' || text === 'Schwarz' || text === 'Noirs') blackIdx = i;
-    if (text === 'Result' || text === 'Resultado' || text === 'Resultat' || text === 'Ergebnis' || text === 'Résultat') resultIdx = i;
+    if (text === 'White') whiteIdx = i;
+    if (text === 'Black') blackIdx = i;
+    if (text === 'Result') resultIdx = i;
     if (text === 'No.' && whiteIdx === -1) whiteNoIdx = i;
     if (text === 'No.' && blackIdx !== -1) blackNoIdx = i;
   });
@@ -360,7 +348,7 @@ export function detectTeamPairingColumns($: cheerio.CheerioAPI): TeamPairingColu
       else awayTeamIdx = i;
       teamFound++;
     }
-    if (text === 'Res.' || text === 'Result' || text === 'Resultado') {
+    if (text === 'Res.' || text === 'Result') {
       if (resFound === 0) homeResIdx = i;
       else awayResIdx = i;
       resFound++;

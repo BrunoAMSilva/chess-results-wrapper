@@ -152,21 +152,21 @@ async function fetchTournamentHtml(url: string, tournamentId: string, lang: numb
   return unlockedRes.text();
 }
 
-function buildUrl(tournamentId: string, round: number, lang = 1): string {
-  return `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=2&rd=${round}&turdet=YES`;
+function buildUrl(tournamentId: string, round: number): string {
+  return `${BASE_URL}/tnr${tournamentId}.aspx?lan=1&art=2&rd=${round}&turdet=YES`;
 }
 
 export async function scrapePairings(
   tournamentId: string,
   round: number,
-  lang = 1,
+  _lang = 1,
 ): Promise<TournamentData> {
-  const cacheKey = `pairings:v2:${tournamentId}:${round}:${lang}`;
+  const cacheKey = `pairings:v2:${tournamentId}:${round}`;
   const cached = getCache<TournamentData>(cacheKey);
   if (cached) return cached;
 
-  const url = buildUrl(tournamentId, round, lang);
-  const html = await fetchTournamentHtml(url, tournamentId, lang);
+  const url = buildUrl(tournamentId, round);
+  const html = await fetchTournamentHtml(url, tournamentId, 1);
 
   try {
     const data = parseHtml(html, round);
@@ -185,9 +185,9 @@ export async function scrapePairings(
 
 export async function scrapeStandings(
   tournamentId: string,
-  lang = 1,
+  _lang = 1,
 ): Promise<StandingsData> {
-  const cacheKey = `standings:v2:${tournamentId}:${lang}`;
+  const cacheKey = `standings:v2:${tournamentId}`;
   const cached = getCache<StandingsData>(cacheKey);
   if (cached) return cached;
 
@@ -196,8 +196,8 @@ export async function scrapeStandings(
 
   // Try crosstable first (art=4), fall back to standard list (art=1)
   for (const art of [4, 1]) {
-    const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=${art}&turdet=YES`;
-    const html = await fetchTournamentHtml(url, tournamentId, lang);
+    const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=1&art=${art}&turdet=YES`;
+    const html = await fetchTournamentHtml(url, tournamentId, 1);
 
     try {
       const data = parseStandingsHtml(html);
@@ -221,8 +221,8 @@ export async function scrapeStandings(
   // women's standings, try the standard list (art=1) for the sex data.
   if (usedArt !== 1 && result.standings.length > 0 && result.womenStandings.length === 0) {
     try {
-      const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=1&turdet=YES`;
-      const html = await fetchTournamentHtml(url, tournamentId, lang);
+      const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=1&art=1&turdet=YES`;
+      const html = await fetchTournamentHtml(url, tournamentId, 1);
       const fallback = parseStandingsHtml(html);
       if (fallback.womenStandings.length > 0) {
         result = { ...result, womenStandings: fallback.womenStandings };

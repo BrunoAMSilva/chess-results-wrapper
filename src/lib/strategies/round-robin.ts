@@ -25,13 +25,8 @@ export class RoundRobinStrategy implements TournamentStrategy {
   readonly type = TournamentType.RoundRobin;
 
   private extractRoundNumber(text: string): number | null {
-    const patternA = text.match(/(?:Round|Ronda|Runde|Tour)\s+(\d+)/i);
-    if (patternA) return parseInt(patternA[1]);
-
-    const patternB = text.match(/\b(\d+)\.?\s*(?:Round|Ronda|Runde|Tour)\b/i);
-    if (patternB) return parseInt(patternB[1]);
-
-    return null;
+    const m = text.match(/Round\s+(\d+)/i);
+    return m ? parseInt(m[1]) : null;
   }
 
   parsePairings(
