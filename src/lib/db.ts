@@ -218,7 +218,9 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
   try { db.exec('ALTER TABLE tournaments ADD COLUMN event_label TEXT NOT NULL DEFAULT \'\''); } catch (_) {}
   try { db.exec('ALTER TABLE tournaments ADD COLUMN linked_tournaments TEXT NOT NULL DEFAULT \'[]\''); } catch (_) {}
 
-  const linkedJson = info.linkedTournaments ? JSON.stringify(info.linkedTournaments) : '[]';
+  const linkedJson = info.linkedTournaments && info.linkedTournaments.length > 0
+    ? JSON.stringify(info.linkedTournaments)
+    : '[]';
   db.prepare(`
     INSERT INTO tournaments (id, name, type, total_rounds, date, location, event_label, linked_tournaments, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
@@ -228,8 +230,8 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
       total_rounds = CASE WHEN excluded.total_rounds > 0 THEN excluded.total_rounds ELSE tournaments.total_rounds END,
       date = CASE WHEN excluded.date != '' THEN excluded.date ELSE tournaments.date END,
       location = CASE WHEN excluded.location != '' THEN excluded.location ELSE tournaments.location END,
-      event_label = excluded.event_label,
-      linked_tournaments = excluded.linked_tournaments,
+      event_label = CASE WHEN excluded.event_label != '' THEN excluded.event_label ELSE tournaments.event_label END,
+      linked_tournaments = CASE WHEN excluded.linked_tournaments != '[]' THEN excluded.linked_tournaments ELSE tournaments.linked_tournaments END,
       updated_at = datetime('now')
   `).run(tournamentId, info.name, info.type, info.totalRounds, info.date, info.location, info.currentLabel || '', linkedJson);
 }

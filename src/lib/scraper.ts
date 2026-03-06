@@ -91,6 +91,34 @@ async function fetchTournamentHtml(url: string, tournamentId: string, lang: numb
 
   const primaryHtml = await primaryRes.text();
   if (!isOldTournamentGate(primaryHtml)) {
+    // Page has data but tournament details (linked tournaments, etc.) may be
+    // collapsed behind a "Show tournament details" button.  Try to expand them.
+    if (/cb_alleDetails/.test(primaryHtml) && !/class="CRnowrap"/.test(primaryHtml)) {
+      try {
+        const jar = new SimpleCookieJar();
+        jar.updateFromResponse(primaryRes);
+        const body = new URLSearchParams();
+        for (const [k, v] of extractHiddenFields(primaryHtml).entries()) {
+          body.set(k, v);
+        }
+        body.set('cb_alleDetails', 'Show tournament details');
+        const expandRes = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            Cookie: jar.toHeader(),
+            Referer: url,
+          },
+          body: body.toString(),
+        });
+        if (expandRes.ok) {
+          const expandedHtml = await expandRes.text();
+          if (/class="CRnowrap"/.test(expandedHtml)) {
+            return expandedHtml;
+          }
+        }
+      } catch (_) { /* expansion is best-effort */ }
+    }
     return primaryHtml;
   }
 
@@ -172,14 +200,25 @@ export async function scrapePairings(
     const data = parseHtml(html, round);
 
     // Archive pages may strip tournament metadata; fall back to DB
-    if (data.info.totalRounds === 0) {
-      try {
-        const dbTournament = getTournament(tournamentId);
-        if (dbTournament && dbTournament.total_rounds > 0) {
+    try {
+      const dbTournament = getTournament(tournamentId);
+      if (dbTournament) {
+        if (data.info.totalRounds === 0 && dbTournament.total_rounds > 0) {
           data.info.totalRounds = dbTournament.total_rounds;
         }
-      } catch (_) { /* DB read is non-critical */ }
-    }
+        if (!data.info.linkedTournaments?.length && dbTournament.linked_tournaments) {
+          try {
+            const stored = JSON.parse(dbTournament.linked_tournaments);
+            if (Array.isArray(stored) && stored.length > 0) {
+              data.info.linkedTournaments = stored;
+              if (!data.info.currentLabel) {
+                data.info.currentLabel = dbTournament.event_label || undefined;
+              }
+            }
+          } catch (_) { /* malformed JSON is non-critical */ }
+        }
+      }
+    } catch (_) { /* DB read is non-critical */ }
 
     setCache(cacheKey, data, CACHE_TTL);
 
@@ -256,14 +295,25 @@ export async function scrapeStandings(
   };
 
   // Archive pages may strip tournament metadata; fall back to DB
-  if (enrichedResult.info.totalRounds === 0) {
-    try {
-      const dbTournament = getTournament(tournamentId);
-      if (dbTournament && dbTournament.total_rounds > 0) {
+  try {
+    const dbTournament = getTournament(tournamentId);
+    if (dbTournament) {
+      if (enrichedResult.info.totalRounds === 0 && dbTournament.total_rounds > 0) {
         enrichedResult.info.totalRounds = dbTournament.total_rounds;
       }
-    } catch (_) { /* DB read is non-critical */ }
-  }
+      if (!enrichedResult.info.linkedTournaments?.length && dbTournament.linked_tournaments) {
+        try {
+          const stored = JSON.parse(dbTournament.linked_tournaments);
+          if (Array.isArray(stored) && stored.length > 0) {
+            enrichedResult.info.linkedTournaments = stored;
+            if (!enrichedResult.info.currentLabel) {
+              enrichedResult.info.currentLabel = dbTournament.event_label || undefined;
+            }
+          }
+        } catch (_) { /* malformed JSON is non-critical */ }
+      }
+    }
+  } catch (_) { /* DB read is non-critical */ }
 
   setCache(cacheKey, enrichedResult, CACHE_TTL);
 
