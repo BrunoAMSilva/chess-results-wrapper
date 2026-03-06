@@ -50,8 +50,13 @@ if (!playerParam) {
     const standingsData = await scrapeStandings(tid, lang);
     totalRounds = standingsData.info.totalRounds;
 
+    // Standings (crosstable) may omit the comma in "Last, First" names,
+    // so compare with a normalised form that strips commas.
+    const normalize = (n: string) => n.replace(/,\s*/g, ' ').replace(/\s+/g, ' ').trim();
+    const normalizedParam = normalize(playerParam);
+
     const standing = standingsData.standings.find(
-      (s) => s.name === playerParam
+      (s) => s.name === playerParam || normalize(s.name) === normalizedParam
     );
     if (standing) {
       playerName = reverseName(standing.name);
