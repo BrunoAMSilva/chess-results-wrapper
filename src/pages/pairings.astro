@@ -30,7 +30,7 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
 const linkedTournaments = data?.info.linkedTournaments;
 ---
 
-<MobileLayout title={data?.info.name || t('site.title')} >
+<MobileLayout title={data?.info.name || t('site.title')} lang={lang}>
   {error && (
     <div class="error-msg">
       <p>{error}</p>
