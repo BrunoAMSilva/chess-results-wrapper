@@ -29,27 +29,32 @@ const strategies: Record<TournamentType, TournamentStrategy> = {
  */
 export function detectTournamentType($: cheerio.CheerioAPI): TournamentType {
   const hasRoundHeader = (text: string): boolean => {
-    return /Round\s+\d+/i.test(text);
+    return /(?:Round|Ronda|Runde|Ronde)\s+\d+/i.test(text);
   };
 
   // 1. Check the tournament details metadata for explicit system info
   let systemText = '';
   $('td.CR').each((_, el) => {
     const text = $(el).text().trim();
-    const isSystemLabel = text.includes('Tournament type');
+    const isSystemLabel = text.includes('Tournament type') ||
+                          text.includes('Tipo de torneio') ||
+                          text.includes('Tipo de torneo') ||
+                          text.includes('Type de tournoi') ||
+                          text.includes('Turnierart');
     if (isSystemLabel) {
       systemText = $(el).next().text().trim().toLowerCase();
     }
   });
 
-  const isTeam = systemText.includes('team');
+  const isTeam = systemText.includes('team') || systemText.includes('equipa') || systemText.includes('equipo') || systemText.includes('mannschaft') || systemText.includes('équipe');
 
   const isRoundRobin =
     systemText.includes('round robin') ||
     systemText.includes('round-robin') ||
     systemText.includes('liga') ||
     systemText.includes('berger') ||
-    systemText.includes('all-play-all');
+    systemText.includes('all-play-all') ||
+    systemText.includes('todos contra todos');
 
   // 2. HTML heuristic: check for "Team" column headers (team tournaments)
   const hasTeamColumns = isTeamPairingsPage($);

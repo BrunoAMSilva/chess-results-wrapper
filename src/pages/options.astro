@@ -7,7 +7,7 @@ import { DEFAULT_TOURNAMENT } from "../lib/constants";
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const langParam = Astro.url.searchParams.get("lang");
 const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
-if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' });
+if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', httpOnly: false });
 
 const t = useTranslations(lang);
 ---

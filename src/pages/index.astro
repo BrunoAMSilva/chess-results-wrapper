@@ -6,7 +6,7 @@ import "../styles/global.css";
 const langParam = Astro.url.searchParams.get("lang");
 const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
 const t = useTranslations(lang);
-if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' });
+if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', httpOnly: false });
 ---
 
 <!doctype html>

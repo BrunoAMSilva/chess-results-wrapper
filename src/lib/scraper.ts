@@ -2,7 +2,7 @@ import * as cheerio from 'cheerio';
 import { getCache, setCache } from './cache';
 import { BASE_URL, CACHE_TTL } from './constants';
 import { getStrategyFromHtml, parseTournamentMeta } from './strategies';
-import { persistStandings, persistPairings } from './db';
+import { persistStandings, persistPairings, getTournament } from './db';
 
 // Re-export types from the shared types module for backward compatibility
 export type {
@@ -152,24 +152,35 @@ async function fetchTournamentHtml(url: string, tournamentId: string, lang: numb
   return unlockedRes.text();
 }
 
-function buildUrl(tournamentId: string, round: number): string {
-  return `${BASE_URL}/tnr${tournamentId}.aspx?lan=1&art=2&rd=${round}&turdet=YES`;
+function buildUrl(tournamentId: string, round: number, lang = 1): string {
+  return `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=2&rd=${round}&turdet=YES`;
 }
 
 export async function scrapePairings(
   tournamentId: string,
   round: number,
-  _lang = 1,
+  lang = 1,
 ): Promise<TournamentData> {
-  const cacheKey = `pairings:v2:${tournamentId}:${round}`;
+  const cacheKey = `pairings:v3:${tournamentId}:${round}:${lang}`;
   const cached = getCache<TournamentData>(cacheKey);
   if (cached) return cached;
 
-  const url = buildUrl(tournamentId, round);
-  const html = await fetchTournamentHtml(url, tournamentId, 1);
+  const url = buildUrl(tournamentId, round, lang);
+  const html = await fetchTournamentHtml(url, tournamentId, lang);
 
   try {
     const data = parseHtml(html, round);
+
+    // Archive pages may strip tournament metadata; fall back to DB
+    if (data.info.totalRounds === 0) {
+      try {
+        const dbTournament = getTournament(tournamentId);
+        if (dbTournament && dbTournament.total_rounds > 0) {
+          data.info.totalRounds = dbTournament.total_rounds;
+        }
+      } catch (_) { /* DB read is non-critical */ }
+    }
+
     setCache(cacheKey, data, CACHE_TTL);
 
     // Persist to database (best-effort)
@@ -185,9 +196,9 @@ export async function scrapePairings(
 
 export async function scrapeStandings(
   tournamentId: string,
-  _lang = 1,
+  lang = 1,
 ): Promise<StandingsData> {
-  const cacheKey = `standings:v2:${tournamentId}`;
+  const cacheKey = `standings:v3:${tournamentId}:${lang}`;
   const cached = getCache<StandingsData>(cacheKey);
   if (cached) return cached;
 
@@ -196,8 +207,8 @@ export async function scrapeStandings(
 
   // Try crosstable first (art=4), fall back to standard list (art=1)
   for (const art of [4, 1]) {
-    const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=1&art=${art}&turdet=YES`;
-    const html = await fetchTournamentHtml(url, tournamentId, 1);
+    const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=${art}&turdet=YES`;
+    const html = await fetchTournamentHtml(url, tournamentId, lang);
 
     try {
       const data = parseStandingsHtml(html);
@@ -221,8 +232,8 @@ export async function scrapeStandings(
   // women's standings, try the standard list (art=1) for the sex data.
   if (usedArt !== 1 && result.standings.length > 0 && result.womenStandings.length === 0) {
     try {
-      const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=1&art=1&turdet=YES`;
-      const html = await fetchTournamentHtml(url, tournamentId, 1);
+      const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=1&turdet=YES`;
+      const html = await fetchTournamentHtml(url, tournamentId, lang);
       const fallback = parseStandingsHtml(html);
       if (fallback.womenStandings.length > 0) {
         result = { ...result, womenStandings: fallback.womenStandings };
@@ -243,6 +254,16 @@ export async function scrapeStandings(
     ...result,
     standings: enrichedStandings,
   };
+
+  // Archive pages may strip tournament metadata; fall back to DB
+  if (enrichedResult.info.totalRounds === 0) {
+    try {
+      const dbTournament = getTournament(tournamentId);
+      if (dbTournament && dbTournament.total_rounds > 0) {
+        enrichedResult.info.totalRounds = dbTournament.total_rounds;
+      }
+    } catch (_) { /* DB read is non-critical */ }
+  }
 
   setCache(cacheKey, enrichedResult, CACHE_TTL);
 

@@ -12,7 +12,7 @@ const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const round = parseInt(Astro.url.searchParams.get("round") || "1");
 const langParam = Astro.url.searchParams.get("lang");
 const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
-if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax' });
+if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', httpOnly: false });
 const rowsPerPage = parseInt(Astro.url.searchParams.get("rows") || String(ROWS_PER_PAGE));
 
 const t = useTranslations(lang);

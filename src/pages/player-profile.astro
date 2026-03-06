@@ -12,7 +12,7 @@ const nameParam = Astro.url.searchParams.get("name") || "";
 const fedParam = Astro.url.searchParams.get("fed") || "";
 const langParam = Astro.url.searchParams.get("lang");
 const lang = parseInt(langParam || Astro.cookies.get("lang")?.value || "1", 10);
-if (langParam) Astro.cookies.set("lang", langParam, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+if (langParam) Astro.cookies.set("lang", langParam, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax", httpOnly: false });
 
 const t = useTranslations(lang);
 

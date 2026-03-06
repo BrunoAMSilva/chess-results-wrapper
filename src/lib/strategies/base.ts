@@ -46,7 +46,14 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
   const date = dateMatch ? dateMatch[1] : '';
 
   const totalRoundsText = $('td.CR')
-    .filter((_, el) => $(el).text().includes('Number of rounds'))
+    .filter((_, el) => {
+      const t = $(el).text().trim();
+      return t.includes('Number of rounds') ||
+             t.includes('Número de rondas') ||
+             t.includes('Número de jornadas') ||
+             t.includes('Nombre de rondes') ||
+             t.includes('Anzahl der Runden');
+    })
     .next()
     .text()
     .trim();
@@ -72,7 +79,7 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
     let maxRd = 0;
     $('table.CRs1 tr').each((_, row) => {
       const text = $(row).text().trim();
-      const m = text.match(/^Round\s+(\d+)\b/i);
+      const m = text.match(/^(?:Round|Ronda|Runde|Ronde)\s+(\d+)\b/i);
       if (m) {
         const rd = parseInt(m[1], 10);
         if (rd > maxRd) maxRd = rd;
@@ -84,7 +91,7 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
   // Fallback 3: "after N rounds" text (e.g. "after 9 rounds")
   if (totalRounds === 0) {
     const pageText = $.text();
-    const m = pageText.match(/after\s+(\d+)\s+rounds/i);
+    const m = pageText.match(/(?:after|após|nach|après|después de)\s+(\d+)\s+(?:rounds|rondas|Runden|rondes|jornadas)/i);
     if (m) {
       totalRounds = parseInt(m[1], 10) || 0;
     }
@@ -112,6 +119,11 @@ function parseLinkedTournaments($: cheerio.CheerioAPI): {
 } {
   const selectionLabels = [
     'Tournament selection',
+    'Selecção de torneio',
+    'Seleção de torneio',
+    'Selección de torneo',
+    'Sélection du tournoi',
+    'Turnierauswahl',
   ];
 
   let selectionCell: cheerio.Cheerio<Element> | null = null;
@@ -310,12 +322,12 @@ export function detectPairingColumns($: cheerio.CheerioAPI): PairingColumnIndice
 
   headerRow.find('th, td').each((i, el) => {
     const text = $(el).text().trim();
-    if (text === 'Bo.') boIdx = i;
-    if (text === 'White') whiteIdx = i;
-    if (text === 'Black') blackIdx = i;
-    if (text === 'Result') resultIdx = i;
-    if (text === 'No.' && whiteIdx === -1) whiteNoIdx = i;
-    if (text === 'No.' && blackIdx !== -1) blackNoIdx = i;
+    if (text === 'Bo.' || text === 'Tab.') boIdx = i;
+    if (text === 'White' || text === 'Brancas' || text === 'Blancas' || text === 'Blancs' || text === 'Weiß') whiteIdx = i;
+    if (text === 'Black' || text === 'Pretas' || text === 'Negras' || text === 'Noirs' || text === 'Schwarz') blackIdx = i;
+    if (text === 'Result' || text === 'Resultado' || text === 'Résultat' || text === 'Ergebnis') resultIdx = i;
+    if ((text === 'No.' || text === 'Nº.') && whiteIdx === -1) whiteNoIdx = i;
+    if ((text === 'No.' || text === 'Nº.') && blackIdx !== -1) blackNoIdx = i;
   });
 
   return { boIdx, whiteIdx, blackIdx, resultIdx, whiteNoIdx, blackNoIdx };
@@ -354,13 +366,13 @@ export function detectTeamPairingColumns($: cheerio.CheerioAPI): TeamPairingColu
 
   headerRow.find('th, td').each((i, el) => {
     const text = $(el).text().trim();
-    if (text === 'No.' || text === 'Nr.') noIdx = i;
-    if (text === 'Team') {
+    if (text === 'No.' || text === 'Nr.' || text === 'Nº.') noIdx = i;
+    if (text === 'Team' || text === 'Equipa' || text === 'Equipo' || text === 'Équipe' || text === 'Mannschaft') {
       if (teamFound === 0) homeTeamIdx = i;
       else awayTeamIdx = i;
       teamFound++;
     }
-    if (text === 'Res.' || text === 'Result') {
+    if (text === 'Res.' || text === 'Result' || text === 'Resultado' || text === 'Résultat' || text === 'Ergebnis') {
       if (resFound === 0) homeResIdx = i;
       else awayResIdx = i;
       resFound++;
@@ -376,9 +388,10 @@ export function detectTeamPairingColumns($: cheerio.CheerioAPI): TeamPairingColu
  */
 export function isTeamPairingsPage($: cheerio.CheerioAPI): boolean {
   let hasTeamCol = false;
+  const teamLabels = ['Team', 'Equipa', 'Equipo', 'Équipe', 'Mannschaft'];
   $('table.CRs1 tr').each((_, row) => {
     const text = $(row).text();
-    if (text.includes('Team')) {
+    if (teamLabels.some((label) => text.includes(label))) {
       hasTeamCol = true;
       return false; // break
     }
