@@ -4,6 +4,10 @@ import fs from 'node:fs';
 
 const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'chess-results.db');
 
+// Bump when the schema changes. Triggers a full data wipe on startup
+// if the stored PRAGMA user_version is behind this value.
+const DB_VERSION = 1;
+
 // Ensure the directory exists
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
@@ -100,6 +104,22 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_players_name ON players(name);
   CREATE INDEX IF NOT EXISTS idx_players_fide ON players(fide_id) WHERE fide_id IS NOT NULL;
 `);
+
+// ─── Database versioning ────────────────────────────────────────────────────
+// If the stored version is behind DB_VERSION, wipe all data so stale rows
+// (wrong tournament types, missing labels, etc.) don't persist across deploys.
+const currentVersion = db.pragma('user_version', { simple: true }) as number;
+if (currentVersion < DB_VERSION) {
+  db.exec(`
+    DELETE FROM results;
+    DELETE FROM standings;
+    DELETE FROM tournament_players;
+    DELETE FROM players;
+    DELETE FROM tournaments;
+    DELETE FROM cache;
+  `);
+  db.pragma(`user_version = ${DB_VERSION}`);
+}
 
 function playerRichnessScore(row: DbPlayer): number {
   let score = 0;
