@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { parseHtml, parseStandingsHtml } from './scraper';
-import { detectTournamentType } from './strategies';
-import { parseTournamentMeta, parseStandingsTable, deriveWomenStandings } from './strategies/base';
-import { TournamentType } from './types';
+import { parseHtml, parseStandingsHtml } from '../../src/lib/scraper';
+import { detectTournamentType } from '../../src/lib/strategies';
+import { parseTournamentMeta, parseStandingsTable, deriveWomenStandings } from '../../src/lib/strategies/base';
+import { TournamentType } from '../../src/lib/types';
 import * as cheerio from 'cheerio';
 import fs from 'fs';
 import path from 'path';

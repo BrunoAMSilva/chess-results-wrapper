@@ -87,6 +87,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS standings (
     tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
     player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    type TEXT NOT NULL DEFAULT 'open',
     rank INTEGER NOT NULL,
     points TEXT NOT NULL DEFAULT '',
     tie_break_1 TEXT NOT NULL DEFAULT '',
@@ -95,7 +96,7 @@ db.exec(`
     tie_break_4 TEXT NOT NULL DEFAULT '',
     tie_break_5 TEXT NOT NULL DEFAULT '',
     tie_break_6 TEXT NOT NULL DEFAULT '',
-    PRIMARY KEY (tournament_id, player_id)
+    PRIMARY KEY (tournament_id, player_id, type)
   );
 
   -- Indexes for common queries
@@ -503,6 +504,7 @@ try { db.exec("ALTER TABLE standings ADD COLUMN tie_break_6 TEXT NOT NULL DEFAUL
 export function upsertStanding(
   tournamentId: string,
   playerId: number,
+  type: 'open' | 'women',
   rank: number,
   points: string,
   tb1 = '',
@@ -513,9 +515,9 @@ export function upsertStanding(
   tb6 = '',
 ): void {
   db.prepare(`
-    INSERT INTO standings (tournament_id, player_id, rank, points, tie_break_1, tie_break_2, tie_break_3, tie_break_4, tie_break_5, tie_break_6)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(tournament_id, player_id) DO UPDATE SET
+    INSERT INTO standings (tournament_id, player_id, type, rank, points, tie_break_1, tie_break_2, tie_break_3, tie_break_4, tie_break_5, tie_break_6)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(tournament_id, player_id, type) DO UPDATE SET
       rank = excluded.rank,
       points = excluded.points,
       tie_break_1 = excluded.tie_break_1,
@@ -524,10 +526,10 @@ export function upsertStanding(
       tie_break_4 = excluded.tie_break_4,
       tie_break_5 = excluded.tie_break_5,
       tie_break_6 = excluded.tie_break_6
-  `).run(tournamentId, playerId, rank, points, tb1, tb2, tb3, tb4, tb5, tb6);
+  `).run(tournamentId, playerId, type, rank, points, tb1, tb2, tb3, tb4, tb5, tb6);
 }
 
-export function getStandings(tournamentId: string) {
+export function getStandings(tournamentId: string, type: string = 'open') {
   return db.prepare(`
     SELECT s.rank, p.name, p.federation AS fed, p.sex,
            COALESCE(tp.rating, p.rating, 0) AS rating,
@@ -538,9 +540,9 @@ export function getStandings(tournamentId: string) {
     FROM standings s
     JOIN players p ON s.player_id = p.id
     LEFT JOIN tournament_players tp ON tp.tournament_id = s.tournament_id AND tp.player_id = p.id
-    WHERE s.tournament_id = ?
+    WHERE s.tournament_id = ? AND s.type = ?
     ORDER BY s.rank
-  `).all(tournamentId);
+  `).all(tournamentId, type);
 }
 
 /** Persist an entire batch of standings + players in a single transaction. */
@@ -548,11 +550,12 @@ export function persistStandings(
   tournamentId: string,
   info: TournamentInfo,
   standings: Standing[],
+  womenStandings: Standing[] = [],
 ): void {
   const txn = db.transaction(() => {
     upsertTournament(info, tournamentId);
 
-    for (const s of standings) {
+    const saveStanding = (s: Standing, type: 'open' | 'women') => {
       const playerId = upsertPlayer(
         s.name,
         s.fed,
@@ -567,7 +570,14 @@ export function persistStandings(
         s.rating ? parseInt(s.rating) || null : null,
         s.club,
       );
-      upsertStanding(tournamentId, playerId, s.rank, s.points, s.tieBreak1, s.tieBreak2, s.tieBreak3, s.tieBreak4, s.tieBreak5, s.tieBreak6);
+      upsertStanding(tournamentId, playerId, type, s.rank, s.points, s.tieBreak1, s.tieBreak2, s.tieBreak3, s.tieBreak4, s.tieBreak5, s.tieBreak6);
+    };
+
+    for (const s of standings) {
+      saveStanding(s, 'open');
+    }
+    for (const s of womenStandings) {
+      saveStanding(s, 'women');
     }
   });
   txn();
@@ -678,7 +688,7 @@ export function getPlayerTournamentHistory(playerId: number) {
       tp.club AS tournament_club
     FROM tournament_players tp
     JOIN tournaments t ON t.id = tp.tournament_id
-    LEFT JOIN standings s ON s.tournament_id = tp.tournament_id AND s.player_id = tp.player_id
+    LEFT JOIN standings s ON s.tournament_id = tp.tournament_id AND s.player_id = tp.player_id AND s.type = 'open'
     WHERE tp.player_id = ?
     ORDER BY datetime(t.updated_at) DESC
   `).all(playerId) as DbPlayerTournamentHistory[];

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parseHtml, parseStandingsHtml, scrapePairings, scrapeStandings } from './scraper';
-import { detectTournamentType } from './strategies';
-import { TournamentType } from './types';
+import { parseHtml, parseStandingsHtml, scrapePairings, scrapeStandings } from '../../src/lib/scraper';
+import { detectTournamentType } from '../../src/lib/strategies';
+import { TournamentType } from '../../src/lib/types';
 import * as cheerio from 'cheerio';
 import fs from 'fs';
 import path from 'path';

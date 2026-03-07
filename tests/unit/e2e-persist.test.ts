@@ -7,8 +7,8 @@ import db, {
   persistPairings,
   getPlayerTournamentHistory,
   findPlayerByIdentity,
-} from './db';
-import { parseHtml, parseStandingsHtml } from './scraper';
+} from '../../src/lib/db';
+import { parseHtml, parseStandingsHtml } from '../../src/lib/scraper';
 import fs from 'fs';
 import path from 'path';
 

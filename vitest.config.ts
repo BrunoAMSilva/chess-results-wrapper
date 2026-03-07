@@ -7,7 +7,7 @@ export default defineConfig({
       DATABASE_PATH: ':memory:',
     },
     // Exclude Playwright tests (they use a different runner)
-    exclude: ['**/node_modules/**', '**/dist/**', 'tests/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'tests/*.spec.ts'],
     // Default timeout for unit tests
     testTimeout: 10000,
     // Run tests in sequence to avoid DB concurrency issues

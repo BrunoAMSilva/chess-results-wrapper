@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reverseName } from './utils';
+import { reverseName } from '../../src/lib/utils';
 
 describe('reverseName', () => {
   it('should reverse comma-separated "Last, First"', () => {

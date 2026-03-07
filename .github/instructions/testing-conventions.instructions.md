@@ -1,6 +1,6 @@
 ---
 description: "Use when writing, running, or reviewing tests. Enforces test conventions, fixture usage, and regression coverage expectations."
-applyTo: "src/**/*.test.ts,vitest.config.ts"
+applyTo: "tests/**/*.test.ts,tests/**/*.spec.ts,vitest.config.ts"
 ---
 
 # Testing Conventions
@@ -28,12 +28,12 @@ applyTo: "src/**/*.test.ts,vitest.config.ts"
 
 | File | Scope |
 |------|-------|
-| `src/lib/db.test.ts` | Database CRUD, upsert preservation, deduplication, batch persistence |
-| `src/lib/scraper-parse.test.ts` | HTML parsing: metadata, linked tournaments, standings, pairings, type detection |
-| `src/lib/e2e-persist.test.ts` | Parse → persist → retrieve roundtrips |
-| `src/lib/utils.test.ts` | Utility functions (reverseName, etc.) |
-| `src/lib/scraper.test.ts` | Fixture-based parser tests + live canary tests (skipped by default) |
-| `src/lib/strategies/strategies.test.ts` | Strategy-specific live tests (skipped by default) |
+| `tests/unit/db.test.ts` | Database CRUD, upsert preservation, deduplication, batch persistence |
+| `tests/unit/scraper-parse.test.ts` | HTML parsing: metadata, linked tournaments, standings, pairings, type detection |
+| `tests/unit/e2e-persist.test.ts` | Parse → persist → retrieve roundtrips |
+| `tests/unit/utils.test.ts` | Utility functions (reverseName, etc.) |
+| `tests/unit/scraper.test.ts` | Fixture-based parser tests + live canary tests (skipped by default) |
+| `tests/unit/strategies/strategies.test.ts` | Strategy-specific live tests (skipped by default) |
 
 ## Writing Tests
 

@@ -15,9 +15,9 @@ import db, {
   findPlayerByIdentity,
   getPlayerTournamentHistory,
   getPlayerResultRows,
-} from './db';
-import { TournamentType } from './types';
-import type { TournamentInfo, Standing, Pairing } from './types';
+} from '../../src/lib/db';
+import { TournamentType } from '../../src/lib/types';
+import type { TournamentInfo, Standing, Pairing } from '../../src/lib/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -478,8 +478,8 @@ describe('Database - Standings', () => {
     linkPlayerToTournament('T001', p1, 1, 2000, 'Club A');
     linkPlayerToTournament('T001', p2, 2, 1800, 'Club B');
 
-    upsertStanding('T001', p1, 1, '8.5', '45.0', '50.0', '38.25');
-    upsertStanding('T001', p2, 2, '7.0', '42.0', '47.0', '32.00');
+    upsertStanding('T001', p1, 'open', 1, '8.5', '45.0', '50.0', '38.25');
+    upsertStanding('T001', p2, 'open', 2, '7.0', '42.0', '47.0', '32.00');
 
     const standings = getStandings('T001') as Array<Record<string, unknown>>;
     expect(standings).toHaveLength(2);
@@ -506,7 +506,7 @@ describe('Database - Standings', () => {
     const p1 = upsertPlayer('Player', 'POR');
     linkPlayerToTournament('T001', p1, 1);
 
-    upsertStanding('T001', p1, 1, '7.5', 'TB1', 'TB2', 'TB3', 'TB4', 'TB5', 'TB6');
+    upsertStanding('T001', p1, 'open', 1, '7.5', 'TB1', 'TB2', 'TB3', 'TB4', 'TB5', 'TB6');
 
     const standings = getStandings('T001') as Array<Record<string, unknown>>;
     expect(standings[0].tie_break_1).toBe('TB1');
@@ -522,8 +522,8 @@ describe('Database - Standings', () => {
     const p1 = upsertPlayer('Player', 'POR');
     linkPlayerToTournament('T001', p1, 1);
 
-    upsertStanding('T001', p1, 5, '3.0');
-    upsertStanding('T001', p1, 1, '8.5', '45.0');
+    upsertStanding('T001', p1, 'open', 5, '3.0');
+    upsertStanding('T001', p1, 'open', 1, '8.5', '45.0');
 
     const standings = getStandings('T001') as Array<Record<string, unknown>>;
     expect(standings).toHaveLength(1);
@@ -540,9 +540,9 @@ describe('Database - Standings', () => {
     linkPlayerToTournament('T001', p2, 1);
     linkPlayerToTournament('T001', p3, 2);
 
-    upsertStanding('T001', p1, 3, '5.0');
-    upsertStanding('T001', p2, 1, '8.0');
-    upsertStanding('T001', p3, 2, '7.0');
+    upsertStanding('T001', p1, 'open', 3, '5.0');
+    upsertStanding('T001', p2, 'open', 1, '8.0');
+    upsertStanding('T001', p3, 'open', 2, '7.0');
 
     const standings = getStandings('T001') as Array<Record<string, unknown>>;
     expect(standings[0].rank).toBe(1);
@@ -555,7 +555,7 @@ describe('Database - Standings', () => {
     upsertTournament(makeTournamentInfo(), 'T001');
     const p1 = upsertPlayer('Player', 'POR', '', '', 1500);
     linkPlayerToTournament('T001', p1, 1, 1600); // tournament-specific rating
-    upsertStanding('T001', p1, 1, '7.0');
+    upsertStanding('T001', p1, 'open', 1, '7.0');
 
     const standings = getStandings('T001') as Array<Record<string, unknown>>;
     expect(standings[0].rating).toBe(1600); // not 1500
@@ -565,7 +565,7 @@ describe('Database - Standings', () => {
     upsertTournament(makeTournamentInfo(), 'T001');
     const p1 = upsertPlayer('Player', 'POR', '', 'Base Club', null);
     linkPlayerToTournament('T001', p1, 1, null, 'Tournament Club');
-    upsertStanding('T001', p1, 1, '7.0');
+    upsertStanding('T001', p1, 'open', 1, '7.0');
 
     const standings = getStandings('T001') as Array<Record<string, unknown>>;
     expect(standings[0].club).toBe('Tournament Club');
@@ -800,8 +800,8 @@ describe('Database - Player Tournament History', () => {
     linkPlayerToTournament('T001', playerId, 1, 1800, 'Club A');
     linkPlayerToTournament('T002', playerId, 5, 1850, 'Club B');
 
-    upsertStanding('T001', playerId, 3, '6.0', '40.0', '45.0', '30.0');
-    upsertStanding('T002', playerId, 1, '8.5', '50.0', '55.0', '42.0');
+    upsertStanding('T001', playerId, 'open', 3, '6.0', '40.0', '45.0', '30.0');
+    upsertStanding('T002', playerId, 'open', 1, '8.5', '50.0', '55.0', '42.0');
 
     const history = getPlayerTournamentHistory(playerId);
     expect(history).toHaveLength(2);
@@ -837,7 +837,7 @@ describe('Database - Player Tournament History', () => {
     upsertTournament(makeTournamentInfo(), 'T001');
     const playerId = upsertPlayer('TB Player', 'POR');
     linkPlayerToTournament('T001', playerId, 1);
-    upsertStanding('T001', playerId, 1, '7.0', 'A', 'B', 'C', 'D', 'E', 'F');
+    upsertStanding('T001', playerId, 'open', 1, '7.0', 'A', 'B', 'C', 'D', 'E', 'F');
 
     const history = getPlayerTournamentHistory(playerId);
     expect(history[0].tie_break_4).toBe('D');

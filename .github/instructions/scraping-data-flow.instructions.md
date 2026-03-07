@@ -23,7 +23,31 @@ Every scraping function follows: **fetch → parse → persist**. Parsing and pe
 ### Old Tournament Gate
 chess-results.com blocks old tournaments behind a confirmation gate. The gate page contains a `__VIEWSTATE` hidden field and a button. When detected:
 1. Extract `__VIEWSTATE`, `__VIEWSTATEGENERATOR`, `__EVENTVALIDATION` from the form
-2. POST back with `__EVENTTARGET=cb_ShowTournament` plus those hidden fields
+2. POST back with `__EVENTTARGET=cb_ShowTournament` plus those hidden fields. Example for tournament ID `1303334`:
+```typescript
+await fetch("https://s2.chess-results.com/tnr1303334.aspx?lan=10&turdet=YES&SNode=S0", {
+    "credentials": "include",
+    "headers": {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:147.0) Gecko/20100101 Firefox/147.0",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "pt-PT,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Sec-GPC": "1",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Sec-Fetch-User": "?1",
+        "Priority": "u=0, i",
+        "Pragma": "no-cache",
+        "Cache-Control": "no-cache"
+    },
+    "referrer": "https://s2.chess-results.com/tnr1303334.aspx?lan=10&turdet=YES&SNode=S0",
+    "body": "__EVENTTARGET=&__EVENTARGUMENT=&__VIEWSTATE=%2FwEPDwUKLTYyNDM3NzQzNw9kFgJmD2QWBAIBDxYCHgRUZXh0BQJwdGQCCQ9kFgICAQ9kFgxmDxYCHgdWaXNpYmxlZxYCZg9kFgICAw8WAh4Fc3R5bGUFRFdJRFRIOjEwMDBweDtIRUlHSFQ6OTdweDtwb3NpdGlvbjpyZWxhdGl2ZTtiYWNrZ3JvdW5kLWNvbG9yOiMzMzQxNjY7FgQCAQ8WAh8CBStXSURUSDoxMDAwcHg7SEVJR0hUOjk3cHg7cG9zaXRpb246cmVsYXRpdmU7FgICAQ8WAh8CBTVXSURUSDo3MjhweDtIRUlHSFQ6OTdweDtsZWZ0OjI3MnB4O3Bvc2l0aW9uOmFic29sdXRlO2QCAw8WAh4Dc3JjBSNpbWFnZXMvY2hlc3NSZXN1bHRzX0VOR18xMDAweDkwLmpwZ2QCBA8WAh8BZxYCZg9kFgQCAQ8WAh4JaW5uZXJodG1sBQ9Mb2dnZWQgb246IEdhc3RkAgMPFgIfBAUeU2VydmVydGltZSAwNy4wMy4yMDI2IDE0OjA2OjA4ZAIFDxYCHwFnZAIGDxYCHwFnZAIIDxYCHwFoZAILD2QWAmYPZBYCAgMPZBYCZg9kFgJmDxYCHgV3aWR0aAUDODM0FgICAQ8WAh8CBTpQQURESU5HOjBweCAwcHggMHB4IDJweDtGTE9BVDpsZWZ0O01BUkdJTjowcHg7V0lEVEg6ODM0cHg7FgICAQ9kFgICAw9kFgQCAQ88KwARAgEQFgAWABYADBQrAABkAgMPPCsAEQIBEBYAFgAWAAwUKwAAZBgCBRJjdGwwMCRQMSRHcmlkVmlldzIPZ2QFEmN0bDAwJFAxJEdyaWRWaWV3MQ9nZPmcrU%2BMWIDpXvAdBokz5De9Vbit%2Fq9dT2FwKUYNDzOQ&__VIEWSTATEGENERATOR=D5991272&__EVENTVALIDATION=%2FwEdAAI2hSyI2FUn4IRCHtE5cNgOolKyfaSroikh4PwByU0fhr8wqlI4bF6w8agTMhyol3G8z9STFzs2cxCgGmM68cTr&cb_alleDetails=mostrar+detalhes+do+torneio",
+    "method": "POST",
+    "mode": "cors"
+});
+```
 3. Use the response HTML
 
 ### Domain Fallback

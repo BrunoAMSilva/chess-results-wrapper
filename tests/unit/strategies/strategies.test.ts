@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import * as cheerio from 'cheerio';
-import { parseHtml, parseStandingsHtml } from '../scraper';
-import { detectTournamentType } from './index';
-import { TournamentType } from '../types';
+import { parseHtml, parseStandingsHtml } from '../../../src/lib/scraper';
+import { detectTournamentType } from '../../../src/lib/strategies/index';
+import { TournamentType } from '../../../src/lib/types';
 
 // ─── Known tournament IDs for each strategy ────────────────────────────────────
 // These are real, ended tournaments whose data is stable.

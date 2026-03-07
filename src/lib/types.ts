@@ -132,6 +132,7 @@ export interface DbResult {
 export interface DbStanding {
   tournament_id: string;
   player_id: number;
+  type: string;
   rank: number;
   points: string;
   tie_break_1: string;
