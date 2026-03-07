@@ -10,45 +10,50 @@ const tieBreaks = values
   .filter((tb) => tb.value !== "");
 ---
 
-{tieBreaks.length > 0 && (
-  <div class="tie-breaks">
-    {tieBreaks.map((tb) => (
-      <div class="tb-group">
-        <span class="tb-val">{tb.value || "–"}</span>
-        <span class="tb-lbl">{tb.label}</span>
-      </div>
-    ))}
-  </div>
-)}
+{
+  tieBreaks.length > 0 && (
+    <div class="tie-breaks">
+      {tieBreaks.map((tb) => (
+        <div class="tb-group">
+          <span class="tb-val">{tb.value || "–"}</span>
+          <span class="tb-lbl">{tb.label}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 <style>
   .tie-breaks {
     display: flex;
     gap: var(--space-3);
-    padding-left: var(--space-4);
     align-self: center;
+    justify-content: space-between;
+    width: 100%;
   }
 
   .tb-group {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 44px;
+    width: 4em;
+    flex: 1;
   }
 
   .tb-val {
-    font-size: var(--text-2xl);
+    font-size: 1.5em;
     font-weight: var(--weight-bold);
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
   }
 
   .tb-lbl {
-    font-size: 0.6rem;
+    display: none;
+    font-size: 0.6em;
     font-weight: var(--weight-semibold);
     color: var(--text-dim);
     opacity: 0.6;
-    margin-top: 0.1rem;
+    margin-top: 0.1em;
   }
 
   @media (max-width: 480px) {
@@ -57,9 +62,14 @@ const tieBreaks = values
     }
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 1068px) {
     .tie-breaks {
+      display: flex;
       gap: var(--space-3);
+      align-items: center;
+    }
+    .tb-lbl {
+      display: block;
     }
   }
 </style>
