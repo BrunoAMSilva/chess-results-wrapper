@@ -94,4 +94,19 @@ const linkedTournaments = data?.info.linkedTournaments;
   }
 </style>
 
+<script is:inline define:vars={{ tid, tournamentName: data?.info.name || '', tournamentDate: data?.info.date || '' }}>
+  (function() {
+    try {
+      if (!tid || !tournamentName) return;
+      var key = 'recentTournaments';
+      var stored = localStorage.getItem(key);
+      var recent = stored ? JSON.parse(stored) : [];
+      recent = recent.filter(function(r) { return r.id !== tid; });
+      recent.unshift({ id: tid, name: tournamentName, date: tournamentDate });
+      recent = recent.slice(0, 5);
+      localStorage.setItem(key, JSON.stringify(recent));
+    } catch(e) { /* localStorage unavailable */ }
+  })();
+</script>
+
 

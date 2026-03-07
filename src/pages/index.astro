@@ -1,5 +1,6 @@
 ---
 import ThemeToggle from "../components/ThemeToggle.astro";
+import RecentTournaments from "../components/RecentTournaments.astro";
 import { useTranslations } from "../i18n/ui";
 import "../styles/global.css";
 
@@ -93,6 +94,8 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
 
           <p class="home-hint">{t('home.example')}</p>
           <p class="error-hint hidden" id="errorHint">{t('home.invalid')}</p>
+
+          <RecentTournaments recentLabel={t('home.recent')} />
         </div>
       </main>
     </div>
@@ -574,6 +577,11 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     }
 
     function navigateToTournament(tid: string) {
+      // Save to recent tournaments
+      const match = currentResults.find(r => r.id === tid);
+      const entry = match as { id: string; name: string; date?: string } | undefined;
+      saveRecentTournament(tid, entry?.name, (entry as any)?.date);
+
       const langMatch = document.cookie.match(/(?:^|;\s*)lang=([^;]*)/);
       const savedLang = langMatch ? langMatch[1] : null;
       const params = new URLSearchParams({ tid });
@@ -587,6 +595,18 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     const urlMatch = input.match(/chess-results\.com\/tnr(\d+)\.aspx/i);
     if (urlMatch) return urlMatch[1];
     return null;
+  }
+
+  function saveRecentTournament(tid: string, name?: string, date?: string) {
+    try {
+      const key = 'recentTournaments';
+      const stored = localStorage.getItem(key);
+      let recent: { id: string; name: string; date: string }[] = stored ? JSON.parse(stored) : [];
+      recent = recent.filter(r => r.id !== tid);
+      recent.unshift({ id: tid, name: name || `Tournament ${tid}`, date: date || '' });
+      recent = recent.slice(0, 5);
+      localStorage.setItem(key, JSON.stringify(recent));
+    } catch { /* localStorage unavailable */ }
   }
 
   function escapeHtml(text: string): string {
