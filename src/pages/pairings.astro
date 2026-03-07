@@ -1,6 +1,6 @@
 ---
-import MobileLayout from "../layouts/ResponsiveLayout.astro";
-import MobileMatchCard from "../components/ResponsiveMatchCard.astro";
+import ResponsiveLayout from "../layouts/ResponsiveLayout.astro";
+import ResponsiveMatchCard from "../components/ResponsiveMatchCard.astro";
 import RoundSelector from "../components/RoundSelector.astro";
 import TournamentSelector from "../components/TournamentSelector.astro";
 import { scrapePairings } from "../lib/scraper";
@@ -30,7 +30,7 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
 const linkedTournaments = data?.info.linkedTournaments;
 ---
 
-<MobileLayout title={data?.info.name || t('site.title')} lang={lang}>
+<ResponsiveLayout title={data?.info.name || t('site.title')} lang={lang}>
   {error && (
     <div class="error-msg">
       <p>{error}</p>
@@ -57,14 +57,14 @@ const linkedTournaments = data?.info.linkedTournaments;
 
   <div class="pairings-list animate-enter" style="animation-delay: 100ms">
     {allPairings.length > 0 ? (
-      allPairings.map((pairing: any) => <MobileMatchCard match={pairing} tid={tid} lang={lang} />)
+      allPairings.map((pairing: any) => <ResponsiveMatchCard match={pairing} tid={tid} lang={lang} />)
     ) : (
       <div class="empty-state">
         <p>{t('empty.pairings')}</p>
       </div>
     )}
   </div>
-</MobileLayout>
+</ResponsiveLayout>
 
 <style>
   .mobile-controls {

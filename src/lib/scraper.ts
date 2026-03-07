@@ -97,6 +97,9 @@ async function fetchTournamentHtml(url: string, tournamentId: string, lang: numb
   }
 
   const primaryHtml = await primaryRes.text();
+  // After redirects (chess-results.com → s2/s3), use the final URL for POSTs
+  // so the ViewState matches the server that generated it.
+  const resolvedUrl = primaryRes.url || url;
   if (!isOldTournamentGate(primaryHtml)) {
     // Page has data but tournament details (linked tournaments, etc.) may be
     // collapsed behind a "Show tournament details" button.  Try to expand them.
@@ -109,18 +112,20 @@ async function fetchTournamentHtml(url: string, tournamentId: string, lang: numb
           body.set(k, v);
         }
         body.set('cb_alleDetails', 'Show tournament details');
-        const expandRes = await fetch(url, {
+        const expandRes = await fetch(resolvedUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
             Cookie: jar.toHeader(),
-            Referer: url,
+            Referer: resolvedUrl,
           },
           body: body.toString(),
         });
         if (expandRes.ok) {
           const expandedHtml = await expandRes.text();
-          if (/class="CRnowrap"/.test(expandedHtml)) {
+          // Accept if the expanded HTML gained metadata (CRnowrap) or
+          // tournament selection links — different servers vary in markup.
+          if (/class="CRnowrap"|Tournament selection|Selec[çc][ãa]o|Selecci[oó]n|Sélection|Auswahl/i.test(expandedHtml)) {
             return expandedHtml;
           }
         }
