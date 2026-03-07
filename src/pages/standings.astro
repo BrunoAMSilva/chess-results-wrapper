@@ -9,8 +9,14 @@ import { DEFAULT_TOURNAMENT } from "../lib/constants";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const langParam = Astro.url.searchParams.get("lang");
-const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
-if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', httpOnly: false });
+const lang = parseInt(langParam || Astro.cookies.get("lang")?.value || "1");
+if (langParam)
+  Astro.cookies.set("lang", langParam, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+    httpOnly: false,
+  });
 
 const t = useTranslations(lang);
 
@@ -20,7 +26,7 @@ let error: string | null = null;
 try {
   data = await scrapeStandings(tid, lang);
 } catch (e) {
-  error = e instanceof Error ? e.message : t('error.load');
+  error = e instanceof Error ? e.message : t("error.load");
 }
 
 const allStandings = data?.standings || [];
@@ -29,62 +35,73 @@ const hasWomen = womenStandings.length > 0;
 const linkedTournaments = data?.info.linkedTournaments;
 ---
 
-<MobileLayout title={data?.info.name || t('site.title')} lang={lang}>
-  {error && (
-    <div class="error-msg">
-      <p>{error}</p>
-    </div>
-  )}
+<MobileLayout title={data?.info.name || t("site.title")} lang={lang}>
+  {
+    error && (
+      <div class="error-msg">
+        <p>{error}</p>
+      </div>
+    )
+  }
 
-  {linkedTournaments && linkedTournaments.length > 0 && (
-    <TournamentSelector
-      currentId={tid}
-      currentLabel={data!.info.currentLabel || data!.info.name}
-      linkedTournaments={linkedTournaments}
-      lang={lang}
-    />
-  )}
-
-  {hasWomen && (
-    <div class="standings-seg-wrapper">
-      <SegmentedControl
-        name="standings"
-        segments={[
-          { value: "open", label: t('standings.open') },
-          { value: "women", label: t('standings.women') },
-        ]}
-        active="open"
-      />
-    </div>
-  )}
-
-  <div class="standings-list" id="openStandingsList">
-    {allStandings.length > 0 ? (
-      allStandings.map((standing: any, i: number) => (
-        <StandingRow standing={standing} index={i} lang={lang} tid={tid} />
-      ))
-    ) : (
-      !error && <div class="empty-state"><p>No standings available</p></div>
-    )}
+  <div class="standings-seg-wrapper">
+    {
+      linkedTournaments && linkedTournaments.length > 0 && (
+        <TournamentSelector
+          currentId={tid}
+          currentLabel={data!.info.currentLabel || data!.info.name}
+          linkedTournaments={linkedTournaments}
+          lang={lang}
+        />
+      )
+    }
+    {
+      hasWomen && (
+        <SegmentedControl
+          name="standings"
+          segments={[
+            { value: "open", label: t("standings.open") },
+            { value: "women", label: t("standings.women") },
+          ]}
+          active="open"
+        />
+      )
+    }
   </div>
 
-  {hasWomen && (
-    <div class="standings-list hidden" id="womenStandingsList">
-      {womenStandings.map((standing: any, i: number) => (
-        <StandingRow standing={standing} index={i} lang={lang} tid={tid} />
-      ))}
-    </div>
-  )}
+  <div class="standings-list" id="openStandingsList">
+    {
+      allStandings.length > 0
+        ? allStandings.map((standing: any, i: number) => (
+            <StandingRow standing={standing} index={i} lang={lang} tid={tid} />
+          ))
+        : !error && (
+            <div class="empty-state">
+              <p>No standings available</p>
+            </div>
+          )
+    }
+  </div>
+
+  {
+    hasWomen && (
+      <div class="standings-list hidden" id="womenStandingsList">
+        {womenStandings.map((standing: any, i: number) => (
+          <StandingRow standing={standing} index={i} lang={lang} tid={tid} />
+        ))}
+      </div>
+    )
+  }
 </MobileLayout>
 
 <style>
   .standings-seg-wrapper {
     display: flex;
-    justify-content: center;
+    justify-content: space-between;
     position: sticky;
     top: 0;
     z-index: 5;
-    padding: var(--space-2) 0;
+    padding: var(--space-4) 0;
   }
 
   .standings-seg-wrapper :global(.seg-control) {
@@ -95,7 +112,6 @@ const linkedTournaments = data?.info.linkedTournaments;
   .standings-list {
     display: flex;
     flex-direction: column;
-    padding-bottom: var(--space-8);
     background: var(--surface);
     border-radius: var(--radius-md);
     overflow: hidden;
@@ -117,35 +133,46 @@ const linkedTournaments = data?.info.linkedTournaments;
     const wrapper = document.querySelector('[data-seg-control="standings"]');
     if (!wrapper) return;
 
-    const openList = document.getElementById('openStandingsList');
-    const womenList = document.getElementById('womenStandingsList');
+    const openList = document.getElementById("openStandingsList");
+    const womenList = document.getElementById("womenStandingsList");
 
-    wrapper.addEventListener('segmented-change', ((e: CustomEvent) => {
-      if (e.detail.value === 'open') {
-        openList?.classList.remove('hidden');
-        womenList?.classList.add('hidden');
+    wrapper.addEventListener("segmented-change", ((e: CustomEvent) => {
+      if (e.detail.value === "open") {
+        openList?.classList.remove("hidden");
+        womenList?.classList.add("hidden");
       } else {
-        openList?.classList.add('hidden');
-        womenList?.classList.remove('hidden');
+        openList?.classList.add("hidden");
+        womenList?.classList.remove("hidden");
       }
     }) as EventListener);
   }
 
   initStandingsTabs();
-  document.addEventListener('astro:after-swap', initStandingsTabs);
+  document.addEventListener("astro:after-swap", initStandingsTabs);
 </script>
 
-<script is:inline define:vars={{ tid, tournamentName: data?.info.name || '', tournamentDate: data?.info.date || '' }}>
-  (function() {
+<script
+  is:inline
+  define:vars={{
+    tid,
+    tournamentName: data?.info.name || "",
+    tournamentDate: data?.info.date || "",
+  }}
+>
+  (function () {
     try {
       if (!tid || !tournamentName) return;
-      var key = 'recentTournaments';
+      var key = "recentTournaments";
       var stored = localStorage.getItem(key);
       var recent = stored ? JSON.parse(stored) : [];
-      recent = recent.filter(function(r) { return r.id !== tid; });
+      recent = recent.filter(function (r) {
+        return r.id !== tid;
+      });
       recent.unshift({ id: tid, name: tournamentName, date: tournamentDate });
       recent = recent.slice(0, 5);
       localStorage.setItem(key, JSON.stringify(recent));
-    } catch(e) { /* localStorage unavailable */ }
+    } catch (e) {
+      /* localStorage unavailable */
+    }
   })();
 </script>
