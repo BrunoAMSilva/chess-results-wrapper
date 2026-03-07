@@ -15,10 +15,17 @@ const { standing, index, lang, tid } = Astro.props;
 const t = useTranslations(lang);
 
 const isTop3 = standing.rank <= 3;
-const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
+const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : "";
+const Tag = tid ? "a" : "div";
+const attributes = tid
+  ? {
+      href: `/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(standing.name)}&lang=${lang}`,
+    }
+  : {};
 ---
 
-<div
+<Tag
+  {...attributes}
   class:list={["standing-row", { "top-3": isTop3 }, rankClass]}
   style={`animation-delay: ${index * 40}ms`}
 >
@@ -27,34 +34,49 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
   </div>
 
   <div class="player-info">
-    {tid ? (
-      <a class="player-name" href={`/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(standing.name)}&lang=${lang}`}>{reverseName(standing.name)}</a>
-    ) : (
-      <span class="player-name">{reverseName(standing.name)}</span>
-    )}
+    <span class="player-name">{reverseName(standing.name)}</span>
     <span class="player-fed">
       {standing.fed}
-      {standing.rating && standing.rating !== "0" && <Fragment> • {standing.rating}</Fragment>}
+      {
+        standing.rating && standing.rating !== "0" && (
+          <Fragment> • {standing.rating}</Fragment>
+        )
+      }
       {standing.club && <Fragment> • {standing.club}</Fragment>}
     </span>
   </div>
 
   <div class="stats-col">
     <div class="main-stat">
-        <span class="points">{standing.points}</span>
-        <span class="stat-label">{t('standings.pts')}</span>
+      <span class="points">{standing.points}</span>
+      <span class="stat-label">{t("standings.pts")}</span>
     </div>
-    
-    <TieBreaks values={[standing.tieBreak1, standing.tieBreak2, standing.tieBreak3, standing.tieBreak4, standing.tieBreak5, standing.tieBreak6]} />
+
+    <TieBreaks
+      values={[
+        standing.tieBreak1,
+        standing.tieBreak2,
+        standing.tieBreak3,
+        standing.tieBreak4,
+        standing.tieBreak5,
+        standing.tieBreak6,
+      ]}
+    />
   </div>
-</div>
+</Tag>
 
 <style>
   .standing-row {
+    --hover-opacity: 0;
     display: grid;
     grid-template-columns: 50px minmax(0, 1fr) auto;
     align-items: center;
-    background: var(--surface);
+    background:
+      linear-gradient(90deg,
+        rgb(from var(--text-muted) r g b / 0),
+        rgb(from var(--text-muted) r g b / var(--hover-opacity))
+      ),
+      linear-gradient(var(--surface), var(--surface));
     border-bottom: 1px solid var(--border);
     padding: 0 0.5rem 0 0;
     animation: fadeInUp var(--duration-slow) ease both;
@@ -69,23 +91,39 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
   }
 
   .standing-row.top-3 {
-    background: linear-gradient(90deg, var(--accent-subtle) 0%, var(--surface) 100%);
+    background: linear-gradient(
+      90deg,
+      var(--accent-subtle) 0%,
+      oklch(from var(--accent) l c h / var(--hover-opacity)) 100%
+    );
     border-left: 4px solid var(--accent);
   }
 
   .standing-row.rank-1 {
     border-left-color: var(--medal-gold);
-    background: linear-gradient(90deg, rgba(255, 215, 0, 0.15) 0%, var(--surface) 100%);
+    background: linear-gradient(
+      90deg,
+      rgba(255, 215, 0, 0.15) 0%,
+      oklch(from var(--accent) l c h / var(--hover-opacity)) 100%
+    );
   }
 
   .standing-row.rank-2 {
     border-left-color: var(--medal-silver);
-    background: linear-gradient(90deg, rgba(192, 192, 192, 0.15) 0%, var(--surface) 100%);
+    background: linear-gradient(
+      90deg,
+      rgba(192, 192, 192, 0.15) 0%,
+      rgba(192 192 192 / var(--hover-opacity)) 100%
+    );
   }
 
   .standing-row.rank-3 {
     border-left-color: var(--medal-bronze);
-    background: linear-gradient(90deg, rgba(205, 127, 50, 0.15) 0%, var(--surface) 100%);
+    background: linear-gradient(
+      90deg,
+      rgba(205, 127, 50, 0.15) 0%,
+      rgba(205, 127, 50, var(--hover-opacity)) 100%
+    );
   }
 
   .rank-col {
@@ -100,32 +138,26 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
 
   .rank-1 .rank-col {
     color: var(--medal-gold);
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
   }
 
   .rank-2 .rank-col {
     color: var(--medal-silver);
-    text-shadow: 0 0 20px rgba(192, 192, 192, 0.4);
   }
 
   .rank-3 .rank-col {
     color: var(--medal-bronze);
-    text-shadow: 0 0 20px rgba(205, 127, 50, 0.4);
   }
 
   .rank-1 .points {
     color: var(--medal-gold);
-    text-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
   }
 
   .rank-2 .points {
     color: var(--medal-silver);
-    text-shadow: 0 0 20px rgba(192, 192, 192, 0.4);
   }
 
   .rank-3 .points {
     color: var(--medal-bronze);
-    text-shadow: 0 0 20px rgba(205, 127, 50, 0.4);
   }
 
   .top-3 .rank-col {
@@ -200,7 +232,7 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
     line-height: 1;
     font-variant-numeric: tabular-nums;
   }
-  
+
   .accent-text {
     color: var(--accent-text);
   }
@@ -226,7 +258,8 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
       padding: 0 1.5rem 0 0;
       min-height: 80px;
     }
-    .rank-col, .points {
+    .rank-col,
+    .points {
       font-size: 2.5rem;
     }
     .player-name {
@@ -246,6 +279,12 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : '';
       width: 100px;
       margin-right: 0.5rem;
       padding: 1rem 0;
+    }
+  }
+
+  @media (hover: hover) {
+    .standing-row:hover {
+      --hover-opacity: .5;
     }
   }
 </style>
