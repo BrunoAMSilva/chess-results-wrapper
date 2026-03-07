@@ -239,6 +239,7 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
   // Migrate: add columns if they don't exist yet (no-op after first run)
   try { db.exec('ALTER TABLE tournaments ADD COLUMN event_label TEXT NOT NULL DEFAULT \'\''); } catch (_) {}
   try { db.exec('ALTER TABLE tournaments ADD COLUMN linked_tournaments TEXT NOT NULL DEFAULT \'[]\''); } catch (_) {}
+  try { db.exec("ALTER TABLE tournaments ADD COLUMN last_updated TEXT NOT NULL DEFAULT ''"); } catch (_) {}
 
   // Filter out self-reference from linked tournaments
   const filtered = info.linkedTournaments?.filter((t) => t.id !== tournamentId);
@@ -246,8 +247,8 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
     ? JSON.stringify(filtered)
     : '[]';
   db.prepare(`
-    INSERT INTO tournaments (id, name, type, total_rounds, date, location, event_label, linked_tournaments, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+    INSERT INTO tournaments (id, name, type, total_rounds, date, location, event_label, linked_tournaments, last_updated, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       type = excluded.type,
@@ -256,8 +257,9 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
       location = CASE WHEN excluded.location != '' THEN excluded.location ELSE tournaments.location END,
       event_label = CASE WHEN excluded.event_label != '' THEN excluded.event_label ELSE tournaments.event_label END,
       linked_tournaments = CASE WHEN excluded.linked_tournaments != '[]' THEN excluded.linked_tournaments ELSE tournaments.linked_tournaments END,
+      last_updated = CASE WHEN excluded.last_updated != '' THEN excluded.last_updated ELSE tournaments.last_updated END,
       updated_at = datetime('now')
-  `).run(tournamentId, info.name, info.type, info.totalRounds, info.date, info.location, info.currentLabel || '', linkedJson);
+  `).run(tournamentId, info.name, info.type, info.totalRounds, info.date, info.location, info.currentLabel || '', linkedJson, info.lastUpdated || '');
 
   // Propagate links bidirectionally: if A links to B, ensure B links back to A
   if (filtered && filtered.length > 0 && info.currentLabel) {
@@ -485,13 +487,136 @@ export function upsertResult(
 
 export function getResults(tournamentId: string, round: number) {
   return db.prepare(`
-    SELECT r.*, pw.name AS white_name, pb.name AS black_name
+    SELECT r.*, pw.name AS white_name, pb.name AS black_name,
+           COALESCE(tpw.starting_number, 0) AS white_starting_number,
+           COALESCE(tpb.starting_number, 0) AS black_starting_number
     FROM results r
     LEFT JOIN players pw ON r.white_player_id = pw.id
     LEFT JOIN players pb ON r.black_player_id = pb.id
+    LEFT JOIN tournament_players tpw ON tpw.tournament_id = r.tournament_id AND tpw.player_id = r.white_player_id
+    LEFT JOIN tournament_players tpb ON tpb.tournament_id = r.tournament_id AND tpb.player_id = r.black_player_id
     WHERE r.tournament_id = ? AND r.round = ?
     ORDER BY r.table_number
   `).all(tournamentId, round);
+}
+
+/** Build TournamentData for a specific round from DB rows. */
+export function getPairingsFromDb(
+  tournamentId: string,
+  round: number,
+): { info: TournamentInfo; pairings: Pairing[] } | null {
+  const tournament = getTournament(tournamentId);
+  if (!tournament) return null;
+
+  const results = getResults(tournamentId, round) as Array<{
+    table_number: number;
+    white_name: string | null;
+    black_name: string | null;
+    white_starting_number: number;
+    black_starting_number: number;
+    result: string;
+    white_team: string | null;
+    black_team: string | null;
+  }>;
+  if (results.length === 0) return null;
+
+  const pairings: Pairing[] = results.map((r) => ({
+    table: r.table_number,
+    white: { name: r.white_name || '', number: r.white_starting_number },
+    black: r.black_name ? { name: r.black_name, number: r.black_starting_number } : null,
+    result: r.result,
+  }));
+
+  return { info: buildTournamentInfo(tournament, round), pairings };
+}
+
+/** Build StandingsData from DB rows. */
+export function getStandingsFromDb(tournamentId: string): {
+  info: TournamentInfo;
+  standings: Standing[];
+  womenStandings: Standing[];
+} | null {
+  const tournament = getTournament(tournamentId);
+  if (!tournament) return null;
+
+  const openRows = getStandings(tournamentId, 'open') as Array<{
+    rank: number;
+    name: string;
+    fed: string;
+    sex: Sex;
+    rating: number;
+    club: string;
+    points: string;
+    tie_break_1: string;
+    tie_break_2: string;
+    tie_break_3: string;
+    tie_break_4: string;
+    tie_break_5: string;
+    tie_break_6: string;
+    starting_number: number;
+  }>;
+  if (openRows.length === 0) return null;
+
+  const standings: Standing[] = openRows.map((r) => ({
+    rank: r.rank,
+    startingNumber: r.starting_number || 0,
+    name: r.name,
+    fed: r.fed || '',
+    rating: r.rating ? String(r.rating) : '',
+    club: r.club || '',
+    points: r.points,
+    sex: r.sex || '',
+    tieBreak1: r.tie_break_1 || '',
+    tieBreak2: r.tie_break_2 || '',
+    tieBreak3: r.tie_break_3 || '',
+    tieBreak4: r.tie_break_4 || '',
+    tieBreak5: r.tie_break_5 || '',
+    tieBreak6: r.tie_break_6 || '',
+  }));
+
+  const womenRows = getStandings(tournamentId, 'women') as typeof openRows;
+  const womenStandings: Standing[] = womenRows.map((r) => ({
+    rank: r.rank,
+    startingNumber: r.starting_number || 0,
+    name: r.name,
+    fed: r.fed || '',
+    rating: r.rating ? String(r.rating) : '',
+    club: r.club || '',
+    points: r.points,
+    sex: 'F' as Sex,
+    tieBreak1: r.tie_break_1 || '',
+    tieBreak2: r.tie_break_2 || '',
+    tieBreak3: r.tie_break_3 || '',
+    tieBreak4: r.tie_break_4 || '',
+    tieBreak5: r.tie_break_5 || '',
+    tieBreak6: r.tie_break_6 || '',
+  }));
+
+  return { info: buildTournamentInfo(tournament, 0), standings, womenStandings };
+}
+
+function buildTournamentInfo(tournament: DbTournament, round = 0): TournamentInfo {
+  let linkedTournaments: LinkedTournament[] | undefined;
+  let currentLabel: string | undefined;
+  try {
+    const parsed = JSON.parse(tournament.linked_tournaments);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      linkedTournaments = parsed;
+      currentLabel = tournament.event_label || undefined;
+    }
+  } catch (_) { /* ignore */ }
+
+  return {
+    name: tournament.name,
+    round,
+    totalRounds: tournament.total_rounds,
+    date: tournament.date,
+    location: tournament.location,
+    type: tournament.type as TournamentType,
+    linkedTournaments,
+    currentLabel,
+    lastUpdated: tournament.last_updated || undefined,
+  };
 }
 
 // ── Standings ──

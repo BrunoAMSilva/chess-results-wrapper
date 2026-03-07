@@ -106,7 +106,23 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
 
   const { linkedTournaments, currentLabel } = parseLinkedTournaments($);
 
-  return { name, totalRounds, date, location, linkedTournaments, currentLabel };
+  const lastUpdated = parseLastUpdated($);
+
+  return { name, totalRounds, date, location, linkedTournaments, currentLabel, lastUpdated };
+}
+
+/**
+ * Parse "Last update DD.MM.YYYY HH:MM:SS" from the CRsmall paragraph.
+ * Returns an ISO-format timestamp string, or undefined if not found.
+ */
+function parseLastUpdated($: cheerio.CheerioAPI): string | undefined {
+  const smallText = $('p.CRsmall').text();
+  const match = smallText.match(
+    /(?:Last update|Última (?:Actual|Atual)iza[çc][ãa]o|Última actualización|Letzte Aktualisierung|Dernière actualisation)\s*(\d{2}\.\d{2}\.\d{4})\s+(\d{2}:\d{2}:\d{2})/i,
+  );
+  if (!match) return undefined;
+  const [day, month, year] = match[1].split('.');
+  return `${year}-${month}-${day}T${match[2]}`;
 }
 
 /**

@@ -22,6 +22,8 @@ export interface TournamentInfo {
   linkedTournaments?: LinkedTournament[];
   /** Short label for this tournament from the event's "Tournament selection" row. */
   currentLabel?: string;
+  /** "Last update" timestamp from chess-results.com (ISO format). */
+  lastUpdated?: string;
 }
 
 // ─── Player / Standing ────────────────────────────────────────────────────────
@@ -93,6 +95,7 @@ export interface DbTournament {
   location: string;
   event_label: string;
   linked_tournaments: string;
+  last_updated: string;
   created_at: string;
   updated_at: string;
 }

@@ -2,7 +2,13 @@ import * as cheerio from 'cheerio';
 import { getCache, setCache } from './cache';
 import { BASE_URL, CACHE_TTL } from './constants';
 import { getStrategyFromHtml, parseTournamentMeta } from './strategies';
-import { persistStandings, persistPairings, getTournament } from './db';
+import {
+  persistStandings,
+  persistPairings,
+  getTournament,
+  getPairingsFromDb,
+  getStandingsFromDb,
+} from './db';
 
 // Re-export types from the shared types module for backward compatibility
 export type {
@@ -149,8 +155,28 @@ async function fetchTournamentHtml(url: string, tournamentId: string, lang: numb
   for (const [k, v] of extractHiddenFields(gateHtml).entries()) {
     body.set(k, v);
   }
-  body.set('__EVENTTARGET', 'ctl00$P1$LinkButton2');
-  body.set('__EVENTARGUMENT', '');
+
+  // Detect the gate bypass target dynamically from the page.
+  // ASP.NET link buttons use __doPostBack('target',''); regular submit buttons
+  // use their name=value pair with empty __EVENTTARGET.
+  const $gate = cheerio.load(gateHtml);
+  const submitBtn = $gate('input[type="submit"]').first();
+  const postbackMatch = gateHtml.match(/__doPostBack\('([^']+)'/);
+
+  if (submitBtn.length > 0 && submitBtn.attr('name')) {
+    // Regular submit button — include its name/value, leave __EVENTTARGET empty
+    body.set('__EVENTTARGET', '');
+    body.set('__EVENTARGUMENT', '');
+    body.set(submitBtn.attr('name')!, submitBtn.attr('value') || '');
+  } else if (postbackMatch) {
+    // Link button — set __EVENTTARGET to the postback target
+    body.set('__EVENTTARGET', postbackMatch[1]);
+    body.set('__EVENTARGUMENT', '');
+  } else {
+    // Fallback
+    body.set('__EVENTTARGET', '');
+    body.set('__EVENTARGUMENT', '');
+  }
 
   const postRes = await fetch(gateUrl, {
     method: 'POST',
@@ -184,48 +210,126 @@ function buildUrl(tournamentId: string, round: number, lang = 1): string {
   return `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=2&rd=${round}&turdet=YES`;
 }
 
-export async function scrapePairings(
+// ─── Freshness helpers ────────────────────────────────────────────────────────
+
+/**
+ * Check if a tournament date is yesterday or earlier.
+ * Date format from chess-results: "YYYY/MM/DD" or "YYYY/MM/DD to YYYY/MM/DD".
+ */
+function isTournamentFinished(dateStr: string): boolean {
+  if (!dateStr) return false;
+  // Use the end date if a range is present (e.g. "2024/02/11 to 2024/02/18")
+  const parts = dateStr.split(/\s+to\s+/i);
+  const endDate = parts[parts.length - 1].trim();
+  const match = endDate.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+  if (!match) return false;
+  const tournamentEnd = new Date(`${match[1]}-${match[2]}-${match[3]}T23:59:59`);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setHours(23, 59, 59, 999);
+  return tournamentEnd <= yesterday;
+}
+
+/**
+ * Fetch a lightweight page from chess-results.com and extract the "Last update" timestamp.
+ */
+async function fetchRemoteLastUpdated(
+  tournamentId: string,
+  lang: number,
+): Promise<string | undefined> {
+  try {
+    const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&turdet=YES`;
+    const html = await fetchTournamentHtml(url, tournamentId, lang);
+    const $ = cheerio.load(html);
+    const meta = parseTournamentMeta($);
+    return meta.lastUpdated;
+  } catch (_) {
+    return undefined;
+  }
+}
+
+/**
+ * Enrich parsed data with DB fallback for metadata that may be stripped
+ * from archive pages (totalRounds, linkedTournaments, etc.).
+ */
+function enrichFromDb(
+  info: TournamentData['info'] | StandingsData['info'],
+  tournamentId: string,
+): void {
+  try {
+    const dbTournament = getTournament(tournamentId);
+    if (!dbTournament) return;
+    if (info.totalRounds === 0 && dbTournament.total_rounds > 0) {
+      info.totalRounds = dbTournament.total_rounds;
+    }
+    if (!info.linkedTournaments?.length && dbTournament.linked_tournaments) {
+      try {
+        const stored = JSON.parse(dbTournament.linked_tournaments);
+        if (Array.isArray(stored) && stored.length > 0) {
+          info.linkedTournaments = stored;
+          if (!info.currentLabel) {
+            info.currentLabel = dbTournament.event_label || undefined;
+          }
+        }
+      } catch (_) { /* malformed JSON is non-critical */ }
+    }
+  } catch (_) { /* DB read is non-critical */ }
+}
+
+// ─── Full tournament scrape ───────────────────────────────────────────────────
+
+/**
+ * Scrape all rounds of pairings + standings for a tournament.
+ * Used when a tournament is new or its data is stale.
+ */
+async function scrapeFullTournament(
+  tournamentId: string,
+  lang: number,
+): Promise<void> {
+  // First, determine totalRounds from a pairings page
+  const firstUrl = buildUrl(tournamentId, 1, lang);
+  const firstHtml = await fetchTournamentHtml(firstUrl, tournamentId, lang);
+  const firstData = parseHtml(firstHtml, 1);
+  enrichFromDb(firstData.info, tournamentId);
+
+  const totalRounds = firstData.info.totalRounds;
+
+  // Persist round 1
+  try { persistPairings(tournamentId, firstData.info, 1, firstData.pairings); } catch (_) {}
+
+  // Scrape remaining rounds
+  for (let rd = 2; rd <= totalRounds; rd++) {
+    try {
+      const url = buildUrl(tournamentId, rd, lang);
+      const html = await fetchTournamentHtml(url, tournamentId, lang);
+      const data = parseHtml(html, rd);
+      persistPairings(tournamentId, data.info, rd, data.pairings);
+    } catch (_) { /* individual round failures are non-critical */ }
+  }
+
+  // Scrape standings
+  try {
+    const standingsData = await scrapeStandingsFromRemote(tournamentId, lang);
+    persistStandings(tournamentId, standingsData.info, standingsData.standings, standingsData.womenStandings);
+  } catch (_) { /* standings are non-critical during full scrape */ }
+}
+
+// ─── Core scrape from remote (no DB check) ────────────────────────────────────
+
+async function scrapePairingsFromRemote(
   tournamentId: string,
   round: number,
-  lang = 1,
+  lang: number,
 ): Promise<TournamentData> {
-  const cacheKey = `pairings:v3:${tournamentId}:${round}:${lang}`;
-  const cached = getCache<TournamentData>(cacheKey);
-  if (cached) return cached;
-
   const url = buildUrl(tournamentId, round, lang);
   const html = await fetchTournamentHtml(url, tournamentId, lang);
 
   try {
     const data = parseHtml(html, round);
-
-    // Archive pages may strip tournament metadata; fall back to DB
-    try {
-      const dbTournament = getTournament(tournamentId);
-      if (dbTournament) {
-        if (data.info.totalRounds === 0 && dbTournament.total_rounds > 0) {
-          data.info.totalRounds = dbTournament.total_rounds;
-        }
-        if (!data.info.linkedTournaments?.length && dbTournament.linked_tournaments) {
-          try {
-            const stored = JSON.parse(dbTournament.linked_tournaments);
-            if (Array.isArray(stored) && stored.length > 0) {
-              data.info.linkedTournaments = stored;
-              if (!data.info.currentLabel) {
-                data.info.currentLabel = dbTournament.event_label || undefined;
-              }
-            }
-          } catch (_) { /* malformed JSON is non-critical */ }
-        }
-      }
-    } catch (_) { /* DB read is non-critical */ }
-
-    setCache(cacheKey, data, CACHE_TTL);
+    enrichFromDb(data.info, tournamentId);
 
     // Persist to database (best-effort)
-    try {
-      persistPairings(tournamentId, data.info, round, data.pairings);
-    } catch (_) { /* DB write is non-critical */ }
+    try { persistPairings(tournamentId, data.info, round, data.pairings); } catch (_) {}
 
     return data;
   } catch (e) {
@@ -233,14 +337,10 @@ export async function scrapePairings(
   }
 }
 
-export async function scrapeStandings(
+async function scrapeStandingsFromRemote(
   tournamentId: string,
-  lang = 1,
+  lang: number,
 ): Promise<StandingsData> {
-  const cacheKey = `standings:v3:${tournamentId}:${lang}`;
-  const cached = getCache<StandingsData>(cacheKey);
-  if (cached) return cached;
-
   let result: StandingsData | null = null;
   let usedArt = 0;
 
@@ -280,8 +380,7 @@ export async function scrapeStandings(
     } catch (_) { /* best-effort: women's standings are optional */ }
   }
 
-  // Some tournaments expose women standings separately; mark those players as F
-  // when the main standings entry is missing sex.
+  // Enrich sex data from women standings
   const womenNames = new Set(result.womenStandings.map((s) => s.name));
   const enrichedStandings = result.standings.map((s) => (
     womenNames.has(s.name) && !s.sex
@@ -294,35 +393,104 @@ export async function scrapeStandings(
     standings: enrichedStandings,
   };
 
-  // Archive pages may strip tournament metadata; fall back to DB
-  try {
-    const dbTournament = getTournament(tournamentId);
-    if (dbTournament) {
-      if (enrichedResult.info.totalRounds === 0 && dbTournament.total_rounds > 0) {
-        enrichedResult.info.totalRounds = dbTournament.total_rounds;
+  enrichFromDb(enrichedResult.info, tournamentId);
+
+  return enrichedResult;
+}
+
+// ─── Public API with DB-first freshness check ─────────────────────────────────
+
+export async function scrapePairings(
+  tournamentId: string,
+  round: number,
+  lang = 1,
+): Promise<TournamentData> {
+  const dbTournament = getTournament(tournamentId);
+
+  // For finished tournaments (date <= yesterday), check freshness before scraping
+  if (dbTournament && isTournamentFinished(dbTournament.date)) {
+    const remoteLastUpdated = await fetchRemoteLastUpdated(tournamentId, lang);
+
+    if (remoteLastUpdated && dbTournament.last_updated && remoteLastUpdated <= dbTournament.last_updated) {
+      // Our data is current — serve from DB
+      const fromDb = getPairingsFromDb(tournamentId, round);
+      if (fromDb) return fromDb;
+      // DB had no pairings for this round — fall through to scrape
+    } else if (remoteLastUpdated && remoteLastUpdated !== dbTournament.last_updated) {
+      // Chess-results has newer data — full scrape to update everything
+      await scrapeFullTournament(tournamentId, lang);
+      const fromDb = getPairingsFromDb(tournamentId, round);
+      if (fromDb) return fromDb;
+    }
+  }
+
+  // Not in DB, current tournament, or DB had no data — scrape from chess-results
+  if (!dbTournament) {
+    // First time seeing this tournament — full scrape
+    try {
+      await scrapeFullTournament(tournamentId, lang);
+      const fromDb = getPairingsFromDb(tournamentId, round);
+      if (fromDb) return fromDb;
+    } catch (_) { /* fall through to single-round scrape */ }
+  }
+
+  return scrapePairingsFromRemote(tournamentId, round, lang);
+}
+
+export async function scrapeStandings(
+  tournamentId: string,
+  lang = 1,
+): Promise<StandingsData> {
+  const cacheKey = `standings:v3:${tournamentId}:${lang}`;
+  const cached = getCache<StandingsData>(cacheKey);
+  if (cached) return cached;
+
+  const dbTournament = getTournament(tournamentId);
+
+  // For finished tournaments (date <= yesterday), check freshness before scraping
+  if (dbTournament && isTournamentFinished(dbTournament.date)) {
+    const remoteLastUpdated = await fetchRemoteLastUpdated(tournamentId, lang);
+
+    if (remoteLastUpdated && dbTournament.last_updated && remoteLastUpdated <= dbTournament.last_updated) {
+      // Our data is current — serve from DB
+      const fromDb = getStandingsFromDb(tournamentId);
+      if (fromDb) {
+        setCache(cacheKey, fromDb, CACHE_TTL);
+        return fromDb;
       }
-      if (!enrichedResult.info.linkedTournaments?.length && dbTournament.linked_tournaments) {
-        try {
-          const stored = JSON.parse(dbTournament.linked_tournaments);
-          if (Array.isArray(stored) && stored.length > 0) {
-            enrichedResult.info.linkedTournaments = stored;
-            if (!enrichedResult.info.currentLabel) {
-              enrichedResult.info.currentLabel = dbTournament.event_label || undefined;
-            }
-          }
-        } catch (_) { /* malformed JSON is non-critical */ }
+    } else if (remoteLastUpdated && remoteLastUpdated !== dbTournament.last_updated) {
+      // Chess-results has newer data — full scrape
+      await scrapeFullTournament(tournamentId, lang);
+      const fromDb = getStandingsFromDb(tournamentId);
+      if (fromDb) {
+        setCache(cacheKey, fromDb, CACHE_TTL);
+        return fromDb;
       }
     }
-  } catch (_) { /* DB read is non-critical */ }
+  }
 
-  setCache(cacheKey, enrichedResult, CACHE_TTL);
+  // Not in DB, current tournament, or DB had no data — scrape from chess-results
+  if (!dbTournament) {
+    // First time seeing this tournament — full scrape
+    try {
+      await scrapeFullTournament(tournamentId, lang);
+      const fromDb = getStandingsFromDb(tournamentId);
+      if (fromDb) {
+        setCache(cacheKey, fromDb, CACHE_TTL);
+        return fromDb;
+      }
+    } catch (_) { /* fall through to single scrape */ }
+  }
+
+  const result = await scrapeStandingsFromRemote(tournamentId, lang);
+  setCache(cacheKey, result, CACHE_TTL);
 
   // Persist to database (best-effort)
   try {
-    persistStandings(tournamentId, enrichedResult.info, enrichedResult.standings);
+    persistStandings(tournamentId, result.info, result.standings, result.womenStandings);
   } catch (_) { /* DB write is non-critical */ }
 
-  return enrichedResult;
+  return result;
 }
 
 // ─── Parsing functions (delegate to strategy) ─────────────────────────────────
