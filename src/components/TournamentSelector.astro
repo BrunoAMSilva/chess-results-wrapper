@@ -14,7 +14,7 @@ const currentPath = Astro.url.pathname;
 
 const allTournaments = [
   { id: currentId, name: currentLabel },
-  ...linkedTournaments,
+  ...linkedTournaments.filter((t) => t.id !== currentId),
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 const segments = allTournaments.map((t) => ({

@@ -19,6 +19,7 @@ export function getCache<T>(key: string): T | null {
 }
 
 export function setCache<T>(key: string, value: T, ttlSeconds: number): void {
+  if (ttlSeconds <= 0) return;
   try {
     const expiresAt = Date.now() + ttlSeconds * 1000;
     const stmt = db.prepare('INSERT OR REPLACE INTO cache (key, value, expires_at) VALUES (?, ?, ?)');
