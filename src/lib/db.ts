@@ -6,7 +6,7 @@ const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'ch
 
 // Bump when the schema changes. Triggers a full data wipe on startup
 // if the stored PRAGMA user_version is behind this value.
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 // Ensure the directory exists
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
@@ -125,6 +125,30 @@ if (currentVersion < DB_VERSION) {
     DELETE FROM cache;
   `);
   db.pragma(`user_version = ${DB_VERSION}`);
+}
+
+// ─── Table migrations (idempotent) ──────────────────────────────────────────
+// Recreate standings table if missing `type` column (needed in PRIMARY KEY)
+const standingsCols = (db.prepare('PRAGMA table_info(standings)').all() as { name: string }[]);
+if (!standingsCols.some(c => c.name === 'type')) {
+  db.exec('DROP TABLE IF EXISTS standings');
+  db.exec(`
+    CREATE TABLE standings (
+      tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+      player_id INTEGER NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+      type TEXT NOT NULL DEFAULT 'open',
+      rank INTEGER NOT NULL,
+      points TEXT NOT NULL DEFAULT '',
+      tie_break_1 TEXT NOT NULL DEFAULT '',
+      tie_break_2 TEXT NOT NULL DEFAULT '',
+      tie_break_3 TEXT NOT NULL DEFAULT '',
+      tie_break_4 TEXT NOT NULL DEFAULT '',
+      tie_break_5 TEXT NOT NULL DEFAULT '',
+      tie_break_6 TEXT NOT NULL DEFAULT '',
+      PRIMARY KEY (tournament_id, player_id, type)
+    )
+  `);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_standings_tournament ON standings(tournament_id)');
 }
 
 // ─── Column migrations (idempotent) ─────────────────────────────────────────
