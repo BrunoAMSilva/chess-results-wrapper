@@ -1,10 +1,11 @@
 import * as cheerio from 'cheerio';
 import { getCache, setCache } from './cache';
 import { BASE_URL, CACHE_TTL } from './constants';
-import { getStrategyFromHtml, parseTournamentMeta } from './strategies';
+import { getStrategyFromHtml, parseTournamentMeta, parsePlayerCard } from './strategies';
 import {
   persistStandings,
   persistPairings,
+  persistPlayerCard,
   getTournament,
   getPairingsFromDb,
   getStandingsFromDb,
@@ -311,7 +312,35 @@ async function scrapeFullTournament(
   try {
     const standingsData = await scrapeStandingsFromRemote(tournamentId, lang);
     persistStandings(tournamentId, standingsData.info, standingsData.standings, standingsData.womenStandings);
+
+    // Scrape player cards (art=9) for extended player data
+    await scrapePlayerCards(tournamentId, lang, standingsData.standings);
   } catch (_) { /* standings are non-critical during full scrape */ }
+}
+
+import type { Standing } from './types';
+
+/**
+ * Scrape art=9 player card pages for all players in a tournament.
+ * Extracts birth year, national ID, performance rating, rating change, national rating.
+ */
+async function scrapePlayerCards(
+  tournamentId: string,
+  lang: number,
+  standings: Standing[],
+): Promise<void> {
+  for (const s of standings) {
+    if (!s.startingNumber) continue;
+    try {
+      const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=9&turdet=YES&snr=${s.startingNumber}`;
+      const html = await fetchTournamentHtml(url, tournamentId, lang);
+      const $ = cheerio.load(html);
+      const card = parsePlayerCard($);
+      if (card.name) {
+        persistPlayerCard(tournamentId, card);
+      }
+    } catch (_) { /* individual player card failures are non-critical */ }
+  }
 }
 
 // ─── Core scrape from remote (no DB check) ────────────────────────────────────

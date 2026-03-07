@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseHtml, parseStandingsHtml } from '../../src/lib/scraper';
 import { detectTournamentType } from '../../src/lib/strategies';
-import { parseTournamentMeta, parseStandingsTable, deriveWomenStandings } from '../../src/lib/strategies/base';
+import { parseTournamentMeta, parseStandingsTable, deriveWomenStandings, parsePlayerCard } from '../../src/lib/strategies/base';
 import { TournamentType } from '../../src/lib/types';
 import * as cheerio from 'cheerio';
 import fs from 'fs';
@@ -619,5 +619,91 @@ describe('deriveWomenStandings', () => {
       { rank: 1, startingNumber: 1, name: 'Male 1', fed: '', rating: '', club: '', points: '8', sex: 'M' as const, tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
     ];
     expect(deriveWomenStandings(standings)).toHaveLength(0);
+  });
+});
+
+// parsePlayerCard (unit)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('parsePlayerCard', () => {
+  it('should parse a full player card with all fields (English)', () => {
+    const html = `
+      <table Class="CRs1" border="0" cellpadding="1" cellspacing="1" bgcolor="">
+        <tr><td class="CR">Name</td><td class="CR">Silva, Daniel Alexandre Sousa Da</td></tr>
+        <tr><td class="CR">Starting rank</td><td class="CR">1</td></tr>
+        <tr><td class="CR">Rating</td><td class="CR">1675</td></tr>
+        <tr><td class="CR">Rating national</td><td class="CR">1500</td></tr>
+        <tr><td class="CR">Rating international</td><td class="CR">1675</td></tr>
+        <tr><td class="CR">Performance rating</td><td class="CR">1470</td></tr>
+        <tr><td class="CR">FIDE rtg +/-</td><td class="CR">-8,4</td></tr>
+        <tr><td class="CR">Points</td><td class="CR">4,5</td></tr>
+        <tr><td class="CR">Rank</td><td class="CR">2</td></tr>
+        <tr><td class="CR">Federation</td><td class="CR">POR</td></tr>
+        <tr><td class="CR">Club/City</td><td class="CR">Paredes Golfe Clube</td></tr>
+        <tr><td class="CR">Ident-Number</td><td class="CR">47919</td></tr>
+        <tr><td class="CR">Fide-ID</td><td class="CR">1982532</td></tr>
+        <tr><td class="CR">Year of birth </td><td class="CR">2008</td></tr>
+      </table>
+    `;
+    const $ = cheerio.load(html);
+    const card = parsePlayerCard($);
+
+    expect(card.name).toBe('Silva, Daniel Alexandre Sousa Da');
+    expect(card.startingNumber).toBe(1);
+    expect(card.rating).toBe(1675);
+    expect(card.nationalRating).toBe(1500);
+    expect(card.performanceRating).toBe(1470);
+    expect(card.ratingChange).toBe('-8,4');
+    expect(card.points).toBe('4,5');
+    expect(card.rank).toBe(2);
+    expect(card.federation).toBe('POR');
+    expect(card.club).toBe('Paredes Golfe Clube');
+    expect(card.nationalId).toBe('47919');
+    expect(card.fideId).toBe('1982532');
+    expect(card.birthYear).toBe(2008);
+  });
+
+  it('should parse Portuguese labels', () => {
+    const html = `
+      <table Class="CRs1" border="0">
+        <tr><td class="CR">Nome</td><td class="CR">Test Player</td></tr>
+        <tr><td class="CR">Ranking inicial</td><td class="CR">5</td></tr>
+        <tr><td class="CR">Elo</td><td class="CR">1800</td></tr>
+        <tr><td class="CR">Elo nacional</td><td class="CR">1750</td></tr>
+        <tr><td class="CR">Performance</td><td class="CR">1900</td></tr>
+        <tr><td class="CR">Pontos</td><td class="CR">6</td></tr>
+        <tr><td class="CR">Lugar</td><td class="CR">3</td></tr>
+        <tr><td class="CR">Federação</td><td class="CR">BRA</td></tr>
+        <tr><td class="CR">Número nacional</td><td class="CR">12345</td></tr>
+        <tr><td class="CR">Número FIDE</td><td class="CR">9876543</td></tr>
+        <tr><td class="CR">Ano de nascimento</td><td class="CR">1995</td></tr>
+      </table>
+    `;
+    const $ = cheerio.load(html);
+    const card = parsePlayerCard($);
+
+    expect(card.name).toBe('Test Player');
+    expect(card.startingNumber).toBe(5);
+    expect(card.rating).toBe(1800);
+    expect(card.nationalRating).toBe(1750);
+    expect(card.performanceRating).toBe(1900);
+    expect(card.birthYear).toBe(1995);
+    expect(card.nationalId).toBe('12345');
+    expect(card.fideId).toBe('9876543');
+  });
+
+  it('should treat zero ident-number as empty', () => {
+    const html = `
+      <table Class="CRs1" border="0">
+        <tr><td class="CR">Name</td><td class="CR">No ID Player</td></tr>
+        <tr><td class="CR">Ident-Number</td><td class="CR">0</td></tr>
+        <tr><td class="CR">Fide-ID</td><td class="CR">0</td></tr>
+      </table>
+    `;
+    const $ = cheerio.load(html);
+    const card = parsePlayerCard($);
+
+    expect(card.nationalId).toBe('');
+    expect(card.fideId).toBe('');
   });
 });

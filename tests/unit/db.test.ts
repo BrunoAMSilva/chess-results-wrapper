@@ -10,6 +10,7 @@ import db, {
   getStandings,
   persistStandings,
   persistPairings,
+  persistPlayerCard,
   searchTournaments,
   getPlayerById,
   findPlayerByIdentity,
@@ -852,5 +853,73 @@ describe('Database - Player Tournament History', () => {
 
     const history = getPlayerTournamentHistory(playerId);
     expect(history[0].event_label).toBe('Open A');
+  });
+});
+
+// persistPlayerCard
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('Database - persistPlayerCard', () => {
+  beforeEach(clearAllTables);
+
+  it('should persist player card extended data', () => {
+    upsertTournament(makeTournamentInfo(), 'T001');
+
+    persistPlayerCard('T001', {
+      name: 'Silva, Daniel',
+      federation: 'POR',
+      fideId: '1982532',
+      club: 'Paredes Golfe Clube',
+      birthYear: 2008,
+      nationalId: '47919',
+      rating: 1675,
+      nationalRating: 1500,
+      performanceRating: 1470,
+      ratingChange: '-8,4',
+      startingNumber: 1,
+      rank: 2,
+      points: '4.5',
+    });
+
+    const player = findPlayerByIdentity('Silva, Daniel', 'POR');
+    expect(player).toBeDefined();
+    expect(player!.fide_id).toBe('1982532');
+    expect(player!.birth_year).toBe(2008);
+    expect(player!.national_id).toBe('47919');
+    expect(player!.rating).toBe(1675);
+
+    const history = getPlayerTournamentHistory(player!.id!);
+    expect(history).toHaveLength(1);
+    expect(history[0].national_rating).toBe(1500);
+    expect(history[0].performance_rating).toBe(1470);
+    expect(history[0].rating_change).toBe('-8,4');
+  });
+
+  it('should preserve existing player data when card has empty values', () => {
+    upsertTournament(makeTournamentInfo(), 'T001');
+    const playerId = upsertPlayer('Existing Player', 'POR', 'M', 'Some Club', 1800, '9999999', 1990, '11111');
+
+    // Persist a card with sparse data — should not overwrite existing birth_year/national_id
+    persistPlayerCard('T001', {
+      name: 'Existing Player',
+      federation: 'POR',
+      fideId: '9999999',
+      club: '',
+      birthYear: null,
+      nationalId: '',
+      rating: null,
+      nationalRating: 1700,
+      performanceRating: 1850,
+      ratingChange: '+5,2',
+      startingNumber: 3,
+      rank: 1,
+      points: '7',
+    });
+
+    const player = getPlayerById(playerId);
+    expect(player!.birth_year).toBe(1990);
+    expect(player!.national_id).toBe('11111');
+    expect(player!.club).toBe('Some Club');
+    expect(player!.rating).toBe(1800);
   });
 });

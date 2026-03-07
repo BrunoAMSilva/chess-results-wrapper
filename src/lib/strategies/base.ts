@@ -8,6 +8,7 @@ import type {
   TournamentData,
   StandingsData,
   Sex,
+  PlayerCardData,
 } from '../types';
 
 /**
@@ -226,6 +227,7 @@ export function parseStandingsTable(
   let clubIdx = -1;
   let sexIdx = -1;
   let snoIdx = -1;
+  let fideIdIdx = -1;
 
   const headerRow = $('table.CRs1 tr')
     .filter((_, row) => $(row).find('th').length > 0)
@@ -246,6 +248,7 @@ export function parseStandingsTable(
     if (text === 'Club/City' || text.includes('Clube') || text === 'Verein/Ort') clubIdx = i;
     if (text.toLowerCase() === 'sex' || text.toLowerCase() === 'sexo') sexIdx = i;
     if (text === 'SNo' || text === 'NrI') snoIdx = i;
+    if (text === 'FideID' || text === 'FIDE-ID' || text === 'Id FIDE') fideIdIdx = i;
   });
 
   const hasSexColumn = sexIdx !== -1;
@@ -269,6 +272,21 @@ export function parseStandingsTable(
     const sex = sexIdx !== -1 && cells[sexIdx] ? parseSex($(cells[sexIdx]).text()) : '';
     const sno = snoIdx !== -1 && cells[snoIdx] ? parseInt($(cells[snoIdx]).text().trim()) || 0 : 0;
 
+    // Extract FIDE ID from explicit column or from player name link
+    let fideId = '';
+    if (fideIdIdx !== -1 && cells[fideIdIdx]) {
+      fideId = $(cells[fideIdIdx]).text().trim();
+    }
+    if (!fideId && cells[nameIdx]) {
+      const nameLink = $(cells[nameIdx]).find('a[href*="art=9"]').attr('href') || '';
+      // Also try FIDE profile links in adjacent cells
+      const fideLink = $(cells[nameIdx]).find('a[href*="fide.com/profile"]').attr('href') || '';
+      if (fideLink) {
+        const fideMatch = fideLink.match(/profile\/?(\d+)/);
+        if (fideMatch) fideId = fideMatch[1];
+      }
+    }
+
     let points = '';
     if (ptsIdx !== -1 && cells[ptsIdx]) {
       points = $(cells[ptsIdx]).text().trim();
@@ -290,6 +308,7 @@ export function parseStandingsTable(
       club,
       points,
       sex,
+      fideId,
       tieBreak1: tb1,
       tieBreak2: tb2,
       tieBreak3: tb3,
@@ -469,4 +488,127 @@ export function parseTeamPairings(
   });
 
   return teamPairings;
+}
+
+// ─── Player Card (art=9) ──────────────────────────────────────────────────────
+
+/** Multi-language label map for art=9 player card key-value rows. */
+const PLAYER_CARD_LABELS: Record<string, keyof PlayerCardData> = {
+  // Name
+  'name': 'name', 'nome': 'name', 'nombre': 'name', 'nom': 'name',
+  // Starting rank
+  'starting rank': 'startingNumber', 'ranking inicial': 'startingNumber',
+  'startrang': 'startingNumber', 'rang initial': 'startingNumber',
+  // Rating (FIDE international)
+  'rating': 'rating', 'elo': 'rating',
+  'rating international': 'rating', 'elo internacional': 'rating',
+  'elo intnational': 'rating', 'elo fide': 'rating', 'classement elo': 'rating',
+  // Rating national
+  'rating national': 'nationalRating', 'elo nacional': 'nationalRating',
+  'elo national': 'nationalRating',
+  // Performance rating
+  'performance rating': 'performanceRating', 'performance': 'performanceRating',
+  'eloperformance': 'performanceRating', 'performance elo': 'performanceRating',
+  // FIDE rtg +/-
+  'fide rtg +/-': 'ratingChange', 'fide elo +/-': 'ratingChange',
+  'elo fide +/-': 'ratingChange',
+  // Points
+  'points': 'points', 'pontos': 'points', 'puntos': 'points', 'punkte': 'points',
+  // Rank
+  'rank': 'rank', 'lugar': 'rank', 'puesto': 'rank', 'rang': 'rank',
+  // Federation
+  'federation': 'federation', 'federação': 'federation',
+  'federación': 'federation', 'föderation': 'federation',
+  'fédération': 'federation',
+  // Club/City
+  'club/city': 'club', 'clube/cidade': 'club', 'club/ciudad': 'club',
+  'verein/ort': 'club', 'club/ville': 'club',
+  // Ident-Number
+  'ident-number': 'nationalId', 'número nacional': 'nationalId',
+  'código nacional': 'nationalId', 'ident-nummer': 'nationalId',
+  'ident-numéro': 'nationalId',
+  // Fide-ID
+  'fide-id': 'fideId', 'número fide': 'fideId', 'código fide': 'fideId',
+  'id fide': 'fideId', 'fideid': 'fideId',
+  // Year of birth
+  'year of birth': 'birthYear', 'ano de nascimento': 'birthYear',
+  'fecha de nacimiento': 'birthYear', 'geburtsjahr': 'birthYear',
+  'année naissance': 'birthYear',
+};
+
+/**
+ * Parse a player card page (art=9) into structured data.
+ * The info table is the first `table.CRs1` with 2-column key-value rows.
+ */
+export function parsePlayerCard($: cheerio.CheerioAPI): PlayerCardData {
+  const card: PlayerCardData = {
+    name: '',
+    federation: '',
+    fideId: '',
+    club: '',
+    birthYear: null,
+    nationalId: '',
+    rating: null,
+    nationalRating: null,
+    performanceRating: null,
+    ratingChange: '',
+    startingNumber: 0,
+    rank: 0,
+    points: '',
+  };
+
+  // The first CRs1 table contains key-value rows
+  $('table.CRs1').first().find('tr').each((_, row) => {
+    const cells = $(row).find('td');
+    if (cells.length < 2) return;
+
+    const label = $(cells[0]).text().trim().toLowerCase();
+    const value = $(cells[1]).text().trim();
+    const field = PLAYER_CARD_LABELS[label];
+    if (!field) return;
+
+    switch (field) {
+      case 'name':
+        card.name = value;
+        break;
+      case 'startingNumber':
+        card.startingNumber = parseInt(value) || 0;
+        break;
+      case 'rating':
+        card.rating = parseInt(value) || null;
+        break;
+      case 'nationalRating':
+        card.nationalRating = parseInt(value) || null;
+        break;
+      case 'performanceRating':
+        card.performanceRating = parseInt(value) || null;
+        break;
+      case 'ratingChange':
+        card.ratingChange = value;
+        break;
+      case 'points':
+        card.points = value;
+        break;
+      case 'rank':
+        card.rank = parseInt(value) || 0;
+        break;
+      case 'federation':
+        card.federation = value;
+        break;
+      case 'club':
+        card.club = value;
+        break;
+      case 'nationalId':
+        card.nationalId = value === '0' ? '' : value;
+        break;
+      case 'fideId':
+        card.fideId = value === '0' ? '' : value;
+        break;
+      case 'birthYear':
+        card.birthYear = parseInt(value) || null;
+        break;
+    }
+  });
+
+  return card;
 }

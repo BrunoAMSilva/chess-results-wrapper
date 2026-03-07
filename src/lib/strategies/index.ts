@@ -131,4 +131,4 @@ export function getStrategyFromHtml($: cheerio.CheerioAPI): TournamentStrategy {
 }
 
 export { type TournamentStrategy } from './base';
-export { parseTournamentMeta, checkForErrors } from './base';
+export { parseTournamentMeta, checkForErrors, parsePlayerCard } from './base';

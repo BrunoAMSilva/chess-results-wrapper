@@ -39,6 +39,7 @@ export interface Standing {
   club: string;
   points: string;
   sex: Sex;
+  fideId: string;
   tieBreak1: string;
   tieBreak2: string;
   tieBreak3: string;
@@ -108,6 +109,8 @@ export interface DbPlayer {
   sex: Sex;
   club: string;
   rating: number | null;
+  birth_year: number | null;
+  national_id: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -118,6 +121,9 @@ export interface DbTournamentPlayer {
   starting_number: number;
   rating: number | null;
   club: string;
+  national_rating: number | null;
+  performance_rating: number | null;
+  rating_change: string | null;
 }
 
 export interface DbResult {
@@ -163,6 +169,9 @@ export interface DbPlayerTournamentHistory {
   starting_number: number;
   tournament_rating: number | null;
   tournament_club: string;
+  national_rating: number | null;
+  performance_rating: number | null;
+  rating_change: string | null;
 }
 
 export interface DbPlayerResultEntry {
@@ -170,4 +179,22 @@ export interface DbPlayerResultEntry {
   white_player_id: number | null;
   black_player_id: number | null;
   result: string;
+}
+
+// ─── Player Card (art=9) ──────────────────────────────────────────────────────
+
+export interface PlayerCardData {
+  name: string;
+  federation: string;
+  fideId: string;
+  club: string;
+  birthYear: number | null;
+  nationalId: string;
+  rating: number | null;
+  nationalRating: number | null;
+  performanceRating: number | null;
+  ratingChange: string;
+  startingNumber: number;
+  rank: number;
+  points: string;
 }

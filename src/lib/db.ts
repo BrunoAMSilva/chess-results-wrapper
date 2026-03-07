@@ -6,7 +6,7 @@ const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'ch
 
 // Bump when the schema changes. Triggers a full data wipe on startup
 // if the stored PRAGMA user_version is behind this value.
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 // Ensure the directory exists
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
@@ -54,6 +54,8 @@ db.exec(`
     sex TEXT NOT NULL DEFAULT '',
     club TEXT NOT NULL DEFAULT '',
     rating INTEGER,
+    birth_year INTEGER,
+    national_id TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(name, federation)
@@ -66,6 +68,9 @@ db.exec(`
     starting_number INTEGER NOT NULL DEFAULT 0,
     rating INTEGER,
     club TEXT NOT NULL DEFAULT '',
+    national_rating INTEGER,
+    performance_rating INTEGER,
+    rating_change TEXT,
     PRIMARY KEY (tournament_id, player_id)
   );
 
@@ -121,6 +126,13 @@ if (currentVersion < DB_VERSION) {
   `);
   db.pragma(`user_version = ${DB_VERSION}`);
 }
+
+// ─── Column migrations (idempotent) ─────────────────────────────────────────
+try { db.exec('ALTER TABLE players ADD COLUMN birth_year INTEGER'); } catch (_) {}
+try { db.exec('ALTER TABLE players ADD COLUMN national_id TEXT'); } catch (_) {}
+try { db.exec('ALTER TABLE tournament_players ADD COLUMN national_rating INTEGER'); } catch (_) {}
+try { db.exec('ALTER TABLE tournament_players ADD COLUMN performance_rating INTEGER'); } catch (_) {}
+try { db.exec("ALTER TABLE tournament_players ADD COLUMN rating_change TEXT"); } catch (_) {}
 
 function playerRichnessScore(row: DbPlayer): number {
   let score = 0;
@@ -229,6 +241,7 @@ import type {
   TournamentInfo,
   TournamentType,
   Pairing,
+  PlayerCardData,
   DbPlayerTournamentHistory,
   DbPlayerResultEntry,
 } from './types';
@@ -305,11 +318,14 @@ export function upsertPlayer(
   club = '',
   rating: number | null = null,
   fideId: string | null = null,
+  birthYear: number | null = null,
+  nationalId: string | null = null,
 ): number {
   const normalizedName = name.trim();
   const normalizedFed = federation.trim();
   const normalizedClub = club.trim();
   const normalizedFideId = fideId?.trim() || null;
+  const normalizedNationalId = nationalId?.trim() || null;
 
   // Strongest identity signal when available.
   if (normalizedFideId) {
@@ -325,6 +341,8 @@ export function upsertPlayer(
           club = CASE WHEN ? != '' THEN ? ELSE club END,
           rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
           fide_id = ?,
+          birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
+          national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
           updated_at = datetime('now')
         WHERE id = ?
       `).run(
@@ -339,6 +357,10 @@ export function upsertPlayer(
         rating,
         rating,
         normalizedFideId,
+        birthYear,
+        birthYear,
+        normalizedNationalId,
+        normalizedNationalId,
         byFideId.id,
       );
       return byFideId.id;
@@ -357,6 +379,8 @@ export function upsertPlayer(
         club = CASE WHEN ? != '' THEN ? ELSE club END,
         rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
         fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
+        birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
+        national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
         updated_at = datetime('now')
       WHERE id = ?
     `).run(
@@ -368,6 +392,10 @@ export function upsertPlayer(
       rating,
       normalizedFideId,
       normalizedFideId,
+      birthYear,
+      birthYear,
+      normalizedNationalId,
+      normalizedNationalId,
       existing.id,
     );
     return existing.id;
@@ -389,6 +417,8 @@ export function upsertPlayer(
           club = CASE WHEN ? != '' THEN ? ELSE club END,
           rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
           fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
+          birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
+          national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
           updated_at = datetime('now')
         WHERE id = ?
       `).run(
@@ -400,6 +430,10 @@ export function upsertPlayer(
         rating,
         normalizedFideId,
         normalizedFideId,
+        birthYear,
+        birthYear,
+        normalizedNationalId,
+        normalizedNationalId,
         sameName[0].id,
       );
       return sameName[0].id;
@@ -418,6 +452,8 @@ export function upsertPlayer(
           club = CASE WHEN ? != '' THEN ? ELSE club END,
           rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
           fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
+          birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
+          national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
           updated_at = datetime('now')
         WHERE id = ?
       `).run(
@@ -430,6 +466,10 @@ export function upsertPlayer(
         rating,
         normalizedFideId,
         normalizedFideId,
+        birthYear,
+        birthYear,
+        normalizedNationalId,
+        normalizedNationalId,
         placeholder.id,
       );
       return placeholder.id;
@@ -437,9 +477,9 @@ export function upsertPlayer(
   }
 
   const result = db.prepare(`
-    INSERT INTO players (name, federation, sex, club, rating, fide_id)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(normalizedName, normalizedFed, sex, normalizedClub, rating, normalizedFideId);
+    INSERT INTO players (name, federation, sex, club, rating, fide_id, birth_year, national_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(normalizedName, normalizedFed, sex, normalizedClub, rating, normalizedFideId, birthYear, normalizedNationalId);
 
   return Number(result.lastInsertRowid);
 }
@@ -450,15 +490,21 @@ export function linkPlayerToTournament(
   startingNumber: number,
   rating: number | null = null,
   club = '',
+  nationalRating: number | null = null,
+  performanceRating: number | null = null,
+  ratingChange: string | null = null,
 ): void {
   db.prepare(`
-    INSERT INTO tournament_players (tournament_id, player_id, starting_number, rating, club)
-    VALUES (?, ?, ?, ?, ?)
+    INSERT INTO tournament_players (tournament_id, player_id, starting_number, rating, club, national_rating, performance_rating, rating_change)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(tournament_id, player_id) DO UPDATE SET
       starting_number = excluded.starting_number,
       rating = COALESCE(excluded.rating, tournament_players.rating),
-      club = CASE WHEN excluded.club != '' THEN excluded.club ELSE tournament_players.club END
-  `).run(tournamentId, playerId, startingNumber, rating, club);
+      club = CASE WHEN excluded.club != '' THEN excluded.club ELSE tournament_players.club END,
+      national_rating = COALESCE(excluded.national_rating, tournament_players.national_rating),
+      performance_rating = COALESCE(excluded.performance_rating, tournament_players.performance_rating),
+      rating_change = CASE WHEN excluded.rating_change IS NOT NULL THEN excluded.rating_change ELSE tournament_players.rating_change END
+  `).run(tournamentId, playerId, startingNumber, rating, club, nationalRating, performanceRating, ratingChange);
 }
 
 // ── Results ──
@@ -554,6 +600,7 @@ export function getStandingsFromDb(tournamentId: string): {
     tie_break_5: string;
     tie_break_6: string;
     starting_number: number;
+    fide_id: string;
   }>;
   if (openRows.length === 0) return null;
 
@@ -566,6 +613,7 @@ export function getStandingsFromDb(tournamentId: string): {
     club: r.club || '',
     points: r.points,
     sex: r.sex || '',
+    fideId: r.fide_id || '',
     tieBreak1: r.tie_break_1 || '',
     tieBreak2: r.tie_break_2 || '',
     tieBreak3: r.tie_break_3 || '',
@@ -584,6 +632,7 @@ export function getStandingsFromDb(tournamentId: string): {
     club: r.club || '',
     points: r.points,
     sex: 'F' as Sex,
+    fideId: r.fide_id || '',
     tieBreak1: r.tie_break_1 || '',
     tieBreak2: r.tie_break_2 || '',
     tieBreak3: r.tie_break_3 || '',
@@ -661,7 +710,7 @@ export function getStandings(tournamentId: string, type: string = 'open') {
            COALESCE(tp.club, p.club, '') AS club,
            s.points, s.tie_break_1, s.tie_break_2, s.tie_break_3,
            s.tie_break_4, s.tie_break_5, s.tie_break_6,
-           tp.starting_number
+           tp.starting_number, p.fide_id
     FROM standings s
     JOIN players p ON s.player_id = p.id
     LEFT JOIN tournament_players tp ON tp.tournament_id = s.tournament_id AND tp.player_id = p.id
@@ -687,6 +736,7 @@ export function persistStandings(
         s.sex,
         s.club,
         s.rating ? parseInt(s.rating) || null : null,
+        s.fideId || null,
       );
       linkPlayerToTournament(
         tournamentId,
@@ -733,6 +783,33 @@ export function persistPairings(
     }
   });
   txn();
+}
+
+/** Persist player card data (art=9) — enriches player + tournament_players with extended fields. */
+export function persistPlayerCard(
+  tournamentId: string,
+  card: PlayerCardData,
+): void {
+  const playerId = upsertPlayer(
+    card.name,
+    card.federation,
+    '',
+    card.club,
+    card.rating,
+    card.fideId || null,
+    card.birthYear,
+    card.nationalId || null,
+  );
+  linkPlayerToTournament(
+    tournamentId,
+    playerId,
+    card.startingNumber,
+    card.rating,
+    card.club,
+    card.nationalRating,
+    card.performanceRating,
+    card.ratingChange || null,
+  );
 }
 
 // ── Search ──
@@ -810,7 +887,10 @@ export function getPlayerTournamentHistory(playerId: number) {
       s.tie_break_6,
       tp.starting_number,
       tp.rating AS tournament_rating,
-      tp.club AS tournament_club
+      tp.club AS tournament_club,
+      tp.national_rating,
+      tp.performance_rating,
+      tp.rating_change
     FROM tournament_players tp
     JOIN tournaments t ON t.id = tp.tournament_id
     LEFT JOIN standings s ON s.tournament_id = tp.tournament_id AND s.player_id = tp.player_id AND s.type = 'open'
