@@ -353,11 +353,13 @@
   },
   {
     "id": "1340832",
-    "title": "3.ª etapa do 5.º Campeonato Felgueiras Xadrez"
+    "title": "Federados",
+    "linkedTournaments": [{"id": "1361358", "name": "Não Federados"}]
   },
   {
     "id": "1361358",
-    "title": "3.ª etapa do 5.º Campeonato Felgueiras Xadrez Não"
+    "title": "Não Federados",
+    "linkedTournaments": [{"id": "1340832", "name": "Federados"}]
   },
   {
     "id": "1363445",

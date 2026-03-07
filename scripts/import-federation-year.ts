@@ -1,6 +1,8 @@
 import { scrapePairings, scrapeStandings } from "../src/lib/scraper.ts";
+import { upsertTournament, getTournament } from "../src/lib/db.ts";
 import * as cheerio from "cheerio";
 import { readFile, writeFile } from "node:fs/promises";
+import type { LinkedTournament, TournamentInfo } from "../src/lib/types.ts";
 
 const BASE_URL = "https://chess-results.com";
 
@@ -20,6 +22,7 @@ interface Args {
 interface TournamentSeed {
   id: string;
   title: string;
+  linkedTournaments?: LinkedTournament[];
 }
 
 class SimpleCookieJar {
@@ -332,21 +335,23 @@ async function discoverAvailableRounds(
   return fallbackTotalRounds > 0 ? range(1, fallbackTotalRounds) : [];
 }
 
-async function discoverFromJsonFile(filePath: string): Promise<Map<string, string>> {
+async function discoverFromJsonFile(filePath: string): Promise<{ discovered: Map<string, string>; seeds: TournamentSeed[] }> {
   const raw = await readFile(filePath, "utf8");
-  const parsed = JSON.parse(raw) as Array<{ id: string; title?: string }>;
-  const result = new Map<string, string>();
+  const parsed = JSON.parse(raw) as Array<{ id: string; title?: string; linkedTournaments?: LinkedTournament[] }>;
+  const discovered = new Map<string, string>();
+  const seeds: TournamentSeed[] = [];
 
   for (const item of parsed) {
     const id = String(item.id || "").trim();
     if (!id) continue;
     const title = String(item.title || "").trim();
-    if (!result.has(id)) {
-      result.set(id, title);
+    if (!discovered.has(id)) {
+      discovered.set(id, title);
+      seeds.push({ id, title, linkedTournaments: item.linkedTournaments });
     }
   }
 
-  return result;
+  return { discovered, seeds };
 }
 
 async function discoverFederationTournaments(fed: string, maxPages: number): Promise<Map<string, string>> {
@@ -580,10 +585,13 @@ async function main(): Promise<void> {
   console.log(`[start] fed=${args.fed} year=${args.year} lang=${args.lang} withPairings=${args.withPairings}`);
 
   let discovered = new Map<string, string>();
+  let jsonSeeds: TournamentSeed[] = [];
 
   if (args.importJsonPath) {
     try {
-      discovered = await discoverFromJsonFile(args.importJsonPath);
+      const result = await discoverFromJsonFile(args.importJsonPath);
+      discovered = result.discovered;
+      jsonSeeds = result.seeds;
       console.log(`[discover] import-json found: ${discovered.size}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -684,6 +692,35 @@ async function main(): Promise<void> {
   console.log(`skippedByDate=${skippedByDate}`);
   console.log(`failed=${failed}`);
   console.log(`pairingRoundsImported=${roundsImported}`);
+
+  // Apply linked tournaments from JSON seeds (for tournaments not linked on chess-results.com)
+  const seedsWithLinks = jsonSeeds.filter((s) => s.linkedTournaments && s.linkedTournaments.length > 0);
+  if (seedsWithLinks.length > 0) {
+    console.log(`\n[links] applying linked tournaments for ${seedsWithLinks.length} entries`);
+    for (const seed of seedsWithLinks) {
+      try {
+        const existing = getTournament(seed.id);
+        if (!existing) {
+          console.log(`[links] tnr${seed.id} not in DB, skipping`);
+          continue;
+        }
+        upsertTournament({
+          name: existing.name,
+          round: 0,
+          totalRounds: existing.total_rounds,
+          date: existing.date,
+          location: existing.location,
+          type: existing.type as TournamentInfo['type'],
+          linkedTournaments: seed.linkedTournaments,
+          currentLabel: seed.title,
+        }, seed.id);
+        console.log(`[links] tnr${seed.id} linked to ${seed.linkedTournaments!.map((t) => t.id).join(', ')}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.log(`[links] tnr${seed.id} failed: ${message}`);
+      }
+    }
+  }
 }
 
 main().catch((error) => {
