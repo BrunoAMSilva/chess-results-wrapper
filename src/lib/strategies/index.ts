@@ -29,7 +29,8 @@ const strategies: Record<TournamentType, TournamentStrategy> = {
  */
 export function detectTournamentType($: cheerio.CheerioAPI): TournamentType {
   const hasRoundHeader = (text: string): boolean => {
-    return /(?:Round|Ronda|Runde|Ronde)\s+\d+/i.test(text);
+    return /(?:Round|Ronda|Runde|Ronde)\s+\d+/i.test(text) ||
+           /^\d+\.\s*(?:Round|Ronda|Runde|Ronde)\b/i.test(text);
   };
 
   // 1. Check the tournament details metadata for explicit system info

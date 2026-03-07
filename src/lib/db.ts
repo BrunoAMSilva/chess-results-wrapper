@@ -202,6 +202,7 @@ export default db;
 import type {
   DbTournament,
   DbPlayer,
+  LinkedTournament,
   Sex,
   Standing,
   TournamentInfo,
@@ -218,8 +219,10 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
   try { db.exec('ALTER TABLE tournaments ADD COLUMN event_label TEXT NOT NULL DEFAULT \'\''); } catch (_) {}
   try { db.exec('ALTER TABLE tournaments ADD COLUMN linked_tournaments TEXT NOT NULL DEFAULT \'[]\''); } catch (_) {}
 
-  const linkedJson = info.linkedTournaments && info.linkedTournaments.length > 0
-    ? JSON.stringify(info.linkedTournaments)
+  // Filter out self-reference from linked tournaments
+  const filtered = info.linkedTournaments?.filter((t) => t.id !== tournamentId);
+  const linkedJson = filtered && filtered.length > 0
+    ? JSON.stringify(filtered)
     : '[]';
   db.prepare(`
     INSERT INTO tournaments (id, name, type, total_rounds, date, location, event_label, linked_tournaments, updated_at)
@@ -234,6 +237,36 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
       linked_tournaments = CASE WHEN excluded.linked_tournaments != '[]' THEN excluded.linked_tournaments ELSE tournaments.linked_tournaments END,
       updated_at = datetime('now')
   `).run(tournamentId, info.name, info.type, info.totalRounds, info.date, info.location, info.currentLabel || '', linkedJson);
+
+  // Propagate links bidirectionally: if A links to B, ensure B links back to A
+  if (filtered && filtered.length > 0 && info.currentLabel) {
+    const reverseEntry = JSON.stringify({ id: tournamentId, name: info.currentLabel });
+    for (const linked of filtered) {
+      const row = db.prepare('SELECT linked_tournaments, event_label FROM tournaments WHERE id = ?').get(linked.id) as { linked_tournaments: string; event_label: string } | undefined;
+      if (!row) continue;
+      try {
+        const existing: LinkedTournament[] = JSON.parse(row.linked_tournaments);
+        if (existing.some((t) => t.id === tournamentId)) continue;
+        // Build full link set: existing links + this tournament + all siblings (excluding self)
+        const siblings = filtered.filter((t) => t.id !== linked.id);
+        const merged = [...existing];
+        for (const entry of [{ id: tournamentId, name: info.currentLabel }, ...siblings]) {
+          if (!merged.some((t) => t.id === entry.id)) {
+            merged.push(entry);
+          }
+        }
+        const mergedJson = JSON.stringify(merged);
+        // Also propagate event_label from the link name if the linked tournament has none
+        if (!row.event_label && linked.name) {
+          db.prepare('UPDATE tournaments SET linked_tournaments = ?, event_label = ?, updated_at = datetime(\'now\') WHERE id = ?')
+            .run(mergedJson, linked.name, linked.id);
+        } else {
+          db.prepare('UPDATE tournaments SET linked_tournaments = ?, updated_at = datetime(\'now\') WHERE id = ?')
+            .run(mergedJson, linked.id);
+        }
+      } catch (_) { /* malformed JSON is non-critical */ }
+    }
+  }
 }
 
 export function getTournament(tournamentId: string): DbTournament | undefined {

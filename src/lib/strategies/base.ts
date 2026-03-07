@@ -79,7 +79,8 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
     let maxRd = 0;
     $('table.CRs1 tr').each((_, row) => {
       const text = $(row).text().trim();
-      const m = text.match(/^(?:Round|Ronda|Runde|Ronde)\s+(\d+)\b/i);
+      const m = text.match(/^(?:Round|Ronda|Runde|Ronde)\s+(\d+)\b/i) ||
+                text.match(/^(\d+)\.\s*(?:Round|Ronda|Runde|Ronde)\b/i);
       if (m) {
         const rd = parseInt(m[1], 10);
         if (rd > maxRd) maxRd = rd;

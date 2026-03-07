@@ -148,6 +148,52 @@ describe('Database - Tournaments', () => {
   it('should return undefined for non-existent tournament', () => {
     expect(getTournament('NONEXISTENT')).toBeUndefined();
   });
+
+  it('should filter self-references from linked_tournaments', () => {
+    const linked = [
+      { id: 'T001', name: 'Self' },
+      { id: 'T002', name: 'Other' },
+    ];
+    upsertTournament(makeTournamentInfo({ linkedTournaments: linked }), 'T001');
+
+    const row = getTournament('T001');
+    const parsed = JSON.parse(row!.linked_tournaments);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0].id).toBe('T002');
+  });
+
+  it('should propagate links bidirectionally', () => {
+    // Create T002 first so it exists
+    upsertTournament(makeTournamentInfo({ name: 'Tournament B' }), 'T002');
+
+    // Upsert T001 with link to T002
+    const linked = [{ id: 'T002', name: 'Group B' }];
+    upsertTournament(makeTournamentInfo({
+      name: 'Tournament A',
+      linkedTournaments: linked,
+      currentLabel: 'Group A',
+    }), 'T001');
+
+    // T002 should now link back to T001
+    const t2 = getTournament('T002');
+    const t2Links = JSON.parse(t2!.linked_tournaments);
+    expect(t2Links.some((l: any) => l.id === 'T001')).toBe(true);
+  });
+
+  it('should propagate event_label to linked tournaments missing one', () => {
+    // Create T002 without event_label
+    upsertTournament(makeTournamentInfo({ name: 'Tournament B', currentLabel: undefined }), 'T002');
+    expect(getTournament('T002')!.event_label).toBe('');
+
+    // Upsert T001 linking to T002 with name "Federados"
+    upsertTournament(makeTournamentInfo({
+      linkedTournaments: [{ id: 'T002', name: 'Federados' }],
+      currentLabel: 'Group A',
+    }), 'T001');
+
+    // T002 should now have event_label = 'Federados'
+    expect(getTournament('T002')!.event_label).toBe('Federados');
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

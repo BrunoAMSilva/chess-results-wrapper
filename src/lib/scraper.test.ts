@@ -112,6 +112,57 @@ describe('Scraper - Static Fixtures', () => {
       // A standard pairings page without round separators → Swiss
       expect(type).toBe(TournamentType.Swiss);
     });
+
+    it('should detect RoundRobin with Portuguese number-first round headers ("N. Ronda")', () => {
+      // Simulate a page with Portuguese-style round separator rows
+      const html = `<html><body><table class="CRs1">
+        <tr class="CRg1b"><th colspan="8">1. Ronda a 2026/02/28 às 15:05</th></tr>
+        <tr class="CRng1"><td>1</td><td>1</td><td>Player A</td><td>-</td><td>½ - ½</td><td>-</td><td>Player B</td><td>2</td></tr>
+        <tr class="CRg1b"><th colspan="8">2. Ronda a 2026/03/07 às 15:05</th></tr>
+        <tr class="CRng1"><td>1</td><td>2</td><td>Player B</td><td>-</td><td>1 - 0</td><td>-</td><td>Player A</td><td>1</td></tr>
+        <tr class="CRg1b"><th colspan="8">3. Ronda a 2026/03/14 às 15:05</th></tr>
+        <tr class="CRng1"><td>1</td><td>1</td><td>Player A</td><td>-</td><td>0 - 1</td><td>-</td><td>Player B</td><td>2</td></tr>
+      </table></body></html>`;
+      const $ = cheerio.load(html);
+      const type = detectTournamentType($);
+      expect(type).toBe(TournamentType.RoundRobin);
+    });
+
+    it('should detect RoundRobin with English word-first round headers ("Round N")', () => {
+      const html = `<html><body><table class="CRs1">
+        <tr class="CRg1b"><th colspan="8">Round 1 on 2026/02/28</th></tr>
+        <tr class="CRng1"><td>1</td><td>1</td><td>Player A</td><td>-</td><td>½ - ½</td><td>-</td><td>Player B</td><td>2</td></tr>
+        <tr class="CRg1b"><th colspan="8">Round 2 on 2026/03/07</th></tr>
+        <tr class="CRng1"><td>1</td><td>2</td><td>Player B</td><td>-</td><td>1 - 0</td><td>-</td><td>Player A</td><td>1</td></tr>
+      </table></body></html>`;
+      const $ = cheerio.load(html);
+      const type = detectTournamentType($);
+      expect(type).toBe(TournamentType.RoundRobin);
+    });
+  });
+
+  describe('Round-robin round filtering', () => {
+    it('should parse only the requested round from a Portuguese multi-round page', () => {
+      // Build a minimal round-robin page with 3 rounds, Portuguese headers
+      const html = `<html><body>
+        <h2>Test Tournament</h2>
+        <table class="CRs1">
+          <tr><th>Tab.</th><th>Nº.</th><th>Brancas</th><th>Elo</th><th>Resultado</th><th>Elo</th><th>Pretas</th><th>Nº.</th></tr>
+          <tr class="CRg1b"><th colspan="8">1. Ronda a 2026/02/28</th></tr>
+          <tr class="CRng1"><td>1</td><td>1</td><td><a>Alice</a></td><td>2100</td><td>½ - ½</td><td>2050</td><td><a>Bob</a></td><td>2</td></tr>
+          <tr class="CRg1b"><th colspan="8">2. Ronda a 2026/03/07</th></tr>
+          <tr class="CRng1"><td>1</td><td>2</td><td><a>Bob</a></td><td>2050</td><td>1 - 0</td><td>2100</td><td><a>Alice</a></td><td>1</td></tr>
+          <tr class="CRg1b"><th colspan="8">3. Ronda a 2026/03/14</th></tr>
+          <tr class="CRng1"><td>1</td><td>1</td><td><a>Alice</a></td><td>2100</td><td>0 - 1</td><td>2050</td><td><a>Bob</a></td><td>2</td></tr>
+        </table>
+      </body></html>`;
+
+      // Parse round 2 only
+      const data = parseHtml(html, 2);
+      expect(data.info.type).toBe(TournamentType.RoundRobin);
+      expect(data.pairings.length).toBe(1);
+      expect(data.pairings[0].white.name).toBe('Bob');
+    });
   });
 });
 
