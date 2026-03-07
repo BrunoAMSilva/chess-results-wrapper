@@ -1,0 +1,13 @@
+#!/bin/sh
+# Pre-commit hook: runs unit tests before allowing commit.
+# Skips live tests (network-dependent) for speed.
+
+echo "Running unit tests before commit..."
+npm run test:unit
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Tests failed. Commit aborted."
+  echo "Fix the failing tests before committing."
+  exit 1
+fi

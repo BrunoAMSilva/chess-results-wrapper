@@ -63,3 +63,9 @@ If a needed token doesn't exist, add it to `tokens.css` rather than hardcoding.
 <!-- ❌ Wrong: inline color -->
 <span style={`color: ${scoreColor}`}>
 ```
+
+## Layout-Specific Notes
+
+- **ResponsiveLayout**: Mobile-first with bottom nav (≤768px) and desktop segmented pill bar (≥768px). Uses ambient gradient blurs and ViewTransitions.
+- **TVLayout**: No-scroll, full-viewport layout for big screens. Auto-refreshes every 30s when focused. Uses carousel animations (fadeInUp, slideIn, pulse).
+- Both layouts include FOUC prevention via inline theme script in `<head>` and service worker registration.

@@ -1,52 +1,84 @@
 # Chess Results Wrapper
 
-A clean, modern wrapper for Chess-Results.com pairings, built with Astro.
+A modern, responsive wrapper for [chess-results.com](https://chess-results.com) tournament data, built with Astro 5 SSR.
 
 ## Features
 
-- **Modern UI**: Clean, responsive interface for viewing chess tournament pairings.
-- **Carousel View**: Automatically cycles through pages of pairings, perfect for projector displays at tournaments.
-- **Internationalization (i18n)**: Supports English and Portuguese (Portugal).
-- **Configurable**: Easily change tournament ID, round, and language via the UI or URL parameters.
+- **Modern UI** — Clean, mobile-first interface for viewing pairings, standings, and player profiles
+- **TV/Presenter Mode** — Auto-cycling carousel view optimized for projector displays at tournaments
+- **5-Language Support** — English, Portuguese, Spanish, German, and French (UI + data parsing)
+- **Player Profiles** — Cross-tournament history, round-by-round results, and detailed statistics
+- **Linked Tournaments** — Navigate related events within the same chess event via segmented control
+- **Women Standings** — Automatically derived from main standings by filtering sex='F' players
+- **Dark/Light Theme** — Three-state toggle (System/Light/Dark) with FOUC prevention
+- **PWA** — Service worker, manifest, and offline-capable shell
+- **4 Tournament Types** — Swiss, Round Robin, Team Swiss, Team Round Robin — auto-detected
 
-## Usage
+## Architecture
 
-### URL Parameters
+```
+chess-results.com HTML → Scraper (Cheerio) → SQLite DB → Astro SSR pages
+```
 
-You can configure the view using URL parameters:
+| Layer | Technology | Details |
+|-------|-----------|---------|
+| Runtime | Node.js + Astro 5 | SSR with `@astrojs/node` standalone adapter |
+| Database | better-sqlite3 | WAL mode, foreign keys ON, SQLite |
+| Scraping | Cheerio | HTML parsing, no browser automation at runtime |
+| Strategies | TypeScript classes | Swiss, RoundRobin, TeamSwiss, TeamRoundRobin |
+| Styling | CSS custom properties | Design tokens in `src/styles/tokens.css` |
 
-- `tid`: Tournament ID (e.g., `1361358`)
-- `round`: Round number (e.g., `1`)
-- `lang`: Language ID
-    - `1`: English (Default)
-    - `10`: Portuguese (Portugal)
-    - `2`: Spanish (UI only)
-    - `0`: German (UI only)
-    - `20`: French (UI only)
+### File Organization
+
+| Directory | Purpose |
+|-----------|---------|
+| `src/pages/` | Astro pages — fetch data, compose components |
+| `src/components/` | Reusable `.astro` components with typed Props |
+| `src/layouts/` | `ResponsiveLayout` (mobile) and `TVLayout` (projector) |
+| `src/lib/` | Core logic: `db.ts`, `scraper.ts`, `utils.ts`, `cache.ts`, `types.ts` |
+| `src/lib/strategies/` | Tournament type parsers with shared `base.ts` |
+| `src/i18n/` | Translation strings (80+ keys per language) |
+| `src/styles/` | Design tokens and global CSS |
+| `src/scripts/` | Client-side JS: theme toggle, carousel |
+| `scripts/` | Import/seeding CLI tools |
+| `tests/fixtures/` | Saved HTML fixtures for unit tests |
+
+## URL Parameters
+
+All pages accept:
+
+- `tid` — Tournament ID (default: `1361358`)
+- `round` — Round number
+- `lang` — Language ID: `0`=DE, `1`=EN (default), `2`=ES, `10`=PT, `20`=FR
 
 Example: `/?tid=1361358&round=1&lang=10`
 
-### Development
+## Development
 
-1. Install dependencies:
-   ```sh
-   npm install
-   ```
+### Setup
 
-2. Start the development server:
-   ```sh
-   npm run dev
-   ```
+```sh
+npm install
+git config core.hooksPath .githooks  # enables pre-commit test hook
+```
 
-3. Build for production:
-   ```sh
-   npm run build
-   ```
+### Commands
 
-4. Preview the build:
-   ```sh
-   npm run preview
-   ```
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Start development server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+| `npm run test:unit` | Run offline unit tests (pre-commit hook) |
+| `npm run test:live` | Run tests including live chess-results.com checks |
+| `npm run test:watch` | Watch mode for development |
+
+### Testing
+
+- **Framework:** Vitest with in-memory SQLite (`DATABASE_PATH=:memory:`)
+- **Pre-commit hook:** `.githooks/pre-commit` runs `npm run test:unit` — never bypass with `--no-verify`
+- **CI:** GitHub Actions runs `npm run test:unit` before every deployment
+- **Test suites:** 100+ tests covering DB operations, HTML parsing, persistence roundtrips, and utilities
 
 ### Bulk Seed (Federation + Year)
 

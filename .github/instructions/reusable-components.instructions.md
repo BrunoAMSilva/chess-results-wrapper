@@ -54,3 +54,22 @@ const { label, variant = "primary" } = Astro.props;
 - **`class:list`** for conditional classes, never string concatenation
 - **`<slot />`** for composable content instead of passing large HTML via props
 - **Keep pages thin** — pages fetch data and compose components, they don't contain reusable markup
+- **Strategy parsers stay in `src/lib/strategies/`** — parsing logic belongs in TypeScript strategy classes, not in Astro components
+
+## Existing Components
+
+Before creating a new component, check if one of these already handles the pattern:
+
+| Component | Purpose |
+|-----------|---------|
+| `MatchCard` | TV/presenter pairing row (white/table/result/black) |
+| `ResponsiveMatchCard` | Mobile pairing card with player links |
+| `StandingRow` | Standings entry with rank badge, player info, tie-breaks |
+| `PlayerRoundRow` | Single round in player view |
+| `PlayerTournamentHistoryRow` | Tournament history entry in player profile |
+| `RoundSelector` | Sticky horizontal scrolling round picker |
+| `SegmentedControl` | iOS-style segmented control with sliding highlight |
+| `TabsControl` | Underlined tab bar for TV/presenter views |
+| `TournamentSelector` | Linked tournament switcher (wraps SegmentedControl) |
+| `ThemeToggle` | Three-state System/Light/Dark theme toggle |
+| `TieBreaks` | Compact TB1–TB6 display, filters empties |
