@@ -6,7 +6,7 @@ const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'ch
 
 // Bump when the schema changes. Triggers a full data wipe on startup
 // if the stored PRAGMA user_version is behind this value.
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 // Ensure the directory exists
 fs.mkdirSync(path.dirname(dbPath), { recursive: true });
