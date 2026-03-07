@@ -209,47 +209,49 @@ describe('End-to-end: Linked tournaments persistence', () => {
     const html = loadFixture('future_participants.html');
     const parsed = parseStandingsHtml(html);
 
-    // The future_participants fixture has linked tournaments
-    if (parsed.info.linkedTournaments && parsed.info.linkedTournaments.length > 0) {
-      persistStandings(TOURNAMENT_ID, parsed.info, parsed.standings);
+    // Fixture must have linked tournaments — fail explicitly if it doesn't
+    expect(parsed.info.linkedTournaments).toBeDefined();
+    expect(parsed.info.linkedTournaments!.length).toBeGreaterThan(0);
 
-      const tournament = getTournament(TOURNAMENT_ID);
-      expect(tournament).toBeDefined();
+    persistStandings(TOURNAMENT_ID, parsed.info, parsed.standings);
 
-      const linked = JSON.parse(tournament!.linked_tournaments);
-      expect(linked.length).toBe(parsed.info.linkedTournaments.length);
+    const tournament = getTournament(TOURNAMENT_ID);
+    expect(tournament).toBeDefined();
 
-      // Verify each linked tournament has id and name
-      for (const lt of linked) {
-        expect(lt.id).toBeTruthy();
-        expect(lt.name).toBeTruthy();
-      }
+    const linked = JSON.parse(tournament!.linked_tournaments);
+    expect(linked.length).toBe(parsed.info.linkedTournaments!.length);
 
-      // Verify currentLabel is stored
-      if (parsed.info.currentLabel) {
-        expect(tournament!.event_label).toBe(parsed.info.currentLabel);
-      }
+    // Verify each linked tournament has id and name
+    for (const lt of linked) {
+      expect(lt.id).toBeTruthy();
+      expect(lt.name).toBeTruthy();
     }
+
+    // Verify currentLabel is stored
+    expect(parsed.info.currentLabel).toBeDefined();
+    expect(tournament!.event_label).toBe(parsed.info.currentLabel);
   });
 
   it('should not overwrite linked tournaments when re-persisting without them', () => {
     const html = loadFixture('future_participants.html');
     const parsed = parseStandingsHtml(html);
 
-    if (parsed.info.linkedTournaments && parsed.info.linkedTournaments.length > 0) {
-      // First persist with linked tournaments
-      persistStandings(TOURNAMENT_ID, parsed.info, parsed.standings);
+    // Fixture must have linked tournaments — fail explicitly if it doesn't
+    expect(parsed.info.linkedTournaments).toBeDefined();
+    expect(parsed.info.linkedTournaments!.length).toBeGreaterThan(0);
 
-      const firstLinked = JSON.parse(getTournament(TOURNAMENT_ID)!.linked_tournaments);
-      expect(firstLinked.length).toBeGreaterThan(0);
+    // First persist with linked tournaments
+    persistStandings(TOURNAMENT_ID, parsed.info, parsed.standings);
 
-      // Re-persist without linked tournaments (simulates pairings-only update)
-      const infoWithoutLinks = { ...parsed.info, linkedTournaments: undefined, currentLabel: undefined };
-      persistStandings(TOURNAMENT_ID, infoWithoutLinks, parsed.standings);
+    const firstLinked = JSON.parse(getTournament(TOURNAMENT_ID)!.linked_tournaments);
+    expect(firstLinked.length).toBeGreaterThan(0);
 
-      // Linked tournaments should be preserved
-      const secondLinked = JSON.parse(getTournament(TOURNAMENT_ID)!.linked_tournaments);
-      expect(secondLinked.length).toBe(firstLinked.length);
-    }
+    // Re-persist without linked tournaments (simulates pairings-only update)
+    const infoWithoutLinks = { ...parsed.info, linkedTournaments: undefined, currentLabel: undefined };
+    persistStandings(TOURNAMENT_ID, infoWithoutLinks, parsed.standings);
+
+    // Linked tournaments should be preserved
+    const secondLinked = JSON.parse(getTournament(TOURNAMENT_ID)!.linked_tournaments);
+    expect(secondLinked.length).toBe(firstLinked.length);
   });
 });
