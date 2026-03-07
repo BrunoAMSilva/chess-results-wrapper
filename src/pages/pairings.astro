@@ -37,8 +37,10 @@ const linkedTournaments = data?.info.linkedTournaments;
     </div>
   )}
 
+<div class="controls">
   {linkedTournaments && linkedTournaments.length > 0 && (
     <TournamentSelector
+      class="tournament-controls"
       currentId={tid}
       currentLabel={data!.info.currentLabel || data!.info.name}
       linkedTournaments={linkedTournaments}
@@ -53,7 +55,7 @@ const linkedTournaments = data?.info.linkedTournaments;
         baseUrl={`/pairings?tid=${tid}&lang=${lang}`}
         label={t('header.round')}
       />
-  )}
+  )}</div>
 
   <div class="pairings-list animate-enter" style="animation-delay: 100ms">
     {allPairings.length > 0 ? (
@@ -74,6 +76,19 @@ const linkedTournaments = data?.info.linkedTournaments;
     background: var(--bg);
     padding: var(--space-2) 0;
     margin-bottom: var(--space-4);
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: row;
+    gap: var(--space-4);
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  :global(.tournament-controls) {
+    margin-block-end: var(--space-4);
   }
   .pairings-list {
     display: grid;
