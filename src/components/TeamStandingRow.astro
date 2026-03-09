@@ -1,0 +1,266 @@
+---
+import type { TeamStanding } from "../lib/types";
+import { reverseName } from "../lib/utils";
+import { useTranslations } from "../i18n/ui";
+import TieBreaks from "./TieBreaks.astro";
+
+interface Props {
+  team: TeamStanding;
+  index: number;
+  lang: number;
+}
+
+const { team, index, lang } = Astro.props;
+const t = useTranslations(lang);
+
+const isTop3 = team.rank <= 3;
+const rankClass = team.rank <= 3 ? `rank-${team.rank}` : "";
+---
+
+<details
+  class:list={["team-standing", { "top-3": isTop3 }, rankClass]}
+  style={`animation-delay: ${index * 40}ms`}
+>
+  <summary class="team-header-row">
+    <div class="rank-col">
+      <span class="rank-num">{team.rank}</span>
+    </div>
+
+    <div class="team-info">
+      <span class="team-name">{team.name}</span>
+      <span class="team-meta">
+        {team.ratingAvg > 0 && <Fragment>Ø {team.ratingAvg}</Fragment>}
+        {team.captain && <Fragment> • {team.captain}</Fragment>}
+      </span>
+    </div>
+
+    {team.tieBreak1 && (
+      <div class="main-stat">
+        <span class="points">{team.tieBreak1}</span>
+        <span class="stat-label">{t("standings.pts")}</span>
+      </div>
+    )}
+
+    <div class="team-stats">
+      <TieBreaks
+        values={[team.tieBreak2]}
+      />
+      <span class="chevron" aria-hidden="true">›</span>
+    </div>
+  </summary>
+
+  {team.players.length > 0 && (
+    <div class="players-list">
+      {team.players.map((p) => (
+        <div class="player-row">
+          <span class="board-num">{p.board}</span>
+          <div class="player-info">
+            <span class="player-name">{reverseName(p.name)}</span>
+            <span class="player-meta">
+              {p.fed && <Fragment>{p.fed}</Fragment>}
+              {p.rating && p.rating !== "0" && (
+                <Fragment> • {p.rating}</Fragment>
+              )}
+            </span>
+          </div>
+          <span class="player-pts">{p.points}</span>
+        </div>
+      ))}
+    </div>
+  )}
+</details>
+
+<style>
+  .team-standing {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    animation: fadeInUp var(--duration-slow) ease both;
+  }
+
+  .team-standing:last-child {
+    border-bottom: none;
+  }
+
+  .team-standing.top-3 {
+    border-left: 4px solid var(--accent);
+  }
+
+  .team-standing.rank-1 {
+    border-left-color: var(--medal-gold);
+  }
+
+  .team-standing.rank-2 {
+    border-left-color: var(--medal-silver);
+  }
+
+  .team-standing.rank-3 {
+    border-left-color: var(--medal-bronze);
+  }
+
+  .team-header-row {
+    display: grid;
+    grid-template-columns: 50px minmax(0, 1fr) auto auto;
+    align-items: center;
+    padding: var(--space-3) var(--space-2) var(--space-3) 0;
+    min-height: 56px;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .team-header-row::-webkit-details-marker {
+    display: none;
+  }
+
+  .team-header-row::marker {
+    display: none;
+    content: "";
+  }
+
+  .rank-col {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--text-dim);
+    line-height: 1;
+  }
+
+  .rank-1 .rank-col { color: var(--medal-gold); }
+  .rank-2 .rank-col { color: var(--medal-silver); }
+  .rank-3 .rank-col { color: var(--medal-bronze); }
+
+  .rank-1 .points { color: var(--medal-gold); }
+  .rank-2 .points { color: var(--medal-silver); }
+  .rank-3 .points { color: var(--medal-bronze); }
+
+  .team-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .team-name {
+    font-size: var(--text-base);
+    font-weight: var(--weight-bold);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+  .team-meta {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    font-weight: var(--weight-semibold);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .main-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 var(--space-3);
+  }
+
+  .points {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    font-weight: var(--weight-semibold);
+  }
+
+  .team-stats {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding-right: var(--space-2);
+  }
+
+  .chevron {
+    font-size: var(--text-lg);
+    color: var(--text-dim);
+    transition: transform var(--duration-fast) var(--ease-in-out);
+    line-height: 1;
+  }
+
+  .team-standing[open] .chevron {
+    transform: rotate(90deg);
+  }
+
+  .players-list {
+    border-top: 1px solid var(--border-light);
+    padding: var(--space-1) 0;
+    margin-left: 50px;
+  }
+
+  .player-row {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    align-items: center;
+    padding: var(--space-1) var(--space-2) var(--space-1) 0;
+    min-height: 32px;
+  }
+
+  .board-num {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    font-weight: var(--weight-semibold);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .player-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .player-name {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+  .player-meta {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: none;
+  }
+
+  @media (min-width: 640px) {
+    .player-meta,
+    .team-meta {
+      display: block;
+    }
+  }
+
+  .player-pts {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+    padding-right: var(--space-2);
+  }
+</style>

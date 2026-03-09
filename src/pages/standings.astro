@@ -1,6 +1,7 @@
 ---
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import StandingRow from "../components/StandingRow.astro";
+import TeamStandingRow from "../components/TeamStandingRow.astro";
 import SegmentedControl from "../components/SegmentedControl.astro";
 import TournamentSelector from "../components/TournamentSelector.astro";
 import { scrapeStandings } from "../lib/scraper";
@@ -31,8 +32,23 @@ try {
 
 const allStandings = data?.standings || [];
 const womenStandings = data?.womenStandings || [];
+const teamStandings = data?.teamStandings || [];
 const hasWomen = womenStandings.length > 0;
+const hasTeams = teamStandings.length > 0;
 const linkedTournaments = data?.info.linkedTournaments;
+
+// Build segments for the segmented control
+const segments: { value: string; label: string }[] = [];
+if (hasTeams) {
+  segments.push({ value: "teams", label: t("standings.teams") });
+  segments.push({ value: "open", label: t("standings.players") });
+} else {
+  segments.push({ value: "open", label: t("standings.open") });
+}
+if (hasWomen) {
+  segments.push({ value: "women", label: t("standings.women") });
+}
+const defaultActive = hasTeams ? "teams" : "open";
 ---
 
 <MobileLayout title={data?.info.name || t("site.title")} lang={lang}>
@@ -56,20 +72,27 @@ const linkedTournaments = data?.info.linkedTournaments;
       )
     }
     {
-      hasWomen && (
+      segments.length > 1 && (
         <SegmentedControl
           name="standings"
-          segments={[
-            { value: "open", label: t("standings.open") },
-            { value: "women", label: t("standings.women") },
-          ]}
-          active="open"
+          segments={segments}
+          active={defaultActive}
         />
       )
     }
   </div>
 
-  <div class="standings-list" id="openStandingsList">
+  {
+    hasTeams && (
+      <div class="standings-list" id="teamStandingsList">
+        {teamStandings.map((team, i) => (
+          <TeamStandingRow team={team} index={i} lang={lang} />
+        ))}
+      </div>
+    )
+  }
+
+  <div class:list={["standings-list", { hidden: hasTeams }]} id="openStandingsList">
     {
       allStandings.length > 0
         ? allStandings.map((standing: any, i: number) => (
@@ -131,17 +154,15 @@ const linkedTournaments = data?.info.linkedTournaments;
     const wrapper = document.querySelector('[data-seg-control="standings"]');
     if (!wrapper) return;
 
+    const teamList = document.getElementById("teamStandingsList");
     const openList = document.getElementById("openStandingsList");
     const womenList = document.getElementById("womenStandingsList");
 
     wrapper.addEventListener("segmented-change", ((e: CustomEvent) => {
-      if (e.detail.value === "open") {
-        openList?.classList.remove("hidden");
-        womenList?.classList.add("hidden");
-      } else {
-        openList?.classList.add("hidden");
-        womenList?.classList.remove("hidden");
-      }
+      const val = e.detail.value;
+      teamList?.classList.toggle("hidden", val !== "teams");
+      openList?.classList.toggle("hidden", val !== "open");
+      womenList?.classList.toggle("hidden", val !== "women");
     }) as EventListener);
   }
 

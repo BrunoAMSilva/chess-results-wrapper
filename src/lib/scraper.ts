@@ -428,17 +428,26 @@ async function scrapeStandingsFromRemote(
     throw new Error(`No standings found for tournament ${tournamentId}`);
   }
 
-  // Crosstables (art=4) lack the sex column. If we used art=4 and got no
-  // women's standings, try the standard list (art=1) for the sex data.
-  if (usedArt !== 1 && result.standings.length > 0 && result.womenStandings.length === 0) {
-    try {
-      const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=1&turdet=YES`;
-      const html = await fetchTournamentHtml(url, tournamentId, lang);
-      const fallback = parseStandingsHtml(html);
-      if (fallback.womenStandings.length > 0) {
-        result = { ...result, womenStandings: fallback.womenStandings };
-      }
-    } catch (_) { /* best-effort: women's standings are optional */ }
+  // Crosstables (art=4) lack the sex column and team standings.
+  // If we used art=4, fetch art=1 for women's standings and team composition.
+  if (usedArt !== 1 && result.standings.length > 0) {
+    const isTeam = result.info.type === TournamentType.TeamSwiss ||
+                   result.info.type === TournamentType.TeamRoundRobin;
+    const needsFallback = result.womenStandings.length === 0 || (isTeam && !result.teamStandings?.length);
+
+    if (needsFallback) {
+      try {
+        const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=1&turdet=YES`;
+        const html = await fetchTournamentHtml(url, tournamentId, lang);
+        const fallback = parseStandingsHtml(html);
+        if (fallback.womenStandings.length > 0) {
+          result = { ...result, womenStandings: fallback.womenStandings };
+        }
+        if (isTeam && fallback.teamStandings && fallback.teamStandings.length > 0) {
+          result = { ...result, teamStandings: fallback.teamStandings };
+        }
+      } catch (_) { /* best-effort: supplementary data is optional */ }
+    }
   }
 
   // Enrich sex data from women standings
