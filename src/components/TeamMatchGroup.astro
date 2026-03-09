@@ -1,0 +1,145 @@
+---
+import type { TeamPairing } from "../lib/types";
+import ResponsiveMatchCard from "./ResponsiveMatchCard.astro";
+
+interface Props {
+  teamMatch: TeamPairing;
+  tid?: string;
+  lang?: number;
+}
+
+const { teamMatch, tid, lang = 1 } = Astro.props;
+
+// Parse team result (e.g., "3:1", "2½:1½")
+let homeScoreText = "";
+let awayScoreText = "";
+let homeWins = false;
+let awayWins = false;
+
+if (teamMatch.result) {
+  const parts = teamMatch.result.split(":");
+  if (parts.length === 2) {
+    homeScoreText = parts[0].trim();
+    awayScoreText = parts[1].trim();
+    const homeVal = parseFloat(homeScoreText.replace("½", ".5"));
+    const awayVal = parseFloat(awayScoreText.replace("½", ".5"));
+    if (!isNaN(homeVal) && !isNaN(awayVal)) {
+      homeWins = homeVal > awayVal;
+      awayWins = awayVal > homeVal;
+    }
+  }
+}
+
+const isBye = teamMatch.blackTeam === "bye";
+---
+
+<div class="team-match-group">
+  <div class="team-header">
+    <div class="team-names">
+      <span class:list={["team-name", { winner: homeWins }]}>{teamMatch.whiteTeam}</span>
+      <span class="team-vs">vs</span>
+      <span class:list={["team-name", { winner: awayWins, bye: isBye }]}>
+        {isBye ? "BYE" : teamMatch.blackTeam}
+      </span>
+    </div>
+    {teamMatch.result && (
+      <div class="team-result">
+        <span class:list={["team-score", { winner: homeWins }]}>{homeScoreText}</span>
+        <span class="team-score-sep">:</span>
+        <span class:list={["team-score", { winner: awayWins }]}>{awayScoreText}</span>
+      </div>
+    )}
+  </div>
+
+  {teamMatch.boards.length > 0 && (
+    <div class="boards-list">
+      {teamMatch.boards.map((board) => (
+        <ResponsiveMatchCard match={board} tid={tid} lang={lang} />
+      ))}
+    </div>
+  )}
+</div>
+
+<style>
+  .team-match-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .team-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface-elevated);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border);
+  }
+
+  .team-names {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .team-name {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .team-name.winner {
+    color: var(--accent-text);
+  }
+
+  .team-name.bye {
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .team-vs {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    flex-shrink: 0;
+  }
+
+  .team-result {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    flex-shrink: 0;
+    margin-left: var(--space-3);
+  }
+
+  .team-score {
+    font-size: var(--text-base);
+    font-weight: var(--weight-bold);
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .team-score.winner {
+    color: var(--accent-text);
+  }
+
+  .team-score-sep {
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+  }
+
+  .boards-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding-left: var(--space-3);
+  }
+</style>

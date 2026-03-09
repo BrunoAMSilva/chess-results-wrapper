@@ -53,6 +53,37 @@ export interface StandingsData {
   standings: Standing[];
   /** Derived women-only standings (present when sex column exists). */
   womenStandings: Standing[];
+  /** Present only for team tournaments — team-level rankings. */
+  teamStandings?: TeamStanding[];
+}
+
+// ─── Team Standings ───────────────────────────────────────────────────────────
+
+/** A single team's standing entry, parsed from team-composition pages (art=1). */
+export interface TeamStanding {
+  rank: number;
+  name: string;
+  /** Average rating of the team. */
+  ratingAvg: number;
+  /** Captain name, if available. */
+  captain: string;
+  /** Tie-break values parsed from the header (e.g. TB1, TB2). */
+  tieBreak1: string;
+  tieBreak2: string;
+  /** Individual player rows within this team. */
+  players: TeamPlayerEntry[];
+}
+
+/** A player row within a team-composition standings table. */
+export interface TeamPlayerEntry {
+  board: number;
+  name: string;
+  rating: string;
+  fed: string;
+  fideId: string;
+  points: string;
+  games: string;
+  ratingAvg: string;
 }
 
 // ─── Pairings ─────────────────────────────────────────────────────────────────

@@ -20,6 +20,8 @@ export type {
   StandingsData,
   Standing,
   TeamPairing,
+  TeamStanding,
+  TeamPlayerEntry,
   LinkedTournament,
   Sex,
 } from './types';
@@ -216,6 +218,10 @@ function buildUrl(tournamentId: string, round: number, lang = 1): string {
   return `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=2&rd=${round}&turdet=YES`;
 }
 
+function buildBoardPairingsUrl(tournamentId: string, round: number, lang = 1): string {
+  return `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=3&rd=${round}&turdet=YES`;
+}
+
 // ─── Freshness helpers ────────────────────────────────────────────────────────
 
 /**
@@ -350,6 +356,8 @@ async function scrapePlayerCards(
 
 // ─── Core scrape from remote (no DB check) ────────────────────────────────────
 
+import { TournamentType } from './types';
+
 async function scrapePairingsFromRemote(
   tournamentId: string,
   round: number,
@@ -361,6 +369,25 @@ async function scrapePairingsFromRemote(
   try {
     const data = parseHtml(html, round);
     enrichFromDb(data.info, tournamentId);
+
+    const isTeam = data.info.type === TournamentType.TeamSwiss ||
+                   data.info.type === TournamentType.TeamRoundRobin;
+
+    // For team tournaments, also fetch board-level pairings (art=3)
+    if (isTeam) {
+      try {
+        const boardUrl = buildBoardPairingsUrl(tournamentId, round, lang);
+        const boardHtml = await fetchTournamentHtml(boardUrl, tournamentId, lang);
+        const boardData = parseBoardPairingsHtml(boardHtml, round);
+        enrichFromDb(boardData.info, tournamentId);
+
+        // Merge: use board-level data for pairings, keep team-level data
+        if (boardData.teamPairings && boardData.teamPairings.length > 0) {
+          data.teamPairings = boardData.teamPairings;
+          data.pairings = boardData.pairings;
+        }
+      } catch (_) { /* board pairings are best-effort */ }
+    }
 
     // Persist to database (best-effort)
     try { persistPairings(tournamentId, data.info, round, data.pairings); } catch (_) {}
@@ -537,6 +564,20 @@ export function parseHtml(html: string, round: number): TournamentData {
   const $ = cheerio.load(html);
   const strategy = getStrategyFromHtml($);
   const meta = parseTournamentMeta($);
+  return strategy.parsePairings($, round, meta);
+}
+
+/**
+ * Parse board-level pairings HTML (art=3) for team tournaments.
+ * Falls back to standard parsePairings if the strategy doesn't support board pairings.
+ */
+export function parseBoardPairingsHtml(html: string, round: number): TournamentData {
+  const $ = cheerio.load(html);
+  const strategy = getStrategyFromHtml($);
+  const meta = parseTournamentMeta($);
+  if (strategy.parseBoardPairings) {
+    return strategy.parseBoardPairings($, round, meta);
+  }
   return strategy.parsePairings($, round, meta);
 }
 

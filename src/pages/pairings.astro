@@ -1,11 +1,13 @@
 ---
 import ResponsiveLayout from "../layouts/ResponsiveLayout.astro";
 import ResponsiveMatchCard from "../components/ResponsiveMatchCard.astro";
+import TeamMatchGroup from "../components/TeamMatchGroup.astro";
 import RoundSelector from "../components/RoundSelector.astro";
 import TournamentSelector from "../components/TournamentSelector.astro";
 import { scrapePairings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
+import type { Pairing, TeamPairing } from "../lib/types";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const round = parseInt(Astro.url.searchParams.get("round") || "1");
@@ -17,15 +19,18 @@ const t = useTranslations(lang);
 
 let data;
 let error: string | null = null;
-let allPairings: import("../lib/scraper").Pairing[] = [];
+let allPairings: Pairing[] = [];
+let teamPairings: TeamPairing[] | undefined;
 
 try {
   data = await scrapePairings(tid, round, lang);
   allPairings = data.pairings || [];
+  teamPairings = data.teamPairings;
 } catch (e) {
   error = e instanceof Error ? e.message : t('error.load');
 }
 
+const isTeamView = teamPairings && teamPairings.length > 0;
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
 const linkedTournaments = data?.info.linkedTournaments;
 ---
@@ -58,8 +63,12 @@ const linkedTournaments = data?.info.linkedTournaments;
   )}</div>
 
   <div class="pairings-list animate-enter" style="animation-delay: 100ms">
-    {allPairings.length > 0 ? (
-      allPairings.map((pairing: any) => <ResponsiveMatchCard match={pairing} tid={tid} lang={lang} />)
+    {isTeamView ? (
+      teamPairings!.map((teamMatch) => (
+        <TeamMatchGroup teamMatch={teamMatch} tid={tid} lang={lang} />
+      ))
+    ) : allPairings.length > 0 ? (
+      allPairings.map((pairing) => <ResponsiveMatchCard match={pairing} tid={tid} lang={lang} />)
     ) : (
       <div class="empty-state">
         <p>{t('empty.pairings')}</p>

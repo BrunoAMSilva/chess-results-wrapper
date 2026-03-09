@@ -31,6 +31,13 @@ export interface TournamentStrategy {
 
   /** Parse standings HTML. */
   parseStandings($: cheerio.CheerioAPI, info: Omit<TournamentInfo, 'round' | 'type'>): StandingsData;
+
+  /**
+   * Parse board-level pairings from art=3 page (team tournaments only).
+   * Returns TeamPairing[] with individual board matchups populated.
+   * Default implementation returns undefined (non-team strategies).
+   */
+  parseBoardPairings?($: cheerio.CheerioAPI, round: number, info: Omit<TournamentInfo, 'round' | 'type'>): TournamentData;
 }
 
 // ─── Shared helpers used by all strategies ────────────────────────────────────
@@ -60,18 +67,26 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
     .trim();
   let totalRounds = parseInt(totalRoundsText) || 0;
 
+  // Compute max rd= from links on the page (represents actually-available rounds)
+  let maxRdFromLinks = 0;
+  $('a[href*="rd="]').each((_, el) => {
+    const href = $(el).attr('href') || '';
+    const rdMatch = href.match(/[?&]rd=(\d+)/);
+    if (rdMatch) {
+      const rd = parseInt(rdMatch[1], 10);
+      if (rd > maxRdFromLinks) maxRdFromLinks = rd;
+    }
+  });
+
   // Fallback 1: derive totalRounds from rd= links on the page
   if (totalRounds === 0) {
-    let maxRd = 0;
-    $('a[href*="rd="]').each((_, el) => {
-      const href = $(el).attr('href') || '';
-      const rdMatch = href.match(/[?&]rd=(\d+)/);
-      if (rdMatch) {
-        const rd = parseInt(rdMatch[1], 10);
-        if (rd > maxRd) maxRd = rd;
-      }
-    });
-    totalRounds = maxRd;
+    totalRounds = maxRdFromLinks;
+  }
+
+  // Cap totalRounds to the max available round from links — the metadata
+  // "Number of rounds" represents planned rounds which may exceed played rounds
+  if (maxRdFromLinks > 0 && maxRdFromLinks < totalRounds) {
+    totalRounds = maxRdFromLinks;
   }
 
   // Fallback 2: count round separator rows (round-robin pages show all rounds
@@ -488,6 +503,256 @@ export function parseTeamPairings(
   });
 
   return teamPairings;
+}
+
+// ─── Board Pairings (art=3) ───────────────────────────────────────────────────
+
+import type { Pairing, TeamStanding, TeamPlayerEntry } from '../types';
+
+/**
+ * Parse board-level pairings from art=3 page.
+ *
+ * Art=3 layout for team tournaments:
+ *   - Round separator (CRg1b td): "Round 1 on 2026/01/03 at 15:00"
+ *   - Match header (CRng1b th): Bo. | homeNo | homeTeam | Rtg | - | awayNo | awayTeam | Rtg | score
+ *   - Board data rows (CRng1/CRng2): boardNo | _ | homeName | _ | homeName | homeRtg | - | _ | awayName | _ | awayName | awayRtg | result
+ *
+ * Returns TeamPairing[] with populated boards[] arrays.
+ */
+export function parseTeamBoardPairings(
+  $: cheerio.CheerioAPI,
+  round: number,
+): TeamPairing[] {
+  const teamPairings: TeamPairing[] = [];
+  let currentRound = round; // default to requested round
+  let currentMatch: TeamPairing | null = null;
+
+  $('table.CRs1 tr').each((_, row) => {
+    const $row = $(row);
+
+    // Round separator row (CRg1b td, no th cells)
+    if ($row.hasClass('CRg1b') && $row.find('th').length === 0) {
+      const text = $row.text().trim();
+      const roundMatch = text.match(/(?:Round|Ronda|Runde|Ronde)\s+(\d+)/i);
+      if (roundMatch) {
+        currentRound = parseInt(roundMatch[1], 10);
+      }
+      return;
+    }
+
+    // Match header row (CRng1b with th cells defining teams)
+    // Format: Bo. | homeNo | homeTeam | Rtg | - | awayNo | awayTeam | Rtg | score
+    if ($row.hasClass('CRng1b') && $row.find('th').length > 3) {
+      if (currentRound !== round) return;
+
+      // Save previous match
+      if (currentMatch) {
+        teamPairings.push(currentMatch);
+      }
+
+      const ths = $row.find('th');
+      const firstTh = $(ths[0]).text().trim();
+
+      // Skip repeated column headers (Bo. | Name | Rtg | ...)
+      if (firstTh === 'Bo.' || firstTh === 'Tab.') {
+        // This is a column header, not a match header — check if it has team names
+        // Match headers have the pattern: Bo. | number | TeamName | Rtg | - | number | TeamName | Rtg | score
+        const secondTh = $(ths[1]).text().trim();
+        if (!/^\d+$/.test(secondTh)) {
+          // Not a match header, just a repeated column header
+          return;
+        }
+      }
+
+      // Parse match header: th[1]=homeNo, th[2]=homeTeam, th[5]=awayNo, th[6]=awayTeam, th[8]=score
+      const homeTeam = ths.length > 2 ? $(ths[2]).text().trim() : '';
+      const awayTeam = ths.length > 6 ? $(ths[6]).text().trim() : '';
+      const score = ths.length > 8 ? $(ths[8]).text().trim() : '';
+      const tableNum = ths.length > 1 ? parseInt($(ths[1]).text().trim()) || 0 : 0;
+
+      const isUnpaired = !awayTeam || awayTeam.toLowerCase() === 'bye' ||
+        awayTeam.toLowerCase().includes('spielfrei');
+
+      currentMatch = {
+        table: tableNum,
+        whiteTeam: homeTeam,
+        blackTeam: isUnpaired ? 'bye' : awayTeam,
+        boards: [],
+        result: score,
+      };
+      return;
+    }
+
+    // Board data rows
+    if (currentRound !== round || !currentMatch) return;
+
+    const isDataRow =
+      $row.hasClass('CRng1') || $row.hasClass('CRng2') ||
+      $row.hasClass('CRg1') || $row.hasClass('CRg2');
+    if (!isDataRow) return;
+
+    const cells = $row.find('td');
+    if (cells.length < 6) return;
+
+    // Board number format: "matchNo.boardNo" (e.g., "1.1", "1.2")
+    const boardText = $(cells[0]).text().trim();
+    const boardMatch = boardText.match(/\d+\.(\d+)/);
+    const boardNum = boardMatch ? parseInt(boardMatch[1]) : parseInt(boardText) || 0;
+    if (boardNum === 0) return;
+
+    // Home player: cells[2] or cells[4] has name, cells[5] has rating
+    const homeName = cells.length > 4
+      ? ($(cells[4]).find('a').text().trim() || $(cells[4]).text().trim() ||
+         $(cells[2]).find('a').text().trim() || $(cells[2]).text().trim())
+      : $(cells[2]).text().trim();
+
+    // Away player: cells[8] or cells[10] has name, cells[11] has rating
+    const awayName = cells.length > 10
+      ? ($(cells[10]).find('a').text().trim() || $(cells[10]).text().trim() ||
+         $(cells[8]).find('a').text().trim() || $(cells[8]).text().trim())
+      : cells.length > 8
+        ? $(cells[8]).text().trim()
+        : '';
+
+    const result = cells.length > 12 ? $(cells[12]).text().trim() :
+                   cells.length > 11 ? $(cells[11]).text().trim() : '';
+
+    const awayNameLower = awayName.toLowerCase();
+    const isBye = awayNameLower === 'bye' || awayNameLower.includes('spielfrei') ||
+      awayNameLower.includes('livre') || !awayName;
+
+    currentMatch.boards.push({
+      table: boardNum,
+      white: { name: homeName, number: 0 },
+      black: isBye ? null : { name: awayName, number: 0 },
+      unpairedLabel: isBye ? (awayName || 'BYE') : undefined,
+      result,
+    });
+  });
+
+  // Don't forget the last match
+  if (currentMatch) {
+    teamPairings.push(currentMatch);
+  }
+
+  return teamPairings;
+}
+
+// ─── Team Standings (art=1 for team tournaments) ──────────────────────────────
+
+/**
+ * Parse team-composition standings from art=1 team tournament pages.
+ *
+ * Art=1 layout:
+ *   - Team header separator (CRg1b td): "1. TEAM NAME (RtgAvg:1896, Captain: Name / TB1: 12 / TB2: 0)"
+ *   - Column header (CRng1b th): Bo. | | Name | Rtg | FED | FideID | 1 | 2 | ... | Pts. | Games | RtgAvg
+ *   - Player data rows (CRng1/CRng2): board | | name | rtg | fed | fideId | rd1 | rd2 | ... | pts | games | rtgAvg
+ */
+export function parseTeamStandings(
+  $: cheerio.CheerioAPI,
+): TeamStanding[] {
+  const teams: TeamStanding[] = [];
+  let currentTeam: TeamStanding | null = null;
+
+  // Column indices for player rows (set from each team's header)
+  let nameIdx = 2;
+  let rtgIdx = 3;
+  let fedIdx = 4;
+  let fideIdIdx = 5;
+  let ptsIdx = -1;
+  let gamesIdx = -1;
+  let rtgAvgIdx = -1;
+
+  $('table.CRs1 tr').each((_, row) => {
+    const $row = $(row);
+
+    // Team header separator: "1. TEAM NAME (RtgAvg:..., Captain:... / TB1: ... / TB2: ...)"
+    if (($row.hasClass('CRg1b') || $row.hasClass('CRng1b')) && $row.find('th').length === 0) {
+      const text = $row.text().trim();
+
+      // Parse: "N. TEAM NAME (RtgAvg:NNNN, Captain: ... / TB1: N / TB2: N)"
+      const teamMatch = text.match(/^\s*(\d+)\.\s+(.+?)(?:\s*\((.+)\))?$/);
+      if (teamMatch) {
+        // Save previous team
+        if (currentTeam) teams.push(currentTeam);
+
+        const rank = parseInt(teamMatch[1]);
+        const name = teamMatch[2].trim();
+        const meta = teamMatch[3] || '';
+
+        const rtgAvgMatch = meta.match(/RtgAvg:\s*(\d+)/);
+        const captainMatch = meta.match(/Captain:\s*([^/]+)/);
+        const tb1Match = meta.match(/TB1:\s*([\d.,]+)/);
+        const tb2Match = meta.match(/TB2:\s*([\d.,]+)/);
+
+        currentTeam = {
+          rank,
+          name,
+          ratingAvg: rtgAvgMatch ? parseInt(rtgAvgMatch[1]) : 0,
+          captain: captainMatch ? captainMatch[1].trim() : '',
+          tieBreak1: tb1Match ? tb1Match[1] : '',
+          tieBreak2: tb2Match ? tb2Match[1] : '',
+          players: [],
+        };
+      }
+      return;
+    }
+
+    // Column header row for each team (CRng1b with th)
+    if ($row.hasClass('CRng1b') && $row.find('th').length > 0) {
+      // Re-detect column indices
+      $row.find('th').each((i, th) => {
+        const text = $(th).text().trim();
+        if (text === 'Name' || text === 'Nome' || text === 'Nombre' || text === 'Nom') nameIdx = i;
+        if (text === 'Rtg' || text === 'RtgI' || text === 'Elo') rtgIdx = i;
+        if (text === 'FED' || text === 'Fed') fedIdx = i;
+        if (text === 'FideID' || text === 'FIDE-ID' || text === 'Id FIDE') fideIdIdx = i;
+        if (text === 'Pts.' || text === 'Pts') ptsIdx = i;
+        if (text === 'Games' || text === 'Jogos' || text === 'Partidas' || text === 'Parties') gamesIdx = i;
+        if (text === 'RtgAvg' || text === 'EloAvg') rtgAvgIdx = i;
+      });
+      return;
+    }
+
+    // Player data rows within a team
+    if (!currentTeam) return;
+
+    const isDataRow =
+      $row.hasClass('CRng1') || $row.hasClass('CRng2') ||
+      $row.hasClass('CRg1') || $row.hasClass('CRg2');
+    if (!isDataRow) return;
+
+    const cells = $row.find('td');
+    if (cells.length < 4) return;
+
+    const boardText = $(cells[0]).text().trim();
+    const board = parseInt(boardText) || 0;
+    if (board === 0) return;
+
+    const name = nameIdx < cells.length ? $(cells[nameIdx]).text().trim() : '';
+    const rating = rtgIdx < cells.length ? $(cells[rtgIdx]).text().trim() : '';
+    const fed = fedIdx < cells.length ? $(cells[fedIdx]).text().trim() : '';
+    const fideId = fideIdIdx < cells.length ? $(cells[fideIdIdx]).text().trim() : '';
+    const points = ptsIdx !== -1 && ptsIdx < cells.length ? $(cells[ptsIdx]).text().trim() : '';
+    const games = gamesIdx !== -1 && gamesIdx < cells.length ? $(cells[gamesIdx]).text().trim() : '';
+    const ratingAvg = rtgAvgIdx !== -1 && rtgAvgIdx < cells.length ? $(cells[rtgAvgIdx]).text().trim() : '';
+
+    currentTeam.players.push({
+      board,
+      name,
+      rating,
+      fed,
+      fideId,
+      points,
+      games,
+      ratingAvg,
+    });
+  });
+
+  // Save the last team
+  if (currentTeam) teams.push(currentTeam);
+
+  return teams;
 }
 
 // ─── Player Card (art=9) ──────────────────────────────────────────────────────
