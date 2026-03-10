@@ -1,6 +1,6 @@
 ---
 import Layout from "../../layouts/TVLayout.astro";
-import MatchCard from "../../components/MatchCard.astro";
+import PresenterPairingCard from "../../components/PresenterPairingCard.astro";
 import StandingRow from "../../components/StandingRow.astro";
 import TabsControl from "../../components/TabsControl.astro";
 import SegmentedControl from "../../components/SegmentedControl.astro";
@@ -16,6 +16,17 @@ const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const round = getIntParam(Astro.url.searchParams.get("round"), 1, 1, 64);
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAGE, 1, 50);
+const sponsorImage = Astro.url.searchParams.get("sponsor")?.trim() || "";
+const sponsorAlt = Astro.url.searchParams.get("sponsorAlt")?.trim() || "Sponsor";
+const hideNonPaired = Astro.url.searchParams.get("hideNonPaired") === "1";
+
+const presenterExtras = new URLSearchParams();
+if (Astro.url.searchParams.get("rows")) presenterExtras.set("rows", String(rowsPerPage));
+if (sponsorImage) presenterExtras.set("sponsor", sponsorImage);
+if (sponsorAlt && sponsorAlt !== "Sponsor") presenterExtras.set("sponsorAlt", sponsorAlt);
+if (hideNonPaired) presenterExtras.set("hideNonPaired", "1");
+const presenterExtraQuery = presenterExtras.toString();
+const presenterExtraSuffix = presenterExtraQuery ? `&${presenterExtraQuery}` : "";
 
 const t = useTranslations(lang);
 
@@ -31,6 +42,17 @@ try {
 
 const allPairings = data?.pairings || [];
 
+function isByePairing(p: import("../../lib/types").Pairing): boolean {
+  if (p.black) return false;
+  const label = (p.unpairedLabel || "").toLowerCase();
+  const normalizedResult = p.result.replace(/\s+/g, "").toLowerCase();
+  return normalizedResult === "1" || label.includes("bye") || label.includes("spielfrei");
+}
+
+const visiblePairings = hideNonPaired
+  ? allPairings.filter((p) => p.black !== null || isByePairing(p))
+  : allPairings;
+
 // When no pairings, fetch player list from standings
 let womenPlayerList: import("../../lib/scraper").Standing[] = [];
 if (allPairings.length === 0 && !error) {
@@ -41,12 +63,12 @@ if (allPairings.length === 0 && !error) {
   } catch (_) { /* ignore - show empty state */ }
 }
 
-const activePairings = allPairings.filter((p) => p.black !== null);
-const totalPlayers = activePairings.length * 2 + allPairings.filter((p) => !p.black).length;
+const activePairings = visiblePairings.filter((p) => p.black !== null);
+const totalPlayers = activePairings.length * 2 + visiblePairings.filter((p) => !p.black).length;
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
 
 // Group pairings into pages
-const pages = paginateArray(allPairings, rowsPerPage);
+const pages = paginateArray(visiblePairings, rowsPerPage);
 const totalPages = pages.length;
 
 // Group player list into pages (for fallback when no pairings)
@@ -73,15 +95,12 @@ const autoRefresh = isTournamentLive(data?.info.date);
     <header class="header">
       <div class="header-left">
         <div class="title-row">
-          <svg class="icon-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2v2M12 8v1M9 3h6M8 6h8M7 9h10l1 3H6l1-3zM6 12l-1 7h14l-1-7M5 19h14v2H5v-2z" stroke-linejoin="round" stroke-linecap="round"/>
-          </svg>
+          <img class="icon-logo" src="/logo.svg" alt="" />
           <h1 class="title">{data?.info.name || t('site.title')}</h1>
         </div>
       </div>
 
       <div class="header-right-group">
-        <PresenterQrCode targetUrl={`${Astro.url.origin}/?tid=${tid}`} label={t('scan.label')} hint={t('scan.hint')} />
         {data && (
           <div class="toolbar-stats">
             <span class="stat-pill">
@@ -102,10 +121,10 @@ const autoRefresh = isTournamentLive(data?.info.date);
             </span>
             
             <div class="round-nav">
-              <a href={`/pairings?tid=${tid}&round=${round - 1}&lang=${lang}`} class:list={["nav-btn", { disabled: round <= 1 }]} aria-label={t('header.prevRound')}>
+              <a href={`/present?tid=${tid}&round=${round - 1}&lang=${lang}${presenterExtraSuffix}`} class:list={["nav-btn", { disabled: round <= 1 }]} aria-label={t('header.prevRound')}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
               </a>
-              <a href={`/pairings?tid=${tid}&round=${round + 1}&lang=${lang}`} class:list={["nav-btn", { disabled: round >= data.info.totalRounds }]} aria-label={t('header.nextRound')}>
+              <a href={`/present?tid=${tid}&round=${round + 1}&lang=${lang}${presenterExtraSuffix}`} class:list={["nav-btn", { disabled: round >= data.info.totalRounds }]} aria-label={t('header.nextRound')}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
               </a>
             </div>
@@ -121,7 +140,10 @@ const autoRefresh = isTournamentLive(data?.info.date);
       </div>
     )}
 
-    {data && allPairings.length === 0 && playerList.length > 0 && (
+    <div class="present-grid">
+      <div class="main-column">
+
+    {data && visiblePairings.length === 0 && playerList.length > 0 && (
       <section class="matches-section">
         {hasWomenPlayers && (
           <TabsControl
@@ -202,7 +224,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
       </section>
     )}
 
-    {data && allPairings.length === 0 && playerList.length === 0 && (
+    {data && visiblePairings.length === 0 && playerList.length === 0 && (
       <div class="empty-state">
         <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="12" cy="12" r="10"/>
@@ -212,18 +234,18 @@ const autoRefresh = isTournamentLive(data?.info.date);
       </div>
     )}
 
-    {data && allPairings.length > 0 && (
+    {data && visiblePairings.length > 0 && (
       <section class="matches-section">
         <div class="column-headers">
-          <span class="col-label col-white">{t('table.white')}</span>
-          <span class="col-label col-center">{t('table.table')}</span>
-          <span class="col-label col-black">{t('table.black')}</span>
+          <span class="col-label col-table">{t('table.table')}</span>
+          <span class="col-label col-players">{t('header.players')}</span>
+          <span class="col-label col-score">{t('table.score')}</span>
         </div>
         <div class="carousel" id="carousel" data-total-pages={totalPages} data-interval={CAROUSEL_INTERVAL}>
           {pages.map((page, pageIdx) => (
             <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
               {page.map((pairing, i) => (
-                <MatchCard pairing={pairing} index={i} lang={lang} />
+                <PresenterPairingCard pairing={pairing} index={i} lang={lang} />
               ))}
             </div>
           ))}
@@ -246,6 +268,26 @@ const autoRefresh = isTournamentLive(data?.info.date);
         )}
       </section>
     )}
+      </div>
+
+      <aside class="side-column">
+        <section class="sponsor-card" aria-label={t('sponsor.title')}>
+          <h2 class="sponsor-title">{t('sponsor.title')}</h2>
+          {sponsorImage ? (
+            <img class="sponsor-image" src={sponsorImage} alt={sponsorAlt} loading="eager" />
+          ) : (
+            <div class="sponsor-placeholder">{t('sponsor.placeholder')}</div>
+          )}
+        </section>
+
+        <PresenterQrCode
+          targetUrl={`${Astro.url.origin}/?tid=${tid}`}
+          label={t('scan.label')}
+          hint={t('scan.hint')}
+          size="large"
+        />
+      </aside>
+    </div>
   </div>
 
   <div class="config-panel" id="configPanel">
@@ -287,6 +329,14 @@ const autoRefresh = isTournamentLive(data?.info.date);
           ))}
         </select>
       </label>
+      <label class="config-label">
+        {t('config.sponsorImage')}
+        <input type="url" id="inputSponsor" value={sponsorImage} class="config-input" placeholder="https://..." />
+      </label>
+      <label class="config-checkbox">
+        <input type="checkbox" id="inputHideNonPaired" checked={hideNonPaired} />
+        <span>{t('config.hideNonPaired')}</span>
+      </label>
       <button id="configGo" class="config-btn">{t('config.update')}</button>
     </div>
   </div>
@@ -304,7 +354,13 @@ const autoRefresh = isTournamentLive(data?.info.date);
     const tid = (document.getElementById("inputTid") as HTMLInputElement).value.trim();
     const lang = (document.getElementById("inputLang") as HTMLSelectElement).value;
     const round = (document.getElementById("inputRound") as HTMLSelectElement).value;
-    if (tid) window.location.href = `/?tid=${tid}&lang=${lang}&round=${round}`;
+    const sponsor = (document.getElementById("inputSponsor") as HTMLInputElement).value.trim();
+    const hideNonPaired = (document.getElementById("inputHideNonPaired") as HTMLInputElement).checked;
+    if (!tid) return;
+    const params = new URLSearchParams({ tid, lang, round });
+    if (sponsor) params.set("sponsor", sponsor);
+    if (hideNonPaired) params.set("hideNonPaired", "1");
+    window.location.href = `/present?${params.toString()}`;
   });
 </script>
 
@@ -313,17 +369,38 @@ const autoRefresh = isTournamentLive(data?.info.date);
 </script>
 
 <style>
+  .present-grid {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(22rem, 1fr);
+    gap: var(--space-5);
+  }
+
+  .main-column {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .side-column {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
   .header-right-group {
     display: flex;
     align-items: center;
-    gap: var(--space-6);
+    gap: var(--space-4);
     flex-shrink: 0;
   }
 
   .toolbar-stats {
     display: flex;
     align-items: center;
-    gap: var(--space-8);
+    gap: var(--space-5);
   }
 
   .round-nav {
@@ -409,7 +486,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
 
   .column-headers {
     display: grid;
-    grid-template-columns: 1fr 100px 1fr;
+    grid-template-columns: 7.5rem 1fr 7rem;
     align-items: center;
     padding: 0;
     background: var(--bg-subtle);
@@ -417,25 +494,90 @@ const autoRefresh = isTournamentLive(data?.info.date);
     flex-shrink: 0;
   }
 
-  .col-white {
-    text-align: right;
-    padding: 0.6rem 1rem 0.6rem 2rem;
-    background: rgba(255, 255, 255, 0.93);
-    color: #1a1a24;
-    opacity: 1;
-  }
-
-  .col-center {
+  .col-table {
     text-align: center;
-    padding: 0.6rem 0;
+    padding: var(--space-3) 0;
   }
 
-  .col-black {
+  .col-players {
     text-align: left;
-    padding: 0.6rem 2rem 0.6rem 1rem;
+    padding: var(--space-3) var(--space-6) var(--space-3) var(--space-4);
+  }
+
+  .col-score {
+    text-align: center;
+    padding: var(--space-3) 0;
+  }
+
+  .matches-section {
+    height: 100%;
+  }
+
+  .carousel-page {
+    gap: var(--space-2);
+    padding: var(--space-2);
+  }
+
+  .sponsor-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-height: 0;
+    flex: 1;
+  }
+
+  .sponsor-title {
+    margin: 0;
+    font-size: var(--text-base);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .sponsor-image {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+    max-height: none;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    background: var(--neutral-50);
+    padding: var(--space-3);
+  }
+
+  .sponsor-placeholder {
+    flex: 1;
+    min-height: 0;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    text-align: center;
+    padding: var(--space-4);
+    font-size: var(--text-sm);
   }
 
   .hidden {
     display: none !important;
+  }
+
+  .config-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--text);
+    font-size: var(--text-sm);
+    margin-top: var(--space-1);
+  }
+
+  .config-checkbox input {
+    accent-color: var(--accent-text);
   }
 </style>

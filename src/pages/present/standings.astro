@@ -14,6 +14,8 @@ import { resolvePageLang } from "../../lib/page-lang";
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAGE, 1, 50);
+const sponsorImage = Astro.url.searchParams.get("sponsor")?.trim() || "";
+const sponsorAlt = Astro.url.searchParams.get("sponsorAlt")?.trim() || "Sponsor";
 
 const t = useTranslations(lang);
 
@@ -54,16 +56,12 @@ const autoRefresh = isTournamentLive(data?.info.date);
     <header class="header">
       <div class="header-left">
         <div class="title-row">
-          <svg class="icon-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 2v2M12 8v1M9 3h6M8 6h8M7 9h10l1 3H6l1-3zM6 12l-1 7h14l-1-7M5 19h14v2H5v-2z" stroke-linejoin="round" stroke-linecap="round"/>
-          </svg>
+          <img class="icon-logo" src="/logo.svg" alt="" />
           <h1 class="title">{data?.info.name || t('site.title')}</h1>
         </div>
       </div>
 
-      <div class="header-right">
-        <PresenterQrCode targetUrl={`${Astro.url.origin}/?tid=${tid}`} label={t('scan.label')} hint={t('scan.hint')} />
-      </div>
+      <div class="header-right"></div>
     </header>
 
     {error && (
@@ -73,18 +71,20 @@ const autoRefresh = isTournamentLive(data?.info.date);
       </div>
     )}
 
-    {data && allStandings.length === 0 && (
-      <div class="empty-state">
-        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 8v4M12 16h.01"/>
-        </svg>
-        <p>{t('empty.standings')}</p>
-      </div>
-    )}
+    <div class="present-grid">
+      <div class="main-column">
+        {data && allStandings.length === 0 && (
+          <div class="empty-state">
+            <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 8v4M12 16h.01"/>
+            </svg>
+            <p>{t('empty.standings')}</p>
+          </div>
+        )}
 
-    {data && allStandings.length > 0 && (
-      <section class="matches-section">
+        {data && allStandings.length > 0 && (
+          <section class="matches-section">
         {hasWomen && (
           <TabsControl
             name="standings"
@@ -161,8 +161,28 @@ const autoRefresh = isTournamentLive(data?.info.date);
             )}
           </div>
         )}
-      </section>
-    )}
+          </section>
+        )}
+      </div>
+
+      <aside class="side-column">
+        <section class="sponsor-card" aria-label={t('sponsor.title')}>
+          <h2 class="sponsor-title">{t('sponsor.title')}</h2>
+          {sponsorImage ? (
+            <img class="sponsor-image" src={sponsorImage} alt={sponsorAlt} loading="eager" />
+          ) : (
+            <div class="sponsor-placeholder">{t('sponsor.placeholder')}</div>
+          )}
+        </section>
+
+        <PresenterQrCode
+          targetUrl={`${Astro.url.origin}/?tid=${tid}`}
+          label={t('scan.label')}
+          hint={t('scan.hint')}
+          size="large"
+        />
+      </aside>
+    </div>
   </div>
 
   <div class="config-panel" id="configPanel">
@@ -196,6 +216,10 @@ const autoRefresh = isTournamentLive(data?.info.date);
           <option value="20" selected={lang === 20}>Français</option>
         </select>
       </label>
+      <label class="config-label">
+        {t('config.sponsorImage')}
+        <input type="url" id="inputSponsor" value={sponsorImage} class="config-input" placeholder="https://..." />
+      </label>
       <button id="configGo" class="config-btn">{t('config.update')}</button>
     </div>
   </div>
@@ -212,7 +236,11 @@ const autoRefresh = isTournamentLive(data?.info.date);
   goBtn.addEventListener("click", () => {
     const tid = (document.getElementById("inputTid") as HTMLInputElement).value.trim();
     const lang = (document.getElementById("inputLang") as HTMLSelectElement).value;
-    if (tid) window.location.href = `/standings?tid=${tid}&lang=${lang}`;
+    const sponsor = (document.getElementById("inputSponsor") as HTMLInputElement).value.trim();
+    if (!tid) return;
+    const params = new URLSearchParams({ tid, lang });
+    if (sponsor) params.set("sponsor", sponsor);
+    window.location.href = `/present/standings?${params.toString()}`;
   });
 </script>
 
@@ -221,9 +249,80 @@ const autoRefresh = isTournamentLive(data?.info.date);
 </script>
 
 <style>
+  .present-grid {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(22rem, 1fr);
+    gap: var(--space-5);
+  }
+
+  .main-column {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .side-column {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+
   .header-right {
     display: flex;
     align-items: center;
+  }
+
+  .matches-section {
+    height: 100%;
+  }
+
+  .sponsor-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    padding: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-height: 0;
+    flex: 1;
+  }
+
+  .sponsor-title {
+    margin: 0;
+    font-size: var(--text-base);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .sponsor-image {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+    max-height: none;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    background: var(--neutral-50);
+    padding: var(--space-3);
+  }
+
+  .sponsor-placeholder {
+    flex: 1;
+    min-height: 0;
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-dim);
+    text-align: center;
+    padding: var(--space-4);
+    font-size: var(--text-sm);
   }
 
   .hidden {

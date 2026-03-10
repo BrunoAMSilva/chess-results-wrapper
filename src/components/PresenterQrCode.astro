@@ -4,6 +4,7 @@ interface Props {
   label: string;
   hint: string;
   alt?: string;
+  size?: "compact" | "large";
 }
 
 const {
@@ -11,17 +12,27 @@ const {
   label,
   hint,
   alt = "QR Code",
+  size = "compact",
 } = Astro.props;
 
-const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(targetUrl)}`;
+const qrSize = size === "large" ? 180 : 80;
+const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(targetUrl)}`;
 ---
 
-<div class="presenter-qr-card">
+<div class:list={["presenter-qr-card", size]}>
   <div class="presenter-qr-text">
     <div class="presenter-qr-label">{label}</div>
     <div class="presenter-qr-hint">{hint}</div>
   </div>
-  <img class="presenter-qr-image" src={qrSrc} alt={alt} width="48" height="48" />
+  <div class="presenter-qr-image-wrap">
+    <img
+      class="presenter-qr-image"
+      src={qrSrc}
+      alt={alt}
+      width={size === "large" ? 180 : 48}
+      height={size === "large" ? 180 : 48}
+    />
+  </div>
 </div>
 
 <style>
@@ -39,6 +50,44 @@ const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${enc
     font-size: var(--text-sm);
     text-align: right;
     line-height: var(--leading-tight);
+  }
+
+  .presenter-qr-card.large {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+  }
+
+  .presenter-qr-card.large .presenter-qr-text {
+    text-align: center;
+  }
+
+  .presenter-qr-card.large .presenter-qr-label {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .presenter-qr-card.large .presenter-qr-hint {
+    font-size: var(--text-lg);
+    color: var(--text);
+    line-height: var(--leading-tight);
+  }
+
+  .presenter-qr-card.large .presenter-qr-image-wrap {
+    display: flex;
+    justify-content: center;
+  }
+
+  .presenter-qr-card.large .presenter-qr-image {
+    width: min(100%, 220px);
+    height: auto;
+    aspect-ratio: 1;
+    background: var(--neutral-50);
+    padding: var(--space-2);
+    box-shadow: var(--shadow-sm);
   }
 
   .presenter-qr-label {

@@ -1,0 +1,211 @@
+---
+import type { Pairing } from "../lib/types";
+import { reverseName } from "../lib/utils";
+import { useTranslations } from "../i18n/ui";
+
+interface Props {
+  pairing: Pairing;
+  index: number;
+  lang: number;
+}
+
+const { pairing, index, lang } = Astro.props;
+const t = useTranslations(lang);
+
+const normalized = pairing.result.replace(/\s+/g, "").toLowerCase();
+const whiteWins = normalized.includes("1-0") || normalized.includes("1:0");
+const blackWins = normalized.includes("0-1") || normalized.includes("0:1");
+const draw = normalized.includes("½") || normalized.includes("1/2") || normalized.includes("0.5");
+const isBye = !pairing.black;
+const delayStep = Math.max(0, Math.min(10, index));
+const delayClass = `delay-${delayStep}`;
+
+let whiteScore = "-";
+let blackScore = "-";
+if (whiteWins) {
+  whiteScore = "1";
+  blackScore = "0";
+} else if (blackWins) {
+  whiteScore = "0";
+  blackScore = "1";
+} else if (draw) {
+  whiteScore = "½";
+  blackScore = "½";
+} else if (normalized === "1") {
+  whiteScore = "1";
+  blackScore = "-";
+}
+---
+
+<article class:list={["presenter-card", delayClass, { bye: isBye, draw, "white-wins": whiteWins, "black-wins": blackWins }]}>
+  <div class="board-col">
+    <span class="board-label">#{pairing.table}</span>
+  </div>
+
+  <div class="players-col">
+    <div class:list={["player-row", "white", { winner: whiteWins }]}>
+      <span class="color-chip white-chip" aria-hidden="true"></span>
+      <span class="player-name">{reverseName(pairing.white.name)}</span>
+    </div>
+
+    <div class="row-divider"></div>
+
+    <div class:list={["player-row", "black", { winner: blackWins }]}>
+      <span class="color-chip black-chip" aria-hidden="true"></span>
+      {pairing.black ? (
+        <span class="player-name">{reverseName(pairing.black.name)}</span>
+      ) : (
+        <span class="player-name unpaired">{pairing.result === "1" ? t("match.bye") : t("match.notPaired")}</span>
+      )}
+    </div>
+  </div>
+
+  <div class="score-col">
+    <span class:list={["score-value", { winner: whiteWins }]}>{whiteScore}</span>
+    <span class="score-divider"></span>
+    <span class:list={["score-value", { winner: blackWins }]}>{blackScore}</span>
+  </div>
+</article>
+
+<style>
+  .presenter-card {
+    display: grid;
+    grid-template-columns: 7.5rem 1fr 7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    overflow: hidden;
+    min-height: 7.6rem;
+    animation: fadeInUp var(--duration-slow) ease both;
+  }
+
+  .board-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid var(--border);
+    background: var(--surface-raised);
+  }
+
+  .board-label {
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-extrabold);
+    color: var(--text-dim);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .players-col {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .player-row {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-5);
+    min-width: 0;
+  }
+
+  .player-row.white {
+    justify-content: flex-start;
+    text-align: left;
+    background: color-mix(in oklab, var(--surface-raised) 85%, transparent);
+  }
+
+  .player-row.black {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .row-divider {
+    height: 1px;
+    background: var(--border-light);
+  }
+
+  .player-name {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: var(--leading-tight);
+  }
+
+  .color-chip {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    border: 1px solid var(--border-strong);
+    flex-shrink: 0;
+  }
+
+  .white-chip {
+    background: #f5f5f5;
+  }
+
+  .black-chip {
+    background: #111;
+    border-color: #555;
+  }
+
+  .player-row.winner {
+    background: color-mix(in oklab, var(--accent-subtle) 70%, transparent);
+  }
+
+  .player-row.winner .player-name {
+    color: var(--accent-text);
+  }
+
+  .presenter-card.draw .player-row {
+    background: color-mix(in oklab, var(--accent-subtle) 45%, transparent);
+  }
+
+  .unpaired {
+    font-size: var(--text-xl);
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .score-col {
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--border);
+    background: color-mix(in oklab, var(--surface-raised) 60%, transparent);
+  }
+
+  .score-value {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--text-3xl);
+    font-weight: var(--weight-extrabold);
+    color: var(--text-dim);
+    line-height: var(--leading-none);
+  }
+
+  .score-value.winner {
+    color: var(--accent-text);
+  }
+
+  .score-divider {
+    height: 1px;
+    background: var(--border-light);
+  }
+
+  .delay-0 { animation-delay: 0ms; }
+  .delay-1 { animation-delay: 40ms; }
+  .delay-2 { animation-delay: 80ms; }
+  .delay-3 { animation-delay: 120ms; }
+  .delay-4 { animation-delay: 160ms; }
+  .delay-5 { animation-delay: 200ms; }
+  .delay-6 { animation-delay: 240ms; }
+  .delay-7 { animation-delay: 280ms; }
+  .delay-8 { animation-delay: 320ms; }
+  .delay-9 { animation-delay: 360ms; }
+  .delay-10 { animation-delay: 400ms; }
+</style>
