@@ -39,7 +39,7 @@ if (whiteWins) {
 
 <article class:list={["presenter-card", delayClass, { bye: isBye, draw, "white-wins": whiteWins, "black-wins": blackWins }]}>
   <div class="board-col">
-    <span class="board-label">#{pairing.table}</span>
+    <span class="board-label">{pairing.table}</span>
   </div>
 
   <div class="players-col">
@@ -88,9 +88,9 @@ if (whiteWins) {
   }
 
   .board-label {
-    font-size: var(--text-3xl);
-    font-weight: var(--weight-extrabold);
-    color: var(--text-dim);
+    font-size: var(--text-5xl);
+    font-weight: var(--weight-semibold);
+    
     letter-spacing: var(--tracking-tight);
   }
 

@@ -23,6 +23,8 @@
   --text-2xl: 1.5rem;   /* 24px */
   --text-3xl: 1.875rem; /* 30px */
   --text-4xl: 2.25rem;  /* 36px */
+  --text-5xl: 3rem;     /* 48px */
+  --text-6xl: 3.75rem;  /* 60px */
   --text-display-sm: 1.8rem;
   --text-display-md: 2.6rem;
   --text-display-lg: 3.2rem;
