@@ -3,15 +3,17 @@ import Layout from "../../layouts/TVLayout.astro";
 import StandingRow from "../../components/StandingRow.astro";
 import TabsControl from "../../components/TabsControl.astro";
 import SegmentedControl from "../../components/SegmentedControl.astro";
+import PresenterQrCode from "../../components/PresenterQrCode.astro";
 import { scrapeStandings } from "../../lib/scraper";
 import { useTranslations } from "../../i18n/ui";
 import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
+import { paginateArray } from "../../lib/utils";
+import { getIntParam } from "../../lib/request-params";
+import { resolvePageLang } from "../../lib/page-lang";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
-const langParam = Astro.url.searchParams.get("lang");
-const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
-if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', httpOnly: false });
-const rowsPerPage = parseInt(Astro.url.searchParams.get("rows") || String(ROWS_PER_PAGE));
+const lang = resolvePageLang(Astro.url, Astro.cookies);
+const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAGE, 1, 50);
 
 const t = useTranslations(lang);
 
@@ -29,17 +31,11 @@ const womenStandings = data?.womenStandings || [];
 const hasWomen = womenStandings.length > 0;
 
 // Group standings into pages
-const pages: typeof allStandings[] = [];
-for (let i = 0; i < allStandings.length; i += rowsPerPage) {
-  pages.push(allStandings.slice(i, i + rowsPerPage));
-}
+const pages = paginateArray(allStandings, rowsPerPage);
 const totalPages = pages.length;
 
 // Group women standings into pages
-const womenPages: typeof womenStandings[] = [];
-for (let i = 0; i < womenStandings.length; i += rowsPerPage) {
-  womenPages.push(womenStandings.slice(i, i + rowsPerPage));
-}
+const womenPages = paginateArray(womenStandings, rowsPerPage);
 const totalWomenPages = womenPages.length;
 
 // Disable auto-refresh for tournaments whose last round date is in the past
@@ -65,14 +61,8 @@ const autoRefresh = isTournamentLive(data?.info.date);
         </div>
       </div>
 
-      <div class="header-right" style="display: flex; align-items: center;">
-        <div class="qr-code-container" style="display: flex; align-items: center; gap: 1rem; background: var(--surface); padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border);">
-          <div style="font-size: 0.8rem; text-align: right; line-height: 1.2;">
-            <div style="color: var(--text-dim); text-transform: uppercase;">{t('scan.label')}</div>
-            <div style="font-weight: bold; color: var(--accent);">{t('scan.hint')}</div>
-          </div>
-          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(Astro.url.origin + '/?tid=' + tid)}`} alt="QR Code" width="48" height="48" style="border-radius: 4px;" />
-        </div>
+      <div class="header-right">
+        <PresenterQrCode targetUrl={`${Astro.url.origin}/?tid=${tid}`} label={t('scan.label')} hint={t('scan.hint')} />
       </div>
     </header>
 
@@ -231,6 +221,11 @@ const autoRefresh = isTournamentLive(data?.info.date);
 </script>
 
 <style>
+  .header-right {
+    display: flex;
+    align-items: center;
+  }
+
   .hidden {
     display: none !important;
   }

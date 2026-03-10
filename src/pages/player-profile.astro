@@ -4,15 +4,14 @@ import PlayerTournamentHistoryRow from "../components/PlayerTournamentHistoryRow
 import { useTranslations } from "../i18n/ui";
 import { findPlayerByIdentity, getPlayerById, getPlayerResultRows, getPlayerTournamentHistory } from "../lib/db";
 import { scrapeStandings } from "../lib/scraper";
+import { resolvePageLang } from "../lib/page-lang";
 import { reverseName } from "../lib/utils";
 import type { DbPlayer, DbPlayerTournamentHistory } from "../lib/types";
 
 const idParam = Astro.url.searchParams.get("id") || "";
 const nameParam = Astro.url.searchParams.get("name") || "";
 const fedParam = Astro.url.searchParams.get("fed") || "";
-const langParam = Astro.url.searchParams.get("lang");
-const lang = parseInt(langParam || Astro.cookies.get("lang")?.value || "1", 10);
-if (langParam) Astro.cookies.set("lang", langParam, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax", httpOnly: false });
+const lang = resolvePageLang(Astro.url, Astro.cookies);
 
 const t = useTranslations(lang);
 
@@ -39,13 +38,12 @@ if (!player) {
   const needsEnrichment = !resolvedPlayer.federation || !resolvedPlayer.sex || resolvedPlayer.rating === null || !resolvedPlayer.club;
   if (needsEnrichment && history.length > 0) {
     // Re-scrape known tournaments to backfill local DB metadata if needed.
-    for (const entry of history.slice(0, 5)) {
-      try {
-        await scrapeStandings(entry.tournament_id, lang);
-      } catch (_) {
-        // best-effort enrichment
-      }
-    }
+    const enrichTargets = history.slice(0, 5);
+    await Promise.allSettled(
+      enrichTargets.map((entry) =>
+        scrapeStandings(entry.tournament_id, lang),
+      ),
+    );
     resolvedPlayer = getPlayerById(resolvedPlayer.id!) || resolvedPlayer;
     history = getPlayerTournamentHistory(resolvedPlayer.id!);
   }

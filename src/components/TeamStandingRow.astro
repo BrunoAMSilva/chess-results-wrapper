@@ -15,11 +15,12 @@ const t = useTranslations(lang);
 
 const isTop3 = team.rank <= 3;
 const rankClass = team.rank <= 3 ? `rank-${team.rank}` : "";
+const delayStep = Math.max(0, Math.min(10, index));
+const delayClass = `delay-${delayStep}`;
 ---
 
 <details
-  class:list={["team-standing", { "top-3": isTop3 }, rankClass]}
-  style={`animation-delay: ${index * 40}ms`}
+  class:list={["team-standing", delayClass, { "top-3": isTop3 }, rankClass]}
 >
   <summary class="team-header-row">
     <div class="rank-col">
@@ -263,4 +264,16 @@ const rankClass = team.rank <= 3 ? `rank-${team.rank}` : "";
     font-variant-numeric: tabular-nums;
     padding-right: var(--space-2);
   }
+
+  .delay-0 { animation-delay: 0ms; }
+  .delay-1 { animation-delay: 40ms; }
+  .delay-2 { animation-delay: 80ms; }
+  .delay-3 { animation-delay: 120ms; }
+  .delay-4 { animation-delay: 160ms; }
+  .delay-5 { animation-delay: 200ms; }
+  .delay-6 { animation-delay: 240ms; }
+  .delay-7 { animation-delay: 280ms; }
+  .delay-8 { animation-delay: 320ms; }
+  .delay-9 { animation-delay: 360ms; }
+  .delay-10 { animation-delay: 400ms; }
 </style>

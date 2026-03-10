@@ -7,13 +7,13 @@ import TournamentSelector from "../components/TournamentSelector.astro";
 import { scrapePairings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
+import { getIntParam } from "../lib/request-params";
+import { resolvePageLang } from "../lib/page-lang";
 import type { Pairing, TeamPairing } from "../lib/types";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
-const round = parseInt(Astro.url.searchParams.get("round") || "1");
-const langParam = Astro.url.searchParams.get("lang");
-const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
-if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', httpOnly: false });
+const round = getIntParam(Astro.url.searchParams.get("round"), 1, 1, 64);
+const lang = resolvePageLang(Astro.url, Astro.cookies);
 
 const t = useTranslations(lang);
 
@@ -62,7 +62,7 @@ const linkedTournaments = data?.info.linkedTournaments;
       />
   )}</div>
 
-  <div class="pairings-list animate-enter" style="animation-delay: 100ms">
+  <div class:list={["pairings-list", "animate-enter", "delay-2"]}>
     {isTeamView ? (
       teamPairings!.map((teamMatch) => (
         <TeamMatchGroup teamMatch={teamMatch} tid={tid} lang={lang} />
@@ -104,6 +104,10 @@ const linkedTournaments = data?.info.linkedTournaments;
     grid-template-columns: 1fr;
     gap: var(--space-4);
     padding-bottom: var(--space-8);
+  }
+
+  .delay-2 {
+    animation-delay: 80ms;
   }
 
   @media (min-width: 768px) {

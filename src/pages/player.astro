@@ -6,13 +6,12 @@ import { scrapePairings, scrapeStandings } from "../lib/scraper";
 import { reverseName } from "../lib/utils";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
+import { resolvePageLang } from "../lib/page-lang";
 import type { Pairing } from "../lib/types";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const playerParam = Astro.url.searchParams.get("name") || "";
-const langParam = Astro.url.searchParams.get("lang");
-const lang = parseInt(langParam || Astro.cookies.get("lang")?.value || "1");
-if (langParam) Astro.cookies.set("lang", langParam, { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax", httpOnly: false });
+const lang = resolvePageLang(Astro.url, Astro.cookies);
 
 const t = useTranslations(lang);
 
@@ -41,6 +40,10 @@ interface RoundResult {
 }
 
 const rounds: RoundResult[] = [];
+let canonicalPlayerName = playerParam;
+
+const normalizeName = (n: string) =>
+  n.replace(/,\s*/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
 
 if (!playerParam) {
   error = t("player.empty");
@@ -52,13 +55,13 @@ if (!playerParam) {
 
     // Standings (crosstable) may omit the comma in "Last, First" names,
     // so compare with a normalised form that strips commas.
-    const normalize = (n: string) => n.replace(/,\s*/g, ' ').replace(/\s+/g, ' ').trim();
-    const normalizedParam = normalize(playerParam);
+    const normalizedParam = normalizeName(playerParam);
 
     const standing = standingsData.standings.find(
-      (s) => s.name === playerParam || normalize(s.name) === normalizedParam
+      (s) => s.name === playerParam || normalizeName(s.name) === normalizedParam
     );
     if (standing) {
+      canonicalPlayerName = standing.name;
       playerName = reverseName(standing.name);
       playerRating = standing.rating;
       playerFed = standing.fed;
@@ -108,7 +111,8 @@ if (!playerParam) {
 
       const pairing = roundData.pairings.find(
         (p: Pairing) =>
-          p.white?.name === playerParam || p.black?.name === playerParam
+          normalizeName(p.white?.name || "") === normalizedParam ||
+          normalizeName(p.black?.name || "") === normalizedParam
       );
 
       if (!pairing) {
@@ -123,9 +127,12 @@ if (!playerParam) {
         continue;
       }
 
-      const isWhite = pairing.white?.name === playerParam;
+      const isWhite = normalizeName(pairing.white?.name || "") === normalizedParam;
       const opponent = isWhite ? pairing.black : pairing.white;
       const isBye = !opponent || (!pairing.black && /bye|spielfrei/i.test(pairing.unpairedLabel || ""));
+
+      const selfName = isWhite ? pairing.white?.name : pairing.black?.name;
+      if (selfName) canonicalPlayerName = selfName;
 
       rounds.push({
         round: i + 1,
@@ -148,7 +155,7 @@ if (!playerParam) {
 }
 
 const pageTitle = playerName || t("player.progress");
-const profileHref = `/player-profile?name=${encodeURIComponent(playerParam)}${playerFed ? `&fed=${encodeURIComponent(playerFed)}` : ""}&lang=${lang}`;
+const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerName)}${playerFed ? `&fed=${encodeURIComponent(playerFed)}` : ""}&lang=${lang}`;
 ---
 
 <MobileLayout title={pageTitle} lang={lang}>

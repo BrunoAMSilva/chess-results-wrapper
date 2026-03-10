@@ -1,0 +1,163 @@
+---
+import MobileLayout from "../layouts/ResponsiveLayout.astro";
+import { countTournaments, listTournaments, searchTournamentsPaged } from "../lib/db";
+import { getIntParam } from "../lib/request-params";
+import { resolvePageLang } from "../lib/page-lang";
+import { useTranslations } from "../i18n/ui";
+
+const lang = resolvePageLang(Astro.url, Astro.cookies);
+const t = useTranslations(lang);
+
+const query = Astro.url.searchParams.get("q")?.trim() || "";
+const page = getIntParam(Astro.url.searchParams.get("page"), 1, 1, 100000);
+const limit = getIntParam(Astro.url.searchParams.get("limit"), 20, 1, 50);
+const offset = (page - 1) * limit;
+
+const tournaments = query
+  ? searchTournamentsPaged(query, limit, offset)
+  : listTournaments(limit, offset);
+const total = countTournaments(query);
+const totalPages = Math.max(1, Math.ceil(total / limit));
+const prevPage = Math.max(1, page - 1);
+const nextPage = Math.min(totalPages, page + 1);
+
+const pageBase = `/discover?lang=${lang}&limit=${limit}`;
+const withQuery = query ? `${pageBase}&q=${encodeURIComponent(query)}` : pageBase;
+---
+
+<MobileLayout title={t('discover.title')} lang={lang}>
+  <form method="get" action="/discover" class="discover-form">
+    <input type="hidden" name="lang" value={String(lang)} />
+    <input type="hidden" name="limit" value={String(limit)} />
+    <input
+      type="text"
+      name="q"
+      value={query}
+      placeholder={t('discover.placeholder')}
+      class="discover-input"
+    />
+    <button type="submit" class="discover-btn">{t('discover.search')}</button>
+  </form>
+
+  <p class="discover-meta">{t('discover.total')}: {total}</p>
+
+  {tournaments.length > 0 ? (
+    <div class="discover-list">
+      {tournaments.map((item) => (
+        <a class="discover-card" href={`/standings?tid=${item.id}&lang=${lang}`}>
+          <h3 class="discover-name">{item.name}</h3>
+          <p class="discover-line">ID: {item.id}</p>
+          <p class="discover-line">{item.date || "-"} • {item.location || "-"}</p>
+        </a>
+      ))}
+    </div>
+  ) : (
+    <div class="discover-empty">{t('discover.noResults')}</div>
+  )}
+
+  <div class="discover-pagination">
+    <a
+      class:list={["page-link", { disabled: page <= 1 }]}
+      href={`${withQuery}&page=${prevPage}`}
+      aria-disabled={page <= 1}
+    >
+      {t('discover.prev')}
+    </a>
+    <span class="page-info">{page} / {totalPages}</span>
+    <a
+      class:list={["page-link", { disabled: page >= totalPages }]}
+      href={`${withQuery}&page=${nextPage}`}
+      aria-disabled={page >= totalPages}
+    >
+      {t('discover.next')}
+    </a>
+  </div>
+</MobileLayout>
+
+<style>
+  .discover-form {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .discover-input {
+    flex: 1;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .discover-btn {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .discover-meta {
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+    margin-bottom: var(--space-2);
+  }
+
+  .discover-list {
+    display: grid;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  .discover-card {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    padding: var(--space-3);
+  }
+
+  .discover-name {
+    font-size: var(--text-base);
+    color: var(--text);
+    margin: 0 0 var(--space-1);
+  }
+
+  .discover-line {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+  }
+
+  .discover-empty {
+    color: var(--text-dim);
+    text-align: center;
+    padding: var(--space-8);
+  }
+
+  .discover-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .page-link {
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-3);
+    color: var(--text);
+    background: var(--surface);
+  }
+
+  .page-link.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .page-info {
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+  }
+</style>

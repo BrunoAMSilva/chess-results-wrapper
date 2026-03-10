@@ -3,11 +3,10 @@ import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import ThemeToggle from "../components/ThemeToggle.astro";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
+import { resolvePageLang } from "../lib/page-lang";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
-const langParam = Astro.url.searchParams.get("lang");
-const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
-if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', httpOnly: false });
+const lang = resolvePageLang(Astro.url, Astro.cookies);
 
 const t = useTranslations(lang);
 ---

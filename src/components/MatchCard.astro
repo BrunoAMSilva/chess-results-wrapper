@@ -22,11 +22,21 @@ function resultClass(result: string): string {
 
 const rClass = resultClass(pairing.result);
 const isBye = !pairing.black;
+const delayStep = Math.max(0, Math.min(10, index));
+const delayClass = `delay-${delayStep}`;
 ---
 
 <div
-  class:list={["match-row", rClass, { bye: isBye }]}
-  style={`animation-delay: ${index * 40}ms`}
+  class:list={[
+    "match-row",
+    delayClass,
+    {
+      bye: isBye,
+      "white-wins": rClass === "white-wins",
+      "black-wins": rClass === "black-wins",
+      draw: rClass === "draw",
+    },
+  ]}
 >
   <div class="player white-side">
     <span class="player-name">{reverseName(pairing.white.name)}</span>
@@ -66,40 +76,39 @@ const isBye = !pairing.black;
   }
 
   .match-row.bye .white-side {
-    background: rgba(255, 255, 255, 0.93);
+    background: var(--surface-raised);
   }
 
-  /* Winner highlight — :global needed for dynamic classes */
-  .match-row:global(.white-wins) .white-side {
+  .match-row.white-wins .white-side {
     background: var(--accent);
   }
 
-  .match-row:global(.white-wins) .white-side .player-name {
-    color: var(--on-accent) !important;
+  .match-row.white-wins .white-side .player-name {
+    color: var(--on-accent);
     text-shadow: none;
     font-weight: 800;
   }
 
-  .match-row:global(.black-wins) .black-side {
+  .match-row.black-wins .black-side {
     background: var(--accent);
   }
 
-  .match-row:global(.black-wins) .black-side .player-name {
-    color: var(--on-accent) !important;
+  .match-row.black-wins .black-side .player-name {
+    color: var(--on-accent);
     text-shadow: none;
     font-weight: 800;
   }
 
-  .match-row:global(.draw) .white-side {
+  .match-row.draw .white-side {
     background: var(--accent-subtle);
   }
 
-  .match-row:global(.draw) .white-side .player-name {
+  .match-row.draw .white-side .player-name {
     color: var(--text);
     text-shadow: none;
   }
 
-  .match-row:global(.draw) .black-side {
+  .match-row.draw .black-side {
     background: var(--accent-subtle);
   }
 
@@ -108,17 +117,17 @@ const isBye = !pairing.black;
     align-items: center;
     min-width: 0;
     overflow: hidden;
-    padding: 0 2rem;
+    padding: 0 var(--space-8);
   }
 
   .white-side {
     justify-content: flex-end;
     text-align: right;
-    background: rgba(255, 255, 255, 0.93);
+    background: var(--surface-raised);
   }
 
   .white-side .player-name {
-    color: var(--on-accent) !important;
+    color: var(--on-accent);
     text-shadow: none;
   }
 
@@ -128,13 +137,13 @@ const isBye = !pairing.black;
   }
 
   .player-name {
-    font-size: 2.6rem;
+    font-size: var(--text-display-md);
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    color: var(--text) !important;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    color: var(--text);
+    text-shadow: var(--shadow-md);
     letter-spacing: -0.01em;
   }
 
@@ -142,14 +151,14 @@ const isBye = !pairing.black;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 100px;
+    width: var(--size-table-divider);
     background: var(--bg);
     border-left: 1px solid var(--border);
     border-right: 1px solid var(--border);
   }
 
   .table-num {
-    font-size: 3.2rem;
+    font-size: var(--text-display-lg);
     font-weight: 900;
     color: var(--text);
     line-height: 1;
@@ -157,8 +166,20 @@ const isBye = !pairing.black;
   }
 
   .bye-label {
-    font-size: 1.8rem;
+    font-size: var(--text-display-sm);
     color: var(--text-dim);
     font-style: italic;
   }
+
+  .delay-0 { animation-delay: 0ms; }
+  .delay-1 { animation-delay: 40ms; }
+  .delay-2 { animation-delay: 80ms; }
+  .delay-3 { animation-delay: 120ms; }
+  .delay-4 { animation-delay: 160ms; }
+  .delay-5 { animation-delay: 200ms; }
+  .delay-6 { animation-delay: 240ms; }
+  .delay-7 { animation-delay: 280ms; }
+  .delay-8 { animation-delay: 320ms; }
+  .delay-9 { animation-delay: 360ms; }
+  .delay-10 { animation-delay: 400ms; }
 </style>

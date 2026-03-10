@@ -106,7 +106,11 @@ db.exec(`
 
   -- Indexes for common queries
   CREATE INDEX IF NOT EXISTS idx_results_tournament_round ON results(tournament_id, round);
+  CREATE INDEX IF NOT EXISTS idx_results_white_player ON results(white_player_id) WHERE white_player_id IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS idx_results_black_player ON results(black_player_id) WHERE black_player_id IS NOT NULL;
   CREATE INDEX IF NOT EXISTS idx_standings_tournament ON standings(tournament_id);
+  CREATE INDEX IF NOT EXISTS idx_standings_player_type ON standings(player_id, type);
+  CREATE INDEX IF NOT EXISTS idx_tournament_players_player ON tournament_players(player_id);
   CREATE INDEX IF NOT EXISTS idx_players_name ON players(name);
   CREATE INDEX IF NOT EXISTS idx_players_fide ON players(fide_id) WHERE fide_id IS NOT NULL;
 `);
@@ -149,6 +153,7 @@ if (!standingsCols.some(c => c.name === 'type')) {
     )
   `);
   db.exec('CREATE INDEX IF NOT EXISTS idx_standings_tournament ON standings(tournament_id)');
+  db.exec('CREATE INDEX IF NOT EXISTS idx_standings_player_type ON standings(player_id, type)');
 }
 
 // ─── Column migrations (idempotent) ─────────────────────────────────────────
@@ -265,6 +270,7 @@ import type {
   TournamentInfo,
   TournamentType,
   Pairing,
+  TeamPairing,
   PlayerCardData,
   DbPlayerTournamentHistory,
   DbPlayerResultEntry,
@@ -574,7 +580,7 @@ export function getResults(tournamentId: string, round: number) {
 export function getPairingsFromDb(
   tournamentId: string,
   round: number,
-): { info: TournamentInfo; pairings: Pairing[] } | null {
+): { info: TournamentInfo; pairings: Pairing[]; teamPairings?: TeamPairing[] } | null {
   const tournament = getTournament(tournamentId);
   if (!tournament) return null;
 
@@ -590,14 +596,114 @@ export function getPairingsFromDb(
   }>;
   if (results.length === 0) return null;
 
+  const inferUnpairedLabel = (result: string): string => {
+    const normalized = result.trim();
+    return normalized === '1' ? 'BYE' : 'not paired';
+  };
+
   const pairings: Pairing[] = results.map((r) => ({
     table: r.table_number,
     white: { name: r.white_name || '', number: r.white_starting_number },
     black: r.black_name ? { name: r.black_name, number: r.black_starting_number } : null,
+    unpairedLabel: r.black_name ? undefined : inferUnpairedLabel(r.result),
     result: r.result,
   }));
 
-  return { info: buildTournamentInfo(tournament, round), pairings };
+  const info = buildTournamentInfo(tournament, round);
+
+  const parseBoardScore = (result: string): { white: number; black: number } | null => {
+    const normalized = result.replace(/\s+/g, "").toLowerCase();
+    if (normalized === "1-0" || normalized === "1:0") return { white: 1, black: 0 };
+    if (normalized === "0-1" || normalized === "0:1") return { white: 0, black: 1 };
+    if (
+      normalized === "½-½" ||
+      normalized === "½:½" ||
+      normalized === "1/2-1/2" ||
+      normalized === "1/2:1/2" ||
+      normalized === "0.5-0.5" ||
+      normalized === "0.5:0.5"
+    ) {
+      return { white: 0.5, black: 0.5 };
+    }
+    return null;
+  };
+
+  const formatScore = (value: number): string => {
+    if (Number.isInteger(value)) return String(value);
+    return String(value).replace(".5", "½");
+  };
+
+  // Reconstruct team pairings from board-level results if applicable
+  const isTeam = tournament.type === 'team-swiss' || tournament.type === 'team-round-robin';
+  const hasTeamData = results.some((r) => r.white_team || r.black_team);
+
+  if (isTeam && hasTeamData) {
+    const groupsByKey = new Map<string, {
+      whiteTeam: string;
+      blackTeam: string;
+      boards: Pairing[];
+      whiteScore: number;
+      blackScore: number;
+      scoredBoards: number;
+      firstTable: number;
+    }>();
+
+    for (const r of results) {
+      if (!r.white_team || !r.black_team) {
+        continue;
+      }
+
+      const key = `${r.white_team}__${r.black_team}`;
+      let group = groupsByKey.get(key);
+      if (!group) {
+        group = {
+          whiteTeam: r.white_team,
+          blackTeam: r.black_team,
+          boards: [],
+          whiteScore: 0,
+          blackScore: 0,
+          scoredBoards: 0,
+          firstTable: r.table_number,
+        };
+        groupsByKey.set(key, group);
+      }
+
+      group.boards.push({
+        table: r.table_number,
+        white: { name: r.white_name || '', number: r.white_starting_number },
+        black: r.black_name ? { name: r.black_name, number: r.black_starting_number } : null,
+        unpairedLabel: r.black_name ? undefined : inferUnpairedLabel(r.result),
+        result: r.result,
+      });
+
+      const score = parseBoardScore(r.result);
+      if (score) {
+        group.whiteScore += score.white;
+        group.blackScore += score.black;
+        group.scoredBoards += 1;
+      }
+    }
+
+    if (groupsByKey.size === 0) {
+      return { info, pairings };
+    }
+
+    const teamPairings: TeamPairing[] = Array.from(groupsByKey.values())
+      .sort((a, b) => a.firstTable - b.firstTable)
+      .map((g, i) => ({
+      table: i + 1,
+      whiteTeam: g.whiteTeam,
+      blackTeam: g.blackTeam,
+      boards: g.boards,
+      result: g.scoredBoards > 0
+        ? `${formatScore(g.whiteScore)}:${formatScore(g.blackScore)}`
+        : '',
+      }));
+
+    return { info, pairings, teamPairings };
+  }
+
+  return { info, pairings };
 }
 
 /** Build StandingsData from DB rows. */
@@ -845,6 +951,35 @@ export function searchTournaments(query: string, limit = 10): DbTournament[] {
     ORDER BY updated_at DESC
     LIMIT ?
   `).all(query, limit) as DbTournament[];
+}
+
+export function listTournaments(limit = 20, offset = 0): DbTournament[] {
+  return db.prepare(`
+    SELECT * FROM tournaments
+    ORDER BY datetime(updated_at) DESC
+    LIMIT ? OFFSET ?
+  `).all(limit, offset) as DbTournament[];
+}
+
+export function searchTournamentsPaged(query: string, limit = 20, offset = 0): DbTournament[] {
+  return db.prepare(`
+    SELECT * FROM tournaments
+    WHERE name LIKE '%' || ? || '%'
+    ORDER BY datetime(updated_at) DESC
+    LIMIT ? OFFSET ?
+  `).all(query, limit, offset) as DbTournament[];
+}
+
+export function countTournaments(query = ''): number {
+  if (!query.trim()) {
+    return (db.prepare(`SELECT COUNT(*) as count FROM tournaments`).get() as { count: number }).count;
+  }
+
+  return (db.prepare(`
+    SELECT COUNT(*) as count
+    FROM tournaments
+    WHERE name LIKE '%' || ? || '%'
+  `).get(query) as { count: number }).count;
 }
 
 export function getPlayerById(playerId: number): DbPlayer | undefined {

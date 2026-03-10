@@ -3,6 +3,7 @@ import db, {
   getTournament,
   getStandings,
   getResults,
+  getPairingsFromDb,
   persistStandings,
   persistPairings,
   getPlayerTournamentHistory,
@@ -157,6 +158,33 @@ describe('End-to-end: Pairings parse → persist → retrieve', () => {
         expect(stored.black_player_id).toBeNull();
       }
     }
+  });
+
+  it('should preserve BYE vs not paired semantics after DB reconstruction', () => {
+    const html = loadFixture('ended_pairings.html');
+    const parsed = parseHtml(html, 9);
+
+    const parsedUnpaired = parsed.pairings.filter((p) => !p.black);
+    expect(parsedUnpaired.length).toBeGreaterThan(0);
+
+    const parsedByeCount = parsedUnpaired.filter((p) => /bye|spielfrei/i.test(p.unpairedLabel || '')).length;
+    const parsedNotPairedCount = parsedUnpaired.length - parsedByeCount;
+
+    // Fixture expectation: contains both BYE and not paired rows.
+    expect(parsedByeCount).toBeGreaterThan(0);
+    expect(parsedNotPairedCount).toBeGreaterThan(0);
+
+    persistPairings(TOURNAMENT_ID, parsed.info, 9, parsed.pairings);
+
+    const reconstructed = getPairingsFromDb(TOURNAMENT_ID, 9);
+    expect(reconstructed).toBeDefined();
+
+    const reconstructedUnpaired = reconstructed!.pairings.filter((p) => !p.black);
+    const reconstructedByeCount = reconstructedUnpaired.filter((p) => /bye|spielfrei/i.test(p.unpairedLabel || '')).length;
+    const reconstructedNotPairedCount = reconstructedUnpaired.length - reconstructedByeCount;
+
+    expect(reconstructedByeCount).toBe(parsedByeCount);
+    expect(reconstructedNotPairedCount).toBe(parsedNotPairedCount);
   });
 });
 

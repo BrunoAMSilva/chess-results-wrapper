@@ -12,10 +12,14 @@ import db, {
   persistPairings,
   persistPlayerCard,
   searchTournaments,
+  listTournaments,
+  searchTournamentsPaged,
+  countTournaments,
   getPlayerById,
   findPlayerByIdentity,
   getPlayerTournamentHistory,
   getPlayerResultRows,
+  getPairingsFromDb,
 } from '../../src/lib/db';
 import { TournamentType } from '../../src/lib/types';
 import type { TournamentInfo, Standing, Pairing } from '../../src/lib/types';
@@ -144,6 +148,30 @@ describe('Database - Tournaments', () => {
     const results = searchTournaments('Portuguese');
     expect(results).toHaveLength(2);
     expect(results.map(r => r.id).sort()).toEqual(['T001', 'T003']);
+  });
+
+  it('should list tournaments with pagination', () => {
+    upsertTournament(makeTournamentInfo({ name: 'A Tournament' }), 'T001');
+    upsertTournament(makeTournamentInfo({ name: 'B Tournament' }), 'T002');
+    upsertTournament(makeTournamentInfo({ name: 'C Tournament' }), 'T003');
+
+    const page1 = listTournaments(2, 0);
+    const page2 = listTournaments(2, 2);
+
+    expect(page1).toHaveLength(2);
+    expect(page2).toHaveLength(1);
+  });
+
+  it('should search tournaments with pagination and count totals', () => {
+    upsertTournament(makeTournamentInfo({ name: 'Lisbon Open' }), 'T001');
+    upsertTournament(makeTournamentInfo({ name: 'Lisbon Masters' }), 'T002');
+    upsertTournament(makeTournamentInfo({ name: 'Porto Open' }), 'T003');
+
+    const searchPage = searchTournamentsPaged('Lisbon', 1, 0);
+    const total = countTournaments('Lisbon');
+
+    expect(searchPage).toHaveLength(1);
+    expect(total).toBe(2);
   });
 
   it('should return undefined for non-existent tournament', () => {
@@ -573,6 +601,22 @@ describe('Database - Standings', () => {
   });
 });
 
+describe('Database - Indexes', () => {
+  it('should create critical indexes for player history and result lookups', () => {
+    const indexes = db.prepare(
+      `SELECT name FROM sqlite_master WHERE type = 'index'`,
+    ).all() as Array<{ name: string }>;
+    const names = new Set(indexes.map((i) => i.name));
+
+    expect(names.has('idx_results_tournament_round')).toBe(true);
+    expect(names.has('idx_results_white_player')).toBe(true);
+    expect(names.has('idx_results_black_player')).toBe(true);
+    expect(names.has('idx_standings_tournament')).toBe(true);
+    expect(names.has('idx_standings_player_type')).toBe(true);
+    expect(names.has('idx_tournament_players_player')).toBe(true);
+  });
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // persistStandings (batch operation)
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -744,6 +788,34 @@ describe('Database - persistPairings', () => {
     expect(results).toHaveLength(1);
     expect(results[0].white_name).toBe('Lone Player');
     expect(results[0].black_player_id).toBeNull();
+  });
+
+  it('should preserve BYE vs not paired labels when reconstructing pairings from DB', () => {
+    const info = makeTournamentInfo();
+    const pairings: Pairing[] = [
+      {
+        table: 1,
+        white: { name: 'Bye Player', number: 1 },
+        black: null,
+        unpairedLabel: 'BYE',
+        result: '1',
+      },
+      {
+        table: 2,
+        white: { name: 'Unpaired Player', number: 2 },
+        black: null,
+        unpairedLabel: 'not paired',
+        result: '0',
+      },
+    ];
+
+    persistPairings('T001', info, 1, pairings);
+    const reconstructed = getPairingsFromDb('T001', 1);
+
+    expect(reconstructed).toBeDefined();
+    expect(reconstructed!.pairings).toHaveLength(2);
+    expect(reconstructed!.pairings[0].unpairedLabel).toBe('BYE');
+    expect(reconstructed!.pairings[1].unpairedLabel).toBe('not paired');
   });
 
   it('should persist multiple rounds independently', () => {
@@ -921,5 +993,138 @@ describe('Database - persistPlayerCard', () => {
     expect(player!.national_id).toBe('11111');
     expect(player!.club).toBe('Some Club');
     expect(player!.rating).toBe(1800);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// getPairingsFromDb — team pairing reconstruction
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('Database - getPairingsFromDb', () => {
+  beforeEach(clearAllTables);
+
+  it('should return null when tournament does not exist', () => {
+    expect(getPairingsFromDb('NONEXISTENT', 1)).toBeNull();
+  });
+
+  it('should return null when round has no results', () => {
+    const info = makeTournamentInfo();
+    upsertTournament(info, 'T_EMPTY');
+    expect(getPairingsFromDb('T_EMPTY', 1)).toBeNull();
+  });
+
+  it('should return pairings without teamPairings for individual tournaments', () => {
+    const info = makeTournamentInfo({ type: TournamentType.Swiss });
+    upsertTournament(info, 'T_IND');
+
+    const w = upsertPlayer('White Player', 'POR');
+    const b = upsertPlayer('Black Player', 'ESP');
+    linkPlayerToTournament('T_IND', w, 1);
+    linkPlayerToTournament('T_IND', b, 2);
+    upsertResult('T_IND', 1, 1, w, b, '1 - 0');
+
+    const result = getPairingsFromDb('T_IND', 1);
+    expect(result).not.toBeNull();
+    expect(result!.pairings).toHaveLength(1);
+    expect(result!.teamPairings).toBeUndefined();
+    expect(result!.pairings[0].white.name).toBe('White Player');
+    expect(result!.pairings[0].result).toBe('1 - 0');
+  });
+
+  it('should reconstruct teamPairings for team tournaments with team data', () => {
+    const info = makeTournamentInfo({ type: TournamentType.TeamSwiss });
+    upsertTournament(info, 'T_TEAM');
+
+    const p1 = upsertPlayer('Player A1', '');
+    const p2 = upsertPlayer('Player B1', '');
+    const p3 = upsertPlayer('Player A2', '');
+    const p4 = upsertPlayer('Player B2', '');
+    linkPlayerToTournament('T_TEAM', p1, 1);
+    linkPlayerToTournament('T_TEAM', p2, 2);
+    linkPlayerToTournament('T_TEAM', p3, 3);
+    linkPlayerToTournament('T_TEAM', p4, 4);
+
+    // Two boards for Team Alpha vs Team Beta
+    upsertResult('T_TEAM', 1, 1, p1, p2, '1 - 0', 'Team Alpha', 'Team Beta');
+    upsertResult('T_TEAM', 1, 2, p3, p4, '½ - ½', 'Team Alpha', 'Team Beta');
+
+    const result = getPairingsFromDb('T_TEAM', 1);
+    expect(result).not.toBeNull();
+    expect(result!.teamPairings).toBeDefined();
+    expect(result!.teamPairings).toHaveLength(1);
+    expect(result!.teamPairings![0].whiteTeam).toBe('Team Alpha');
+    expect(result!.teamPairings![0].blackTeam).toBe('Team Beta');
+    expect(result!.teamPairings![0].boards).toHaveLength(2);
+    expect(result!.teamPairings![0].result).toBe('1½:0½');
+  });
+
+  it('should group multiple team matches separately', () => {
+    const info = makeTournamentInfo({ type: TournamentType.TeamSwiss });
+    upsertTournament(info, 'T_MULTI');
+
+    const players = Array.from({ length: 4 }, (_, i) =>
+      upsertPlayer(`Player ${i + 1}`, ''),
+    );
+    for (const [i, pid] of players.entries()) {
+      linkPlayerToTournament('T_MULTI', pid, i + 1);
+    }
+
+    // Match 1: Team A vs Team B
+    upsertResult('T_MULTI', 1, 1, players[0], players[1], '1 - 0', 'Team A', 'Team B');
+    // Match 2: Team C vs Team D
+    upsertResult('T_MULTI', 1, 2, players[2], players[3], '0 - 1', 'Team C', 'Team D');
+
+    const result = getPairingsFromDb('T_MULTI', 1);
+    expect(result!.teamPairings).toHaveLength(2);
+    expect(result!.teamPairings![0].whiteTeam).toBe('Team A');
+    expect(result!.teamPairings![1].whiteTeam).toBe('Team C');
+  });
+
+  it('should group boards by team pair even when interleaved by table', () => {
+    const info = makeTournamentInfo({ type: TournamentType.TeamSwiss });
+    upsertTournament(info, 'T_INTERLEAVED');
+
+    const players = Array.from({ length: 8 }, (_, i) => upsertPlayer(`P${i + 1}`, ''));
+    for (const [i, pid] of players.entries()) {
+      linkPlayerToTournament('T_INTERLEAVED', pid, i + 1);
+    }
+
+    upsertResult('T_INTERLEAVED', 1, 1, players[0], players[1], '1 - 0', 'Team A', 'Team B');
+    upsertResult('T_INTERLEAVED', 1, 2, players[2], players[3], '0 - 1', 'Team C', 'Team D');
+    upsertResult('T_INTERLEAVED', 1, 3, players[4], players[5], '½ - ½', 'Team A', 'Team B');
+    upsertResult('T_INTERLEAVED', 1, 4, players[6], players[7], '1 - 0', 'Team C', 'Team D');
+
+    const result = getPairingsFromDb('T_INTERLEAVED', 1);
+    expect(result).not.toBeNull();
+    expect(result!.teamPairings).toHaveLength(2);
+    expect(result!.teamPairings![0].whiteTeam).toBe('Team A');
+    expect(result!.teamPairings![0].boards).toHaveLength(2);
+    expect(result!.teamPairings![1].whiteTeam).toBe('Team C');
+    expect(result!.teamPairings![1].boards).toHaveLength(2);
+  });
+
+  it('should not fail when first board row has no team labels', () => {
+    const info = makeTournamentInfo({ type: TournamentType.TeamSwiss });
+    upsertTournament(info, 'T_MISSING_TEAM');
+
+    const p1 = upsertPlayer('No Team White', '');
+    const p2 = upsertPlayer('No Team Black', '');
+    const p3 = upsertPlayer('Team White', '');
+    const p4 = upsertPlayer('Team Black', '');
+
+    linkPlayerToTournament('T_MISSING_TEAM', p1, 1);
+    linkPlayerToTournament('T_MISSING_TEAM', p2, 2);
+    linkPlayerToTournament('T_MISSING_TEAM', p3, 3);
+    linkPlayerToTournament('T_MISSING_TEAM', p4, 4);
+
+    upsertResult('T_MISSING_TEAM', 1, 1, p1, p2, '1 - 0');
+    upsertResult('T_MISSING_TEAM', 1, 2, p3, p4, '0 - 1', 'Team X', 'Team Y');
+
+    const result = getPairingsFromDb('T_MISSING_TEAM', 1);
+    expect(result).not.toBeNull();
+    expect(result!.pairings).toHaveLength(2);
+    expect(result!.teamPairings).toHaveLength(1);
+    expect(result!.teamPairings![0].whiteTeam).toBe('Team X');
+    expect(result!.teamPairings![0].blackTeam).toBe('Team Y');
   });
 });

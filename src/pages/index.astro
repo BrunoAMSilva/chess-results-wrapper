@@ -1,13 +1,21 @@
 ---
-import ThemeToggle from "../components/ThemeToggle.astro";
 import RecentTournaments from "../components/RecentTournaments.astro";
 import { useTranslations } from "../i18n/ui";
+import { resolvePageLang } from "../lib/page-lang";
+import { countTournaments, listTournaments } from "../lib/db";
 import "../styles/global.css";
 
-const langParam = Astro.url.searchParams.get("lang");
-const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
+const lang = resolvePageLang(Astro.url, Astro.cookies);
 const t = useTranslations(lang);
-if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', httpOnly: false });
+const discoverExpanded = Astro.url.searchParams.get("discover") === "all";
+const discoverLimit = discoverExpanded ? 24 : 3;
+const discoverOffset = 0;
+const discoverRows = listTournaments(discoverLimit, discoverOffset);
+const discoverTotal = countTournaments();
+const discoverHasMore = discoverTotal > discoverRows.length;
+const discoverBase = `/?lang=${lang}`;
+const discoverMoreHref = `${discoverBase}&discover=all`;
+const discoverLessHref = `${discoverBase}`;
 ---
 
 <!doctype html>
@@ -42,13 +50,6 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
   </head>
   <body>
     <div class="home-shell">
-      <div class="ambient ambient-a"></div>
-      <div class="ambient ambient-b"></div>
-
-      <header class="home-topbar">
-        <ThemeToggle />
-      </header>
-
       <main class="home-main">
         <div class="home-content animate-enter">
           <div class="home-icon">
@@ -77,6 +78,7 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
                 aria-activedescendant=""
               />
               <div class="search-results hidden" id="searchResults" role="listbox" aria-label="Search results">
+                <p class="search-loading hidden" id="searchLoading">{t('home.loading')}</p>
                 <p class="no-results hidden" id="noResults">{t('home.noResults')}</p>
               </div>
               <div class="sr-only" aria-live="polite" aria-atomic="true" id="searchAnnounce"></div>
@@ -94,6 +96,33 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
           <p class="error-hint hidden" id="errorHint">{t('home.invalid')}</p>
 
           <RecentTournaments recentLabel={t('home.recent')} />
+
+          <section class="discover-section">
+            <h2 class="discover-title">{t('discover.title')}</h2>
+            {discoverRows.length > 0 ? (
+              <div class="discover-list">
+                {discoverRows.map((item) => (
+                  <a class="discover-card" href={`/standings?tid=${item.id}&lang=${lang}`}>
+                    <h3 class="discover-name">{item.name}</h3>
+                    <p class="discover-line">{item.date || "Date not available"}</p>
+                    <p class="discover-line discover-location">{item.location || "Location not available"}</p>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div class="discover-empty">{t('discover.noResults')}</div>
+            )}
+
+            {(discoverHasMore || discoverExpanded) && (
+              <div class="discover-more-row">
+                {discoverExpanded ? (
+                  <a class="discover-more-link" href={discoverLessHref}>{t('discover.viewLess')}</a>
+                ) : (
+                  <a class="discover-more-link" href={discoverMoreHref}>{t('discover.viewMore')}</a>
+                )}
+              </div>
+            )}
+          </section>
         </div>
       </main>
     </div>
@@ -105,50 +134,18 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    min-height: 100dvh;
+    justify-content: flex-start;
+    min-height: 100vh;
     position: relative;
-  }
-
-  .ambient {
-    position: fixed;
-    pointer-events: none;
-    border-radius: 999px;
-    filter: blur(80px);
-    opacity: 0.35;
-    z-index: 0;
-  }
-
-  .ambient-a {
-    width: 420px;
-    height: 420px;
-    left: -120px;
-    top: -140px;
-    background: var(--ambient-a);
-  }
-
-  .ambient-b {
-    width: 380px;
-    height: 380px;
-    right: -80px;
-    bottom: -140px;
-    background: var(--ambient-b);
-  }
-
-  .home-topbar {
-    position: fixed;
-    top: 0;
-    right: 0;
-    padding: var(--space-4);
-    z-index: 10;
+    padding: var(--space-8) var(--space-4);
   }
 
   .home-main {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     width: 100%;
-    padding: var(--space-4);
+    padding: 0;
     z-index: 1;
   }
 
@@ -159,11 +156,11 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     text-align: center;
     max-width: 520px;
     width: 100%;
-    gap: var(--space-3);
+    gap: var(--space-2);
   }
 
   .home-icon {
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--space-1);
     color: var(--accent);
   }
 
@@ -179,7 +176,7 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     font-size: var(--text-base);
     color: var(--text-dim);
     line-height: var(--leading-normal);
-    max-width: 420px;
+    max-width: 460px;
   }
 
   .search-form {
@@ -187,7 +184,7 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     flex-direction: column;
     gap: var(--space-3);
     width: 100%;
-    margin-top: var(--space-4);
+    margin-top: var(--space-3);
   }
 
   .input-wrapper {
@@ -241,6 +238,13 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     overflow: hidden;
     max-height: 360px;
     overflow-y: auto;
+  }
+
+  .search-loading {
+    padding: var(--space-4);
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--text-sm);
   }
 
   .search-results :global(.result-item) {
@@ -328,6 +332,120 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     font-size: var(--text-sm);
   }
 
+  .discover-section {
+    width: 100%;
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--border-light);
+    text-align: left;
+  }
+
+  .discover-title {
+    font-size: var(--text-xl);
+    color: var(--text);
+    font-weight: var(--weight-semibold);
+    text-align: left;
+    margin-bottom: var(--space-3);
+  }
+
+  .discover-form {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+  }
+
+  .discover-input {
+    flex: 1;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+  }
+
+  .discover-btn {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--text);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--text-sm);
+    cursor: pointer;
+  }
+
+  .discover-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+  }
+
+  .discover-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: linear-gradient(180deg, var(--surface), var(--surface-hover));
+    padding: var(--space-3);
+    text-align: left;
+    text-decoration: none;
+    flex: 1 1 280px;
+    min-width: 0;
+    transition: transform var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-in-out),
+      box-shadow var(--duration-fast) var(--ease-in-out);
+  }
+
+  .discover-card:hover,
+  .discover-card:focus-visible {
+    transform: translateY(-2px);
+    border-color: var(--accent);
+    box-shadow: var(--shadow-md);
+    outline: none;
+  }
+
+  .discover-name {
+    font-size: var(--text-base);
+    color: var(--text);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    margin: 0;
+  }
+
+  .discover-line {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+  }
+
+  .discover-location {
+    color: var(--text-muted);
+  }
+
+  .discover-empty {
+    color: var(--text-dim);
+    text-align: center;
+    padding: var(--space-6);
+  }
+
+  .discover-more-row {
+    display: flex;
+    justify-content: center;
+  }
+
+  .discover-more-link {
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2) var(--space-4);
+    color: var(--text);
+    background: var(--surface);
+    text-decoration: none;
+    font-size: var(--text-sm);
+  }
+
   .search-btn {
     display: flex;
     align-items: center;
@@ -373,6 +491,16 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
       white-space: nowrap;
       padding: var(--space-4) var(--space-6);
     }
+
+    .discover-card {
+      flex-basis: calc(50% - var(--space-2));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .discover-card {
+      flex-basis: calc(33.333% - var(--space-2));
+    }
   }
 </style>
 
@@ -383,9 +511,10 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     const errorHint = document.getElementById('errorHint') as HTMLElement | null;
     const searchResults = document.getElementById('searchResults');
     const noResults = document.getElementById('noResults');
+    const searchLoading = document.getElementById('searchLoading');
     const announceEl = document.getElementById('searchAnnounce');
 
-    if (!form || !input || !errorHint || !searchResults || !noResults || !announceEl) return;
+    if (!form || !input || !errorHint || !searchResults || !noResults || !searchLoading || !announceEl) return;
 
     let debounceTimer: ReturnType<typeof setTimeout>;
     let activeIndex = -1;
@@ -394,8 +523,10 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     // Alias to non-nullable after guard
     const resultsEl = searchResults;
     const noResultsEl = noResults;
+    const loadingEl = searchLoading;
     const inputEl = input;
     const announceRegion = announceEl;
+    let latestRequestId = 0;
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -471,13 +602,23 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
     }
 
     async function searchTournaments(query: string) {
+      const requestId = ++latestRequestId;
+      setLoading(true);
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-        if (!res.ok) return;
+        if (requestId !== latestRequestId) return;
+        if (!res.ok) {
+          hideDropdown();
+          return;
+        }
         const data = await res.json();
         renderResults(data);
       } catch {
         hideDropdown();
+      } finally {
+        if (requestId === latestRequestId) {
+          setLoading(false);
+        }
       }
     }
 
@@ -492,7 +633,7 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
         noResultsEl.classList.remove('hidden');
         resultsEl.classList.remove('hidden');
         inputEl.setAttribute('aria-expanded', 'true');
-        announceRegion.textContent = 'No results found.';
+        announceRegion.textContent = noResultsEl.textContent || '';
         return;
       }
 
@@ -554,7 +695,7 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
 
       resultsEl.classList.remove('hidden');
       inputEl.setAttribute('aria-expanded', 'true');
-      announceRegion.textContent = `${results.length} result${results.length === 1 ? '' : 's'} available.`;
+      announceRegion.textContent = `${results.length}`;
     }
 
     function updateActiveItem(items: NodeListOf<Element>) {
@@ -568,10 +709,22 @@ if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60
 
     function hideDropdown() {
       resultsEl.classList.add('hidden');
+      setLoading(false);
       inputEl.setAttribute('aria-expanded', 'false');
       inputEl.setAttribute('aria-activedescendant', '');
       currentResults = [];
       activeIndex = -1;
+    }
+
+    function setLoading(isLoading: boolean) {
+      loadingEl.classList.toggle('hidden', !isLoading);
+      noResultsEl.classList.add('hidden');
+      if (isLoading) {
+        resultsEl.querySelectorAll('.result-item').forEach((el) => el.remove());
+        resultsEl.classList.remove('hidden');
+        inputEl.setAttribute('aria-expanded', 'true');
+        announceRegion.textContent = loadingEl.textContent || '';
+      }
     }
 
     function navigateToTournament(tid: string) {

@@ -1,0 +1,57 @@
+---
+interface Props {
+  targetUrl: string;
+  label: string;
+  hint: string;
+  alt?: string;
+}
+
+const {
+  targetUrl,
+  label,
+  hint,
+  alt = "QR Code",
+} = Astro.props;
+
+const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(targetUrl)}`;
+---
+
+<div class="presenter-qr-card">
+  <div class="presenter-qr-text">
+    <div class="presenter-qr-label">{label}</div>
+    <div class="presenter-qr-hint">{hint}</div>
+  </div>
+  <img class="presenter-qr-image" src={qrSrc} alt={alt} width="48" height="48" />
+</div>
+
+<style>
+  .presenter-qr-card {
+    display: flex;
+    align-items: center;
+    gap: var(--space-4);
+    background: var(--surface);
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+
+  .presenter-qr-text {
+    font-size: var(--text-sm);
+    text-align: right;
+    line-height: var(--leading-tight);
+  }
+
+  .presenter-qr-label {
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .presenter-qr-hint {
+    font-weight: var(--weight-bold);
+    color: var(--accent);
+  }
+
+  .presenter-qr-image {
+    border-radius: var(--radius-sm);
+  }
+</style>

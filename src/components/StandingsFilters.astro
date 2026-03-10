@@ -1,0 +1,131 @@
+---
+interface Props {
+  tid: string;
+  lang: number;
+  name: string;
+  federation: string;
+  minRating: string;
+  maxRating: string;
+  title: string;
+  nameLabel: string;
+  federationLabel: string;
+  minRatingLabel: string;
+  maxRatingLabel: string;
+  applyLabel: string;
+  clearLabel: string;
+}
+
+const {
+  tid,
+  lang,
+  name,
+  federation,
+  minRating,
+  maxRating,
+  title,
+  nameLabel,
+  federationLabel,
+  minRatingLabel,
+  maxRatingLabel,
+  applyLabel,
+  clearLabel,
+} = Astro.props;
+---
+
+<form class="filters" action="/standings" method="get">
+  <input type="hidden" name="tid" value={tid} />
+  <input type="hidden" name="lang" value={String(lang)} />
+
+  <div class="filters-title">{title}</div>
+
+  <label class="field">
+    <span>{nameLabel}</span>
+    <input type="text" name="name" value={name} />
+  </label>
+
+  <label class="field">
+    <span>{federationLabel}</span>
+    <input type="text" name="fed" value={federation} maxlength="3" />
+  </label>
+
+  <label class="field">
+    <span>{minRatingLabel}</span>
+    <input type="number" name="minRating" value={minRating} min="0" step="1" />
+  </label>
+
+  <label class="field">
+    <span>{maxRatingLabel}</span>
+    <input type="number" name="maxRating" value={maxRating} min="0" step="1" />
+  </label>
+
+  <div class="actions">
+    <button type="submit">{applyLabel}</button>
+    <a class="clear" href={`/standings?tid=${encodeURIComponent(tid)}&lang=${lang}`}>{clearLabel}</a>
+  </div>
+</form>
+
+<style>
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
+    padding: var(--space-3);
+    margin-bottom: var(--space-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+  }
+
+  .filters-title {
+    grid-column: 1 / -1;
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .field span {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+  }
+
+  .field input {
+    width: 100%;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text);
+    font-size: var(--text-sm);
+  }
+
+  .actions {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .actions button,
+  .actions .clear {
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-3);
+    background: var(--bg-subtle);
+    color: var(--text);
+    font-size: var(--text-sm);
+    text-decoration: none;
+  }
+
+  @media (max-width: 640px) {
+    .filters {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

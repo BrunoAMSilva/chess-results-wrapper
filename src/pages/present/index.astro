@@ -4,16 +4,18 @@ import MatchCard from "../../components/MatchCard.astro";
 import StandingRow from "../../components/StandingRow.astro";
 import TabsControl from "../../components/TabsControl.astro";
 import SegmentedControl from "../../components/SegmentedControl.astro";
+import PresenterQrCode from "../../components/PresenterQrCode.astro";
 import { scrapePairings, scrapeStandings } from "../../lib/scraper";
 import { useTranslations } from "../../i18n/ui";
 import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
+import { paginateArray } from "../../lib/utils";
+import { getIntParam } from "../../lib/request-params";
+import { resolvePageLang } from "../../lib/page-lang";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
-const round = parseInt(Astro.url.searchParams.get("round") || "1");
-const langParam = Astro.url.searchParams.get("lang");
-const lang = parseInt(langParam || Astro.cookies.get('lang')?.value || "1");
-if (langParam) Astro.cookies.set('lang', langParam, { path: '/', maxAge: 60 * 60 * 24 * 365, sameSite: 'lax', httpOnly: false });
-const rowsPerPage = parseInt(Astro.url.searchParams.get("rows") || String(ROWS_PER_PAGE));
+const round = getIntParam(Astro.url.searchParams.get("round"), 1, 1, 64);
+const lang = resolvePageLang(Astro.url, Astro.cookies);
+const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAGE, 1, 50);
 
 const t = useTranslations(lang);
 
@@ -44,24 +46,15 @@ const totalPlayers = activePairings.length * 2 + allPairings.filter((p) => !p.bl
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
 
 // Group pairings into pages
-const pages: typeof allPairings[] = [];
-for (let i = 0; i < allPairings.length; i += rowsPerPage) {
-  pages.push(allPairings.slice(i, i + rowsPerPage));
-}
+const pages = paginateArray(allPairings, rowsPerPage);
 const totalPages = pages.length;
 
 // Group player list into pages (for fallback when no pairings)
-const playerPages: typeof playerList[] = [];
-for (let i = 0; i < playerList.length; i += rowsPerPage) {
-  playerPages.push(playerList.slice(i, i + rowsPerPage));
-}
+const playerPages = paginateArray(playerList, rowsPerPage);
 const totalPlayerPages = playerPages.length;
 
 const hasWomenPlayers = womenPlayerList.length > 0;
-const womenPlayerPages: typeof womenPlayerList[] = [];
-for (let i = 0; i < womenPlayerList.length; i += rowsPerPage) {
-  womenPlayerPages.push(womenPlayerList.slice(i, i + rowsPerPage));
-}
+const womenPlayerPages = paginateArray(womenPlayerList, rowsPerPage);
 const totalWomenPlayerPages = womenPlayerPages.length;
 
 // Disable auto-refresh for tournaments whose last round date is in the past
@@ -88,13 +81,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
       </div>
 
       <div class="header-right-group">
-        <div class="qr-code-container" style="display: flex; align-items: center; gap: 1rem; background: var(--surface); padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border); margin-right: 1rem;">
-          <div style="font-size: 0.8rem; text-align: right; line-height: 1.2;">
-            <div style="color: var(--text-dim); text-transform: uppercase;">{t('scan.label')}</div>
-            <div style="font-weight: bold; color: var(--accent);">{t('scan.hint')}</div>
-          </div>
-          <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(Astro.url.origin + '/?tid=' + tid)}`} alt="QR Code" width="48" height="48" style="border-radius: 4px;" />
-        </div>
+        <PresenterQrCode targetUrl={`${Astro.url.origin}/?tid=${tid}`} label={t('scan.label')} hint={t('scan.hint')} />
         {data && (
           <div class="toolbar-stats">
             <span class="stat-pill">
@@ -110,7 +97,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
               <span class="stat-divider"></span>
               <span class="stat-group">
                 <span class="stat-label">{t('header.round')}</span>
-                <span class="stat-value">{round} <span style="font-size: 0.8em; opacity: 0.5">/ {data.info.totalRounds}</span></span>
+                <span class="stat-value">{round} <span class="round-total">/ {data.info.totalRounds}</span></span>
               </span>
             </span>
             
@@ -413,6 +400,11 @@ const autoRefresh = isTournamentLive(data?.info.date);
     font-weight: var(--weight-extrabold);
     color: var(--text);
     line-height: var(--leading-none);
+  }
+
+  .round-total {
+    font-size: var(--text-base);
+    opacity: 0.5;
   }
 
   .column-headers {

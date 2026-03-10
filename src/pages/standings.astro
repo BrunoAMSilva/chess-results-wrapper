@@ -7,17 +7,10 @@ import TournamentSelector from "../components/TournamentSelector.astro";
 import { scrapeStandings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
+import { resolvePageLang } from "../lib/page-lang";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
-const langParam = Astro.url.searchParams.get("lang");
-const lang = parseInt(langParam || Astro.cookies.get("lang")?.value || "1");
-if (langParam)
-  Astro.cookies.set("lang", langParam, {
-    path: "/",
-    maxAge: 60 * 60 * 24 * 365,
-    sameSite: "lax",
-    httpOnly: false,
-  });
+const lang = resolvePageLang(Astro.url, Astro.cookies);
 
 const t = useTranslations(lang);
 
@@ -95,12 +88,12 @@ const defaultActive = hasTeams ? "teams" : "open";
   <div class:list={["standings-list", { hidden: hasTeams }]} id="openStandingsList">
     {
       allStandings.length > 0
-        ? allStandings.map((standing: any, i: number) => (
+        ? allStandings.map((standing, i: number) => (
             <StandingRow standing={standing} index={i} lang={lang} tid={tid} />
           ))
         : !error && (
             <div class="empty-state">
-              <p>No standings available</p>
+              <p>{t('empty.standings')}</p>
             </div>
           )
     }
@@ -109,7 +102,7 @@ const defaultActive = hasTeams ? "teams" : "open";
   {
     hasWomen && (
       <div class="standings-list hidden" id="womenStandingsList">
-        {womenStandings.map((standing: any, i: number) => (
+        {womenStandings.map((standing, i: number) => (
           <StandingRow standing={standing} index={i} lang={lang} tid={tid} />
         ))}
       </div>

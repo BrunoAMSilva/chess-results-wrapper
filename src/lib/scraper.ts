@@ -468,40 +468,87 @@ async function scrapeStandingsFromRemote(
   return enrichedResult;
 }
 
-// ─── Public API with DB-first freshness check ─────────────────────────────────
+// ─── Freshness cache ──────────────────────────────────────────────────────────
+
+/** Short-lived in-memory cache to avoid redundant remote freshness checks. */
+const freshnessCache = new Map<string, { status: 'fresh' | 'scraped' | 'live'; timestamp: number }>();
+const FRESHNESS_CACHE_TTL = 60_000; // 1 minute
+
+// ─── Centralized tournament data management ───────────────────────────────────
+
+/**
+ * Ensure a tournament's data is fresh in the database.
+ * Single entry point for all tournament data freshness decisions.
+ *
+ * Decision tree:
+ * 1. Tournament NOT in DB → full scrape (all rounds, standings, player cards)
+ * 2. Tournament in DB, ended ≥ 1 day ago:
+ *    a. Remote lastUpdated ≤ DB → 'fresh' (serve from DB)
+ *    b. Remote lastUpdated > DB → full scrape → 'scraped'
+ * 3. Tournament in DB, still live → 'live' (caller scrapes specific data)
+ */
+export async function ensureTournamentData(
+  tournamentId: string,
+  lang: number,
+): Promise<'fresh' | 'scraped' | 'live'> {
+  const cached = freshnessCache.get(tournamentId);
+  if (cached && Date.now() - cached.timestamp < FRESHNESS_CACHE_TTL) {
+    return cached.status;
+  }
+
+  const dbTournament = getTournament(tournamentId);
+
+  if (!dbTournament) {
+    try {
+      await scrapeFullTournament(tournamentId, lang);
+      freshnessCache.set(tournamentId, { status: 'scraped', timestamp: Date.now() });
+      return 'scraped';
+    } catch (_) {
+      return 'live'; // Full scrape failed — caller should try single-page scrape
+    }
+  }
+
+  if (!isTournamentFinished(dbTournament.date)) {
+    freshnessCache.set(tournamentId, { status: 'live', timestamp: Date.now() });
+    return 'live';
+  }
+
+  // Finished tournament — check remote freshness
+  const remoteLastUpdated = await fetchRemoteLastUpdated(tournamentId, lang);
+
+  if (remoteLastUpdated && dbTournament.last_updated && remoteLastUpdated <= dbTournament.last_updated) {
+    freshnessCache.set(tournamentId, { status: 'fresh', timestamp: Date.now() });
+    return 'fresh';
+  }
+
+  if (remoteLastUpdated && (!dbTournament.last_updated || remoteLastUpdated > dbTournament.last_updated)) {
+    try {
+      await scrapeFullTournament(tournamentId, lang);
+      freshnessCache.set(tournamentId, { status: 'scraped', timestamp: Date.now() });
+      return 'scraped';
+    } catch (_) {
+      freshnessCache.set(tournamentId, { status: 'fresh', timestamp: Date.now() });
+      return 'fresh'; // Full scrape failed — serve stale DB data
+    }
+  }
+
+  // Couldn't determine remote freshness — serve from DB
+  freshnessCache.set(tournamentId, { status: 'fresh', timestamp: Date.now() });
+  return 'fresh';
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function scrapePairings(
   tournamentId: string,
   round: number,
   lang = 1,
 ): Promise<TournamentData> {
-  const dbTournament = getTournament(tournamentId);
+  const status = await ensureTournamentData(tournamentId, lang);
 
-  // For finished tournaments (date <= yesterday), check freshness before scraping
-  if (dbTournament && isTournamentFinished(dbTournament.date)) {
-    const remoteLastUpdated = await fetchRemoteLastUpdated(tournamentId, lang);
-
-    if (remoteLastUpdated && dbTournament.last_updated && remoteLastUpdated <= dbTournament.last_updated) {
-      // Our data is current — serve from DB
-      const fromDb = getPairingsFromDb(tournamentId, round);
-      if (fromDb) return fromDb;
-      // DB had no pairings for this round — fall through to scrape
-    } else if (remoteLastUpdated && remoteLastUpdated !== dbTournament.last_updated) {
-      // Chess-results has newer data — full scrape to update everything
-      await scrapeFullTournament(tournamentId, lang);
-      const fromDb = getPairingsFromDb(tournamentId, round);
-      if (fromDb) return fromDb;
-    }
-  }
-
-  // Not in DB, current tournament, or DB had no data — scrape from chess-results
-  if (!dbTournament) {
-    // First time seeing this tournament — full scrape
-    try {
-      await scrapeFullTournament(tournamentId, lang);
-      const fromDb = getPairingsFromDb(tournamentId, round);
-      if (fromDb) return fromDb;
-    } catch (_) { /* fall through to single-round scrape */ }
+  if (status !== 'live') {
+    const fromDb = getPairingsFromDb(tournamentId, round);
+    if (fromDb) return fromDb;
   }
 
   return scrapePairingsFromRemote(tournamentId, round, lang);
@@ -515,47 +562,19 @@ export async function scrapeStandings(
   const cached = getCache<StandingsData>(cacheKey);
   if (cached) return cached;
 
-  const dbTournament = getTournament(tournamentId);
+  const status = await ensureTournamentData(tournamentId, lang);
 
-  // For finished tournaments (date <= yesterday), check freshness before scraping
-  if (dbTournament && isTournamentFinished(dbTournament.date)) {
-    const remoteLastUpdated = await fetchRemoteLastUpdated(tournamentId, lang);
-
-    if (remoteLastUpdated && dbTournament.last_updated && remoteLastUpdated <= dbTournament.last_updated) {
-      // Our data is current — serve from DB
-      const fromDb = getStandingsFromDb(tournamentId);
-      if (fromDb) {
-        setCache(cacheKey, fromDb, CACHE_TTL);
-        return fromDb;
-      }
-    } else if (remoteLastUpdated && remoteLastUpdated !== dbTournament.last_updated) {
-      // Chess-results has newer data — full scrape
-      await scrapeFullTournament(tournamentId, lang);
-      const fromDb = getStandingsFromDb(tournamentId);
-      if (fromDb) {
-        setCache(cacheKey, fromDb, CACHE_TTL);
-        return fromDb;
-      }
+  if (status !== 'live') {
+    const fromDb = getStandingsFromDb(tournamentId);
+    if (fromDb) {
+      setCache(cacheKey, fromDb, CACHE_TTL);
+      return fromDb;
     }
-  }
-
-  // Not in DB, current tournament, or DB had no data — scrape from chess-results
-  if (!dbTournament) {
-    // First time seeing this tournament — full scrape
-    try {
-      await scrapeFullTournament(tournamentId, lang);
-      const fromDb = getStandingsFromDb(tournamentId);
-      if (fromDb) {
-        setCache(cacheKey, fromDb, CACHE_TTL);
-        return fromDb;
-      }
-    } catch (_) { /* fall through to single scrape */ }
   }
 
   const result = await scrapeStandingsFromRemote(tournamentId, lang);
   setCache(cacheKey, result, CACHE_TTL);
 
-  // Persist to database (best-effort)
   try {
     persistStandings(tournamentId, result.info, result.standings, result.womenStandings);
   } catch (_) { /* DB write is non-critical */ }

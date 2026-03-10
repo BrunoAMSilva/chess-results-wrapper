@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { reverseName } from '../../src/lib/utils';
+import { paginateArray, reverseName } from '../../src/lib/utils';
 
 describe('reverseName', () => {
   it('should reverse comma-separated "Last, First"', () => {
@@ -32,5 +32,15 @@ describe('reverseName', () => {
 
   it('should handle comma-separated with spaces', () => {
     expect(reverseName('FONTELAS, Diogo Rebelo')).toBe('Diogo Rebelo FONTELAS');
+  });
+});
+
+describe('paginateArray', () => {
+  it('should split items into fixed-size pages', () => {
+    expect(paginateArray([1, 2, 3, 4, 5], 2)).toEqual([[1, 2], [3, 4], [5]]);
+  });
+
+  it('should return one page for non-positive page size', () => {
+    expect(paginateArray([1, 2, 3], 0)).toEqual([[1, 2, 3]]);
   });
 });

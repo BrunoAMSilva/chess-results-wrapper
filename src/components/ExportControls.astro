@@ -1,0 +1,59 @@
+---
+interface Props {
+  tid: string;
+  lang: number;
+  type: "standings" | "pairings";
+  round?: number;
+  title: string;
+  csvLabel: string;
+  jsonLabel: string;
+}
+
+const { tid, lang, type, round, title, csvLabel, jsonLabel } = Astro.props;
+
+const base = `/api/export?tid=${encodeURIComponent(tid)}&lang=${lang}&type=${type}`;
+const roundParam = type === "pairings" && typeof round === "number" ? `&round=${round}` : "";
+const csvHref = `${base}${roundParam}&format=csv`;
+const jsonHref = `${base}${roundParam}&format=json`;
+---
+
+<div class="export-controls" aria-label={title}>
+  <span class="export-title">{title}</span>
+  <a class="export-link" href={csvHref}>{csvLabel}</a>
+  <a class="export-link" href={jsonHref}>{jsonLabel}</a>
+</div>
+
+<style>
+  .export-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-wrap: wrap;
+    padding: var(--space-2) var(--space-3);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  .export-title {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    margin-right: var(--space-1);
+  }
+
+  .export-link {
+    font-size: var(--text-sm);
+    color: var(--accent-text);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-2);
+    background: var(--bg-subtle);
+    transition: background-color var(--duration-fast) var(--ease-in-out);
+  }
+
+  .export-link:hover {
+    background: var(--surface-hover);
+  }
+</style>

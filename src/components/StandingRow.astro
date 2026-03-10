@@ -17,6 +17,8 @@ const t = useTranslations(lang);
 const isTop3 = standing.rank <= 3;
 const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : "";
 const Tag = tid ? "a" : "div";
+const delayStep = Math.max(0, Math.min(10, index));
+const delayClass = `delay-${delayStep}`;
 const attributes = tid
   ? {
       href: `/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(standing.name)}&lang=${lang}`,
@@ -26,8 +28,7 @@ const attributes = tid
 
 <Tag
   {...attributes}
-  class:list={["standing-row", { "top-3": isTop3 }, rankClass]}
-  style={`animation-delay: ${index * 40}ms`}
+  class:list={["standing-row", delayClass, { "top-3": isTop3 }, rankClass]}
 >
   <div class="rank-col">
     <span class="rank-num">{standing.rank}</span>
@@ -68,7 +69,7 @@ const attributes = tid
   .standing-row {
     --hover-opacity: 0;
     display: grid;
-    grid-template-columns: 50px minmax(0, 1fr) auto;
+    grid-template-columns: var(--size-standing-rank-col-sm) minmax(0, 1fr) auto;
     align-items: center;
     background:
       linear-gradient(
@@ -78,12 +79,12 @@ const attributes = tid
       ),
       linear-gradient(var(--surface), var(--surface));
     border-bottom: 1px solid var(--border);
-    padding: 0 0.5rem 0 0;
+    padding: 0 var(--space-2) 0 0;
     animation: fadeInUp var(--duration-slow) ease both;
     color: var(--text);
     gap: 0;
     flex: 1;
-    min-height: 60px;
+    min-height: var(--size-standing-row-min-height-sm);
   }
 
   .standing-row:last-child {
@@ -96,14 +97,14 @@ const attributes = tid
       var(--accent-subtle) 0%,
       oklch(from var(--accent) l c h / var(--hover-opacity)) 100%
     );
-    border-left: 4px solid var(--accent);
+    border-left: var(--space-1) solid var(--accent);
   }
 
   .standing-row.rank-1 {
     border-left-color: var(--medal-gold);
     background: linear-gradient(
       90deg,
-      rgba(255, 215, 0, 0.15) 0%,
+      rgb(from var(--medal-gold) r g b / 0.15) 0%,
       oklch(from var(--accent) l c h / var(--hover-opacity)) 100%
     );
   }
@@ -112,8 +113,8 @@ const attributes = tid
     border-left-color: var(--medal-silver);
     background: linear-gradient(
       90deg,
-      rgba(192, 192, 192, 0.15) 0%,
-      rgba(192 192 192 / var(--hover-opacity)) 100%
+      rgb(from var(--medal-silver) r g b / 0.15) 0%,
+      rgb(from var(--medal-silver) r g b / var(--hover-opacity)) 100%
     );
   }
 
@@ -121,8 +122,8 @@ const attributes = tid
     border-left-color: var(--medal-bronze);
     background: linear-gradient(
       90deg,
-      rgba(205, 127, 50, 0.15) 0%,
-      rgba(205, 127, 50, var(--hover-opacity)) 100%
+      rgb(from var(--medal-bronze) r g b / 0.15) 0%,
+      rgb(from var(--medal-bronze) r g b / var(--hover-opacity)) 100%
     );
   }
 
@@ -130,7 +131,7 @@ const attributes = tid
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1.5rem;
+    font-size: var(--text-2xl);
     font-weight: 900;
     color: var(--text-dim);
     line-height: 1;
@@ -172,14 +173,14 @@ const attributes = tid
   }
 
   .player-name {
-    font-size: 1.1rem;
+    font-size: var(--text-lg);
     font-weight: 700;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--text);
     line-height: 1.1;
-    margin-bottom: 0.2rem;
+    margin-bottom: var(--space-1);
     text-decoration: none;
     display: block;
   }
@@ -193,7 +194,7 @@ const attributes = tid
     color: var(--text-dim);
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tracking-wide);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -204,8 +205,8 @@ const attributes = tid
     display: flex;
     align-items: stretch;
     justify-content: space-between;
-    gap: 0.5rem;
-    padding-right: 0.5rem;
+    gap: var(--space-2);
+    padding-right: var(--space-2);
     height: 100%;
   }
 
@@ -214,18 +215,18 @@ const attributes = tid
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    width: 60px;
+    width: var(--size-standing-main-stat-sm);
     background: rgba(255, 255, 255, 0.05);
     margin-right: 0;
     height: 100%;
     border-radius: 0;
     flex-shrink: 0;
-    padding: 0.5rem 0;
+    padding: var(--space-2) 0;
     grid-row: span 2;
   }
 
   .points {
-    font-size: 1.5rem;
+    font-size: var(--text-2xl);
     font-weight: 800;
 
     color: var(--text);
@@ -238,12 +239,12 @@ const attributes = tid
   }
 
   .stat-label {
-    font-size: 0.65rem;
+    font-size: var(--text-2xs);
     font-weight: 700;
     color: var(--text-dim);
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-top: 0.2rem;
+    letter-spacing: var(--tracking-wider);
+    margin-top: var(--space-1);
   }
 
   .stats-col {
@@ -256,26 +257,26 @@ const attributes = tid
 
   @media (min-width: 1068px) {
     .standing-row {
-      grid-template-columns: 80px minmax(0, 1fr) auto auto;
+      grid-template-columns: var(--size-standing-rank-col-lg) minmax(0, 1fr) auto auto;
       grid-template-rows: auto;
-      padding: 0 1.5rem 0 0;
-      min-height: 80px;
+      padding: 0 var(--space-6) 0 0;
+      min-height: var(--size-standing-row-min-height-lg);
     }
     .main-stat, .rank-col {
       grid-row: 1;
     }
     .rank-col,
     .points {
-      font-size: 2.5rem;
+      font-size: var(--text-display-md);
     }
     .player-name {
-      font-size: 1.8rem;
+      font-size: var(--text-display-sm);
     }
     .player-fed {
       font-size: 0.9rem;
     }
     .player-info {
-      padding-left: 1.5rem;
+      padding-left: var(--space-6);
     }
     .stats-col {
       gap: 1.5rem;
@@ -285,9 +286,9 @@ const attributes = tid
       margin: 0;
     }
     .main-stat {
-      width: 100px;
-      margin-right: 0.5rem;
-      padding: 1rem 0;
+      width: var(--size-standing-main-stat-lg);
+      margin-right: var(--space-2);
+      padding: var(--space-4) 0;
       grid-column: 3;
     }
   }
@@ -297,4 +298,16 @@ const attributes = tid
       --hover-opacity: 0.5;
     }
   }
+
+  .delay-0 { animation-delay: 0ms; }
+  .delay-1 { animation-delay: 40ms; }
+  .delay-2 { animation-delay: 80ms; }
+  .delay-3 { animation-delay: 120ms; }
+  .delay-4 { animation-delay: 160ms; }
+  .delay-5 { animation-delay: 200ms; }
+  .delay-6 { animation-delay: 240ms; }
+  .delay-7 { animation-delay: 280ms; }
+  .delay-8 { animation-delay: 320ms; }
+  .delay-9 { animation-delay: 360ms; }
+  .delay-10 { animation-delay: 400ms; }
 </style>

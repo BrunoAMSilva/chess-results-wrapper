@@ -27,3 +27,14 @@ export function reverseName(name: string): string {
   const firstName = words.slice(splitIdx).join(" ");
   return `${firstName} ${lastName}`;
 }
+
+/** Split an array into fixed-size pages, preserving order. */
+export function paginateArray<T>(items: T[], pageSize: number): T[][] {
+  if (pageSize <= 0) return [items];
+
+  const pages: T[][] = [];
+  for (let i = 0; i < items.length; i += pageSize) {
+    pages.push(items.slice(i, i + pageSize));
+  }
+  return pages;
+}
