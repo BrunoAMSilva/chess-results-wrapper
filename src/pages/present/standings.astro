@@ -17,6 +17,13 @@ const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAG
 const sponsorImage = Astro.url.searchParams.get("sponsor")?.trim() || "";
 const sponsorAlt = Astro.url.searchParams.get("sponsorAlt")?.trim() || "Sponsor";
 
+const sponsorSwitchParams = new URLSearchParams();
+if (sponsorImage) sponsorSwitchParams.set("sponsor", sponsorImage);
+if (sponsorAlt && sponsorAlt !== "Sponsor") sponsorSwitchParams.set("sponsorAlt", sponsorAlt);
+const sponsorSwitchSuffix = sponsorSwitchParams.toString()
+  ? `&${sponsorSwitchParams.toString()}`
+  : "";
+
 const t = useTranslations(lang);
 
 let data;
@@ -166,14 +173,12 @@ const autoRefresh = isTournamentLive(data?.info.date);
       </div>
 
       <aside class="side-column">
-        <section class="sponsor-card" aria-label={t('sponsor.title')}>
-          <h2 class="sponsor-title">{t('sponsor.title')}</h2>
-          {sponsorImage ? (
+        {sponsorImage && (
+          <section class="sponsor-card" aria-label={t('sponsor.title')}>
+            <h2 class="sponsor-title">{t('sponsor.title')}</h2>
             <img class="sponsor-image" src={sponsorImage} alt={sponsorAlt} loading="eager" />
-          ) : (
-            <div class="sponsor-placeholder">{t('sponsor.placeholder')}</div>
-          )}
-        </section>
+          </section>
+        )}
 
         <PresenterQrCode
           targetUrl={`${Astro.url.origin}/?tid=${tid}`}
@@ -196,7 +201,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
         <SegmentedControl
           name="view-switch"
           segments={[
-            { value: "pairings", label: t('nav.pairings'), href: `/present?tid=${tid}&lang=${lang}` },
+            { value: "pairings", label: t('nav.pairings'), href: `/present?tid=${tid}&lang=${lang}${sponsorSwitchSuffix}` },
             { value: "standings", label: t('nav.standings') },
           ]}
           active="standings"
