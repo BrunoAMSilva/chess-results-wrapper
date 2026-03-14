@@ -7,7 +7,7 @@ import SegmentedControl from "../../components/SegmentedControl.astro";
 import PresenterQrCode from "../../components/PresenterQrCode.astro";
 import { scrapePairings, scrapeStandings } from "../../lib/scraper";
 import { useTranslations } from "../../i18n/ui";
-import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
+import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, PRESENTER_PAIRINGS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
 import { paginateArray } from "../../lib/utils";
 import { getIntParam } from "../../lib/request-params";
 import { resolvePageLang } from "../../lib/page-lang";
@@ -15,7 +15,7 @@ import { resolvePageLang } from "../../lib/page-lang";
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const round = getIntParam(Astro.url.searchParams.get("round"), 1, 1, 64);
 const lang = resolvePageLang(Astro.url, Astro.cookies);
-const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAGE, 1, 50);
+const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), PRESENTER_PAIRINGS_PER_PAGE, 1, 50);
 const sponsorImage = Astro.url.searchParams.get("sponsor")?.trim() || "";
 const sponsorAlt = Astro.url.searchParams.get("sponsorAlt")?.trim() || "Sponsor";
 const hideNonPaired = Astro.url.searchParams.get("hideNonPaired") === "1";
@@ -78,12 +78,13 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
 const pages = paginateArray(visiblePairings, rowsPerPage);
 const totalPages = pages.length;
 
-// Group player list into pages (for fallback when no pairings)
-const playerPages = paginateArray(playerList, rowsPerPage);
+// Group player list into pages (for fallback when no pairings — use standings row count)
+const standingsRowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAGE, 1, 50);
+const playerPages = paginateArray(playerList, standingsRowsPerPage);
 const totalPlayerPages = playerPages.length;
 
 const hasWomenPlayers = womenPlayerList.length > 0;
-const womenPlayerPages = paginateArray(womenPlayerList, rowsPerPage);
+const womenPlayerPages = paginateArray(womenPlayerList, standingsRowsPerPage);
 const totalWomenPlayerPages = womenPlayerPages.length;
 
 // Disable auto-refresh for tournaments whose last round date is in the past
