@@ -1,0 +1,424 @@
+---
+import 'cm-chessboard/assets/chessboard.css';
+import 'cm-chessboard/assets/extensions/markers/markers.css';
+
+interface Props {
+  openingNames: { name: string; eco: string }[];
+}
+
+const { openingNames } = Astro.props;
+---
+
+<div class="practice-layout">
+  <aside class="sidebar">
+    <div class="field">
+      <label for="opening-search">Search Opening</label>
+      <input
+        type="text"
+        id="opening-search"
+        placeholder="Type to filter (e.g. Sicilian, E60...)"
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="field">
+      <label for="opening-select">Opening</label>
+      <select id="opening-select" size="12">
+        {openingNames.map((o) => (
+          <option value={o.name} data-eco={o.eco}>
+            [{o.eco}] {o.name}
+          </option>
+        ))}
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="variation-select">Variation & Side</label>
+      <select id="variation-select" size="8">
+        <option value="" disabled selected>Pick an opening first</option>
+      </select>
+    </div>
+
+    <div class="status-panel">
+      <p id="status-message">Select an opening to begin.</p>
+      <div id="progress" class="progress"></div>
+    </div>
+  </aside>
+
+  <div class="board-area">
+    <div class="board-container">
+      <div id="board"></div>
+    </div>
+  </div>
+</div>
+
+<script
+  id="opening-names-data"
+  type="application/json"
+  set:html={JSON.stringify(openingNames)}
+/>
+
+<script>
+  import { Chess } from 'chess.js';
+  import { Chessboard, COLOR, INPUT_EVENT_TYPE, FEN } from 'cm-chessboard';
+  import { Markers, MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers.js';
+
+  const allNames: { name: string; eco: string }[] = JSON.parse(
+    document.getElementById('opening-names-data')?.textContent || '[]'
+  );
+
+  const searchInput = document.getElementById('opening-search') as HTMLInputElement;
+  const openingSelect = document.getElementById('opening-select') as HTMLSelectElement;
+  const variationSelect = document.getElementById('variation-select') as HTMLSelectElement;
+  const statusMessage = document.getElementById('status-message') as HTMLElement;
+  const progressDiv = document.getElementById('progress') as HTMLElement;
+  const boardEl = document.getElementById('board') as HTMLElement;
+
+  let currentOpening: any = null;
+  let currentMoveIndex = 0;
+  let game = new Chess();
+  let board: any = null;
+  let cachedVariations: Map<string, any[]> = new Map();
+
+  // ── Board init ──────────────────────────────────────────────────────────
+  function initBoard() {
+    if (boardEl && !board) {
+      board = new Chessboard(boardEl, {
+        position: FEN.start,
+        assetsUrl: 'https://unpkg.com/cm-chessboard@8.11.5/assets/',
+        orientation: COLOR.white,
+        responsive: true,
+        style: {
+          animationDuration: 300,
+        },
+        extensions: [{ class: Markers }],
+      });
+    }
+  }
+
+  initBoard();
+
+  // ── Search / Filter ──────────────────────────────────────────────────────
+  searchInput.addEventListener('input', () => {
+    const lc = searchInput.value.toLowerCase();
+    for (const opt of Array.from(openingSelect.options)) {
+      const show =
+        opt.value.toLowerCase().includes(lc) ||
+        (opt.dataset.eco || '').toLowerCase().includes(lc);
+      opt.hidden = !show;
+    }
+    variationSelect.innerHTML =
+      '<option value="" disabled selected>Pick an opening first</option>';
+  });
+
+  // ── Opening selected → fetch variations ─────────────────────────────────
+  openingSelect.addEventListener('change', async () => {
+    const name = openingSelect.value;
+    variationSelect.innerHTML =
+      '<option value="" disabled selected>Loading...</option>';
+
+    let variations = cachedVariations.get(name);
+    if (!variations) {
+      const res = await fetch(`/api/openings?name=${encodeURIComponent(name)}`);
+      variations = await res.json();
+      cachedVariations.set(name, variations!);
+    }
+
+    variationSelect.innerHTML = '';
+    for (const entry of variations!) {
+      const side = entry.color === 'w' ? 'White' : 'Black';
+      const label = `${entry.variation} (${side}) [${entry.eco}]`;
+      const opt = document.createElement('option');
+      opt.value = String(entry.id);
+      opt.textContent = label;
+      variationSelect.appendChild(opt);
+    }
+  });
+
+  // ── Variation selected → start practice ────────────────────────────────
+  variationSelect.addEventListener('change', async () => {
+    const id = Number(variationSelect.value);
+    if (!id) return;
+
+    // Look up in cache first
+    let opening: any = null;
+    for (const v of cachedVariations.values()) {
+      opening = v.find((o: any) => o.id === id);
+      if (opening) break;
+    }
+    if (!opening) {
+      const res = await fetch(`/api/openings?id=${id}`);
+      opening = await res.json();
+    }
+    if (!opening) return;
+
+    currentOpening = opening;
+    currentMoveIndex = 0;
+    game = new Chess();
+
+    board.setOrientation(opening.color === 'w' ? COLOR.white : COLOR.black);
+    board.setPosition(game.fen(), true);
+    board.removeMarkers();
+    board.enableMoveInput(
+      inputHandler,
+      opening.color === 'w' ? COLOR.white : COLOR.black
+    );
+
+    updateStatus();
+
+    if (opening.color === 'b' && opening.moves.length > 0) {
+      setTimeout(() => playOpponentMove(), 500);
+    }
+  });
+
+  // ── Input handler ─────────────────────────────────────────────────────
+  function inputHandler(event: any) {
+    if (event.type === INPUT_EVENT_TYPE.moveInputStarted) {
+      const moves = game.moves({ square: event.square, verbose: true });
+      board.removeMarkers();
+      for (const m of moves) {
+        board.addMarker(MARKER_TYPE.dot, m.to);
+      }
+      board.addMarker(MARKER_TYPE.framePrimary, event.square);
+      return moves.length > 0;
+    } else if (event.type === INPUT_EVENT_TYPE.validateMoveInput) {
+      const { squareFrom, squareTo } = event;
+      board.removeMarkers();
+
+      let moveObj;
+      try {
+        moveObj = game.move({
+          from: squareFrom,
+          to: squareTo,
+          promotion: 'q',
+        });
+      } catch {
+        return false;
+      }
+
+      const expectedSan = currentOpening.moves[currentMoveIndex];
+      game.undo();
+
+      const dummy = new Chess(game.fen());
+      const expectedMoveObj = dummy.move(expectedSan);
+
+      if (
+        expectedMoveObj &&
+        expectedMoveObj.from === squareFrom &&
+        expectedMoveObj.to === squareTo
+      ) {
+        game.move(expectedSan);
+        currentMoveIndex++;
+        board.setPosition(game.fen(), true);
+        updateStatus();
+
+        if (currentMoveIndex < currentOpening.moves.length) {
+          setTimeout(() => playOpponentMove(), 500);
+        } else {
+          statusMessage.textContent = 'Opening completed! Well done.';
+          board.disableMoveInput();
+        }
+        return true;
+      } else {
+        statusMessage.textContent = `Incorrect. Try again. (Hint: ${expectedSan})`;
+        statusMessage.style.color = 'var(--error-color, #e53e3e)';
+        setTimeout(() => updateStatus(), 2500);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // ── Opponent auto-play ────────────────────────────────────────────────
+  function playOpponentMove() {
+    if (!currentOpening || currentMoveIndex >= currentOpening.moves.length)
+      return;
+
+    const san = currentOpening.moves[currentMoveIndex];
+    game.move(san);
+    currentMoveIndex++;
+    board.setPosition(game.fen(), true);
+    updateStatus();
+
+    if (currentMoveIndex >= currentOpening.moves.length) {
+      statusMessage.textContent = 'Opening completed! Well done.';
+      board.disableMoveInput();
+    }
+  }
+
+  // ── Status display ────────────────────────────────────────────────────
+  function updateStatus() {
+    if (!currentOpening) return;
+    statusMessage.style.color = 'inherit';
+
+    const movePairs: { white: string; black: string }[] = [];
+    for (let i = 0; i < currentOpening.moves.length; i += 2) {
+      movePairs.push({
+        white: currentOpening.moves[i],
+        black: currentOpening.moves[i + 1] || '…',
+      });
+    }
+
+    statusMessage.textContent = `${currentOpening.name}: ${currentOpening.variation}`;
+
+    progressDiv.innerHTML = movePairs
+      .map((pair, idx) => {
+        const wDone = idx * 2 < currentMoveIndex ? 'done' : '';
+        const bDone = idx * 2 + 1 < currentMoveIndex ? 'done' : '';
+        const wActive = idx * 2 === currentMoveIndex ? 'active' : '';
+        const bActive = idx * 2 + 1 === currentMoveIndex ? 'active' : '';
+        return `
+          <span class="move-pair">
+            <span class="move-no">${idx + 1}.</span>
+            <span class="move ${wActive} ${wDone}">${pair.white}</span>
+            <span class="move ${bActive} ${bDone}">${pair.black}</span>
+          </span>`;
+      })
+      .join('');
+  }
+</script>
+
+<style>
+  .practice-layout {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg, 1.5rem);
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: var(--space-md, 1rem);
+  }
+
+  @media (min-width: 900px) {
+    .practice-layout {
+      flex-direction: row;
+      align-items: flex-start;
+    }
+  }
+
+  /* ── Sidebar ───────────────────────────────────────────────────────── */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-md, 1rem);
+    min-width: 280px;
+    max-width: 360px;
+    flex-shrink: 0;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs, 0.25rem);
+  }
+
+  .field label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted, #777);
+  }
+
+  input[type='text'] {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm, 4px);
+    border: 1px solid var(--border-color, #ccc);
+    background: var(--bg-color, #fff);
+    color: var(--text-color, #333);
+    font-size: 0.95rem;
+  }
+
+  select {
+    padding: 0.35rem 0.5rem;
+    border-radius: var(--radius-sm, 4px);
+    border: 1px solid var(--border-color, #ccc);
+    background: var(--bg-color, #fff);
+    color: var(--text-color, #333);
+    font-size: 0.9rem;
+    overflow-y: auto;
+  }
+
+  .status-panel {
+    background: var(--panel-bg, #f5f5f5);
+    padding: var(--space-md, 1rem);
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--border-color, #eaeaea);
+  }
+
+  #status-message {
+    font-weight: bold;
+    margin-bottom: var(--space-sm, 0.5rem);
+  }
+
+  .progress {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+    font-size: 0.9rem;
+    font-family: monospace;
+  }
+
+  .progress :global(.move-pair) {
+    display: inline-flex;
+    gap: 0.2rem;
+    white-space: nowrap;
+  }
+
+  .progress :global(.move-no) {
+    color: var(--text-muted, #777);
+  }
+
+  .progress :global(.move.active) {
+    background: var(--accent-color, #3182ce);
+    color: #fff;
+    padding: 0 0.2rem;
+    border-radius: 3px;
+  }
+
+  .progress :global(.move.done) {
+    opacity: 0.5;
+  }
+
+  /* ── Board area ────────────────────────────────────────────────────── */
+  .board-area {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  .board-container {
+    width: 100%;
+    max-width: 640px;
+  }
+
+  @media (min-width: 900px) {
+    .board-container {
+      max-width: none;
+      width: 100%;
+    }
+  }
+
+  #board {
+    width: 100%;
+    aspect-ratio: 1;
+  }
+
+  /* ── Ghost piece visible while dragging ─────────────────────────── */
+  :global(.cm-chessboard .pieces-layer [visibility='hidden']) {
+    visibility: visible !important;
+    opacity: 0.35;
+  }
+
+  /* ── Dark mode ──────────────────────────────────────────────────── */
+  :global([data-theme='dark']) .status-panel {
+    background: var(--surface-bg, #2a2a2a);
+    border-color: var(--border-color, #444);
+  }
+  :global([data-theme='dark']) select,
+  :global([data-theme='dark']) input[type='text'] {
+    background: var(--surface-bg, #2a2a2a);
+    color: #fff;
+    border-color: #555;
+  }
+</style>

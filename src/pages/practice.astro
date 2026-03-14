@@ -1,0 +1,14 @@
+---
+import ResponsiveLayout from '../layouts/ResponsiveLayout.astro';
+import ChessOpeningPractice from '../components/ChessOpeningPractice.astro';
+import { getOpeningNames } from '../lib/db';
+
+const openingNames = getOpeningNames();
+---
+
+<ResponsiveLayout title="Practice Openings">
+  <main>
+    <ChessOpeningPractice openingNames={openingNames} />
+  </main>
+</ResponsiveLayout>
+

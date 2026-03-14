@@ -229,3 +229,12 @@ export interface PlayerCardData {
   rank: number;
   points: string;
 }
+export interface Opening {
+  id: number;
+  name: string;
+  variation: string;
+  eco: string;
+  color: 'w' | 'b';
+  moves: string[];
+  starting_fen: string;
+}

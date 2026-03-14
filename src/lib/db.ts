@@ -104,6 +104,17 @@ db.exec(`
     PRIMARY KEY (tournament_id, player_id, type)
   );
 
+  -- Openings
+  CREATE TABLE IF NOT EXISTS openings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    variation TEXT NOT NULL DEFAULT '',
+    eco TEXT NOT NULL DEFAULT '',
+    color TEXT NOT NULL DEFAULT 'w',
+    moves TEXT NOT NULL DEFAULT '[]', -- JSON array of SAN moves
+    starting_fen TEXT NOT NULL DEFAULT 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+  );
+
   -- Indexes for common queries
   CREATE INDEX IF NOT EXISTS idx_results_tournament_round ON results(tournament_id, round);
   CREATE INDEX IF NOT EXISTS idx_results_white_player ON results(white_player_id) WHERE white_player_id IS NOT NULL;
@@ -1065,3 +1076,64 @@ export function getPlayerResultRows(playerId: number) {
     WHERE white_player_id = ? OR black_player_id = ?
   `).all(playerId, playerId) as DbPlayerResultEntry[];
 }
+
+// ─── Openings API ────────────────────────────────────────────────────────────
+
+export function getOpenings() {
+  const rows = db.prepare('SELECT * FROM openings ORDER BY name, variation').all() as any[];
+  return rows.map((row) => ({
+    ...row,
+    moves: JSON.parse(row.moves),
+  }));
+}
+
+export function getOpeningNames(): { name: string; eco: string }[] {
+  return db.prepare(
+    'SELECT DISTINCT name, MIN(eco) as eco FROM openings GROUP BY name ORDER BY name'
+  ).all() as { name: string; eco: string }[];
+}
+
+export function getOpeningsByName(name: string) {
+  const rows = db.prepare(
+    'SELECT * FROM openings WHERE name = ? ORDER BY variation, color'
+  ).all(name) as any[];
+  return rows.map((row) => ({
+    ...row,
+    moves: JSON.parse(row.moves),
+  }));
+}
+
+export function getOpeningById(id: number) {
+  const row = db.prepare('SELECT * FROM openings WHERE id = ?').get(id) as any;
+  if (!row) return undefined;
+  return {
+    ...row,
+    moves: JSON.parse(row.moves),
+  };
+}
+
+export function insertOpening(
+  name: string,
+  variation: string,
+  eco: string,
+  color: 'w' | 'b',
+  moves: string[],
+  starting_fen: string = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+) {
+  const existing = db.prepare('SELECT id FROM openings WHERE name = ? AND variation = ? AND color = ?').get(name, variation, color) as { id: number } | undefined;
+  if (existing) {
+    db.prepare('UPDATE openings SET eco = ?, moves = ?, starting_fen = ? WHERE id = ?').run(
+      eco,
+      JSON.stringify(moves),
+      starting_fen,
+      existing.id
+    );
+    return existing.id;
+  }
+  const result = db.prepare(`
+    INSERT INTO openings (name, variation, eco, color, moves, starting_fen)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(name, variation, eco, color, JSON.stringify(moves), starting_fen);
+  return Number(result.lastInsertRowid);
+}
+

@@ -22,6 +22,8 @@
     "astro": "^5.18.0",
     "better-sqlite3": "^12.6.2",
     "cheerio": "^1.2.0",
+    "chess.js": "^1.4.0",
+    "cm-chessboard": "^8.11.5",
     "iconify": "^1.4.0"
   },
   "devDependencies": {
@@ -29,8 +31,8 @@
     "@playwright/test": "^1.58.2",
     "@types/better-sqlite3": "^7.6.13",
     "playwright": "^1.58.2",
-    "typescript": "^5.9.3",
     "tsx": "^4.20.5",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }
 }
