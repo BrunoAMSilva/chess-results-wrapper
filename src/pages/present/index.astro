@@ -78,13 +78,12 @@ const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i 
 const pages = paginateArray(visiblePairings, rowsPerPage);
 const totalPages = pages.length;
 
-// Group player list into pages (for fallback when no pairings — use standings row count)
-const standingsRowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAGE, 1, 50);
-const playerPages = paginateArray(playerList, standingsRowsPerPage);
+// Group player list into pages (for fallback when no pairings)
+const playerPages = paginateArray(playerList, rowsPerPage);
 const totalPlayerPages = playerPages.length;
 
 const hasWomenPlayers = womenPlayerList.length > 0;
-const womenPlayerPages = paginateArray(womenPlayerList, standingsRowsPerPage);
+const womenPlayerPages = paginateArray(womenPlayerList, rowsPerPage);
 const totalWomenPlayerPages = womenPlayerPages.length;
 
 // Disable auto-refresh for tournaments whose last round date is in the past
@@ -287,7 +286,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
         )}
 
         <PresenterQrCode
-          targetUrl={`${window.location.origin}/?tid=${tid}`}
+          targetUrl={`${Astro.url.origin}/?tid=${tid}`}
           label={t('scan.label')}
           hint={t('scan.hint')}
           size="large"
