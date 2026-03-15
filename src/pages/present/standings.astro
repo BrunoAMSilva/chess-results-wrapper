@@ -8,7 +8,7 @@ import { scrapeStandings } from "../../lib/scraper";
 import { useTranslations } from "../../i18n/ui";
 import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
 import { paginateArray } from "../../lib/utils";
-import { getIntParam, resolvePublicOrigin } from "../../lib/request-params";
+import { getIntParam } from "../../lib/request-params";
 import { resolvePageLang } from "../../lib/page-lang";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
@@ -16,7 +16,6 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
 const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAGE, 1, 50);
 const sponsorImage = Astro.url.searchParams.get("sponsor")?.trim() || "";
 const sponsorAlt = Astro.url.searchParams.get("sponsorAlt")?.trim() || "Sponsor";
-const origin = resolvePublicOrigin(Astro.request, Astro.url.origin);
 
 const sponsorSwitchParams = new URLSearchParams();
 if (sponsorImage) sponsorSwitchParams.set("sponsor", sponsorImage);
@@ -182,7 +181,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
         )}
 
         <PresenterQrCode
-          targetUrl={`${origin}/?tid=${tid}`}
+          targetUrl={`${Astro.url.origin}/?tid=${tid}`}
           label={t('scan.label')}
           hint={t('scan.hint')}
           size="large"

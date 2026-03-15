@@ -7,6 +7,10 @@ import node from '@astrojs/node';
 export default defineConfig({
   output: 'server',
 
+  server: {
+    allowedHosts: true,
+  },
+
   adapter: node({
     mode: 'standalone',
   }),

@@ -9,7 +9,7 @@ import { scrapePairings, scrapeStandings } from "../../lib/scraper";
 import { useTranslations } from "../../i18n/ui";
 import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, PRESENTER_PAIRINGS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
 import { paginateArray } from "../../lib/utils";
-import { getIntParam, resolvePublicOrigin } from "../../lib/request-params";
+import { getIntParam } from "../../lib/request-params";
 import { resolvePageLang } from "../../lib/page-lang";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
@@ -36,7 +36,6 @@ const presenterExtraQuery = presenterExtras.toString();
 const presenterExtraSuffix = presenterExtraQuery ? `&${presenterExtraQuery}` : "";
 
 const t = useTranslations(lang);
-const origin = resolvePublicOrigin(Astro.request, Astro.url.origin);
 
 let data;
 let error: string | null = null;
@@ -287,7 +286,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
         )}
 
         <PresenterQrCode
-          targetUrl={`${origin}/?tid=${tid}`}
+          targetUrl={`${Astro.url.origin}/?tid=${tid}`}
           label={t('scan.label')}
           hint={t('scan.hint')}
           size="large"

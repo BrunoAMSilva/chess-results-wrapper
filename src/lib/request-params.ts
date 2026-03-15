@@ -23,20 +23,3 @@ export function getLangParam(value: string | null, defaultValue = 1): number {
   if (lang === null) return defaultValue;
   return VALID_LANGS.has(lang) ? lang : defaultValue;
 }
-
-/**
- * Resolve the public-facing origin from reverse-proxy headers,
- * the ORIGIN env var, or fall back to the Astro request URL.
- */
-export function resolvePublicOrigin(request: Request, fallbackOrigin: string): string {
-  const forwardedHost = request.headers.get('x-forwarded-host');
-  if (forwardedHost) {
-    const proto = request.headers.get('x-forwarded-proto') || 'https';
-    return `${proto}://${forwardedHost}`;
-  }
-
-  const envOrigin = import.meta.env.ORIGIN || process.env.ORIGIN;
-  if (envOrigin) return envOrigin.replace(/\/$/, '');
-
-  return fallbackOrigin;
-}
