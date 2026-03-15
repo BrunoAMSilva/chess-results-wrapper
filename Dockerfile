@@ -32,6 +32,7 @@ RUN mkdir -p /app/data
 ENV HOST=0.0.0.0
 ENV PORT=4321
 ENV DATABASE_PATH=/app/data/chess-results.db
+ENV ORIGIN=https://chess.bhindle.com
 
 EXPOSE 4321
 
