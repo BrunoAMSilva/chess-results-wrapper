@@ -181,7 +181,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
         )}
 
         <PresenterQrCode
-          targetPath={`/?tid=${tid}`}
+          targetPath={`/standings?tid=${tid}&lang=${lang}`}
           label={t('scan.label')}
           hint={t('scan.hint')}
           size="large"
