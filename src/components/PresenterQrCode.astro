@@ -1,6 +1,6 @@
 ---
 interface Props {
-  targetUrl: string;
+  targetPath: string;
   label: string;
   hint: string;
   alt?: string;
@@ -8,7 +8,7 @@ interface Props {
 }
 
 const {
-  targetUrl,
+  targetPath,
   label,
   hint,
   alt = "QR Code",
@@ -16,7 +16,6 @@ const {
 } = Astro.props;
 
 const qrSize = size === "large" ? 180 : 80;
-const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSize}&data=${encodeURIComponent(targetUrl)}`;
 ---
 
 <div class:list={["presenter-qr-card", size]}>
@@ -27,13 +26,24 @@ const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=${qrSize}x${qrSi
   <div class="presenter-qr-image-wrap">
     <img
       class="presenter-qr-image"
-      src={qrSrc}
+      data-qr-path={targetPath}
+      data-qr-size={qrSize}
+      src=""
       alt={alt}
       width={size === "large" ? 180 : 48}
       height={size === "large" ? 180 : 48}
     />
   </div>
 </div>
+
+<script>
+  document.querySelectorAll<HTMLImageElement>('img[data-qr-path]').forEach((img) => {
+    const path = img.dataset.qrPath!;
+    const size = img.dataset.qrSize || '180';
+    const targetUrl = `${window.location.origin}${path}`;
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(targetUrl)}`;
+  });
+</script>
 
 <style>
   .presenter-qr-card {

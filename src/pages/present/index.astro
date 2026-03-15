@@ -286,7 +286,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
         )}
 
         <PresenterQrCode
-          targetUrl={`${Astro.url.origin}/?tid=${tid}`}
+          targetPath={`/?tid=${tid}`}
           label={t('scan.label')}
           hint={t('scan.hint')}
           size="large"
