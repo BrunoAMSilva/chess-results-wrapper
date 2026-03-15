@@ -165,9 +165,27 @@ describe('Board Pairings (art=3)', () => {
     expect(firstMatch.boards.length).toBe(4); // 4 boards per team match
 
     const firstBoard = firstMatch.boards[0];
-    expect(firstBoard.table).toBe(1); // board 1
+    expect(firstBoard.table).toBe(firstMatch.table * 100 + 1); // unique: matchTable * 100 + boardNum
     expect(firstBoard.white.name).toBeTruthy();
     expect(firstBoard.result).toBeTruthy();
+  });
+
+  it('extracts player starting numbers (snr) from links', () => {
+    const html = loadFixture('team_board_pairings_r1.html');
+    const data = parseBoardPairingsHtml(html, 1);
+
+    const firstMatch = data.teamPairings![0];
+    const firstBoard = firstMatch.boards[0];
+    // snr values should be extracted from player link hrefs
+    expect(firstBoard.white.number).toBeGreaterThan(0);
+    if (firstBoard.black) {
+      expect(firstBoard.black.number).toBeGreaterThan(0);
+    }
+
+    // Verify specific known snr values from the fixture
+    // First match board 1: snr=80 vs snr=13
+    expect(firstBoard.white.number).toBe(80);
+    expect(firstBoard.black!.number).toBe(13);
   });
 
   it('extracts team names from match headers', () => {

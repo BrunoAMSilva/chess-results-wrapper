@@ -390,7 +390,7 @@ async function scrapePairingsFromRemote(
     }
 
     // Persist to database (best-effort)
-    try { persistPairings(tournamentId, data.info, round, data.pairings); } catch (_) {}
+    try { persistPairings(tournamentId, data.info, round, data.pairings, data.teamPairings); } catch (_) {}
 
     return data;
   } catch (e) {

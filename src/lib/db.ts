@@ -906,25 +906,56 @@ export function persistPairings(
   info: TournamentInfo,
   round: number,
   pairings: Pairing[],
+  teamPairings?: TeamPairing[],
 ): void {
   const txn = db.transaction(() => {
     upsertTournament(info, tournamentId);
 
-    for (const p of pairings) {
-      const whiteId = p.white.name
-        ? upsertPlayer(p.white.name, '')
-        : null;
-      const blackId = p.black?.name
-        ? upsertPlayer(p.black.name, '')
-        : null;
+    if (teamPairings && teamPairings.length > 0) {
+      for (const tm of teamPairings) {
+        for (const b of tm.boards) {
+          const whiteId = b.white.name ? upsertPlayer(b.white.name, '') : null;
+          const blackId = b.black?.name ? upsertPlayer(b.black.name, '') : null;
+          if (whiteId) linkPlayerToTournament(tournamentId, whiteId, b.white.number);
+          if (blackId && b.black) linkPlayerToTournament(tournamentId, blackId, b.black.number);
+          upsertResult(tournamentId, round, b.table, whiteId, blackId, b.result, tm.whiteTeam, tm.blackTeam);
+        }
+      }
+    } else {
+      for (const p of pairings) {
+        const whiteId = p.white.name
+          ? upsertPlayer(p.white.name, '')
+          : null;
+        const blackId = p.black?.name
+          ? upsertPlayer(p.black.name, '')
+          : null;
 
-      if (whiteId) linkPlayerToTournament(tournamentId, whiteId, p.white.number);
-      if (blackId && p.black) linkPlayerToTournament(tournamentId, blackId, p.black.number);
+        if (whiteId) linkPlayerToTournament(tournamentId, whiteId, p.white.number);
+        if (blackId && p.black) linkPlayerToTournament(tournamentId, blackId, p.black.number);
 
-      upsertResult(tournamentId, round, p.table, whiteId, blackId, p.result);
+        upsertResult(tournamentId, round, p.table, whiteId, blackId, p.result);
+      }
     }
   });
   txn();
+}
+
+/** Look up national IDs (Ident-Number) for all players in a tournament, keyed by starting number. */
+export function getPlayerNationalIds(tournamentId: string): Record<number, string> {
+  const rows = db.prepare(`
+    SELECT tp.starting_number, p.national_id
+    FROM tournament_players tp
+    JOIN players p ON p.id = tp.player_id
+    WHERE tp.tournament_id = ? AND p.national_id IS NOT NULL AND p.national_id != ''
+  `).all(tournamentId) as Array<{ starting_number: number; national_id: string }>;
+
+  const map: Record<number, string> = {};
+  for (const r of rows) {
+    if (r.starting_number > 0) {
+      map[r.starting_number] = r.national_id;
+    }
+  }
+  return map;
 }
 
 /** Persist player card data (art=9) — enriches player + tournament_players with extended fields. */

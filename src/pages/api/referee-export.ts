@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { scrapePairings } from "../../lib/scraper";
-import { getRefereeResults } from "../../lib/db";
+import { getRefereeResults, getPlayerNationalIds } from "../../lib/db";
 import type { Pairing, TeamPairing } from "../../lib/types";
 
 const RESULT_MAP: Record<string, string> = {
@@ -11,6 +11,14 @@ const RESULT_MAP: Record<string, string> = {
   "-:+": "0-1F",
   "-:-": "0-0F",
 };
+
+function invertResult(res: string): string {
+  if (res === "1-0") return "0-1";
+  if (res === "0-1") return "1-0";
+  if (res === "1-0F") return "0-1F";
+  if (res === "0-1F") return "1-0F";
+  return res; // 1/2, 0-0F stay the same
+}
 
 function escapeXml(str: string): string {
   return str
@@ -67,40 +75,50 @@ export const GET: APIRoute = async ({ url }) => {
       allPairings.push(...data.pairings);
     }
 
-    // Build XML
+    // Look up national IDs (Ident-Number = Swiss-Manager PlayerId) from DB
+    // Falls back to chess-results starting number if national ID not available
+    const nationalIds = getPlayerNationalIds(tid);
+    function resolvePlayerId(startingNumber: number): string {
+      return nationalIds[startingNumber] || String(startingNumber || 0);
+    }
+
+    // Build XML — match Swiss-Manager format
     const lines: string[] = [];
     lines.push('<?xml version="1.0" encoding="utf-8"?>');
-    lines.push(`<SwissManagerExport Tournament="${escapeXml(data.info.name)}" Round="${round}">`);
 
     // Team compositions (only for team tournaments)
     if (teamPairings.length > 0) {
-      lines.push("  <TeamCompositions>");
+      lines.push(`<TeamCompositions>${escapeXml(data.info.name)}`);
       for (const tm of teamPairings) {
         for (const b of tm.boards) {
           const res = resultsMap[b.table] ?? "";
           const smRes = RESULT_MAP[res] ?? "";
+          const boardNum = b.table % 100;
           lines.push(
-            `    <TeamComp Round="${round}" PlayerId="${b.white.number}" Board="${b.table}" Res="${smRes}"` +
+            `<TeamComposition Round="${round}" PlayerId="${resolvePlayerId(b.white.number)}" Board="${boardNum}" Res="${smRes}"` +
               ` TeamWhite="${escapeXml(tm.whiteTeam)}" TeamBlack="${escapeXml(tm.blackTeam)}" />`
           );
+          if (b.black) {
+            lines.push(
+              `<TeamComposition Round="${round}" PlayerId="${resolvePlayerId(b.black.number)}" Board="${boardNum}" Res="${invertResult(smRes)}"` +
+                ` TeamWhite="${escapeXml(tm.whiteTeam)}" TeamBlack="${escapeXml(tm.blackTeam)}" />`
+            );
+          }
         }
       }
-      lines.push("  </TeamCompositions>");
+      lines.push("</TeamCompositions>");
     }
 
     // Individual results
-    lines.push("  <Results>");
+    lines.push("<Results>");
     for (const p of allPairings) {
       const res = resultsMap[p.table] ?? "";
       const smRes = RESULT_MAP[res] ?? "";
-      if (!p.black) continue; // Skip BYE/unpaired
       lines.push(
-        `    <Result Round="${round}" PlayerWhiteId="${p.white.number}" PlayerBlackId="${p.black.number}" Res="${smRes}" />`
+        `<Result Round="${round}" PlayerWhiteId="${resolvePlayerId(p.white.number)}" PlayerBlackId="${resolvePlayerId(p.black?.number || 0)}" Res="${smRes}" />`
       );
     }
-    lines.push("  </Results>");
-
-    lines.push("</SwissManagerExport>");
+    lines.push("</Results>");
 
     const xml = lines.join("\n");
 

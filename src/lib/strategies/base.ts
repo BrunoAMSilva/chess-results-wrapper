@@ -509,6 +509,14 @@ export function parseTeamPairings(
 
 import type { Pairing, TeamStanding, TeamPlayerEntry } from '../types';
 
+/** Extract chess-results starting number (snr) from a player link's href. */
+function extractSnr($: cheerio.CheerioAPI, link: cheerio.Cheerio<cheerio.Element> | null): number {
+  if (!link || link.length === 0) return 0;
+  const href = link.attr('href') || '';
+  const m = href.match(/[?&]snr=(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
 /**
  * Parse board-level pairings from art=3 page.
  *
@@ -601,18 +609,28 @@ export function parseTeamBoardPairings(
     if (boardNum === 0) return;
 
     // Home player: cells[2] or cells[4] has name, cells[5] has rating
+    const homeLink = cells.length > 4
+      ? ($(cells[4]).find('a').first() || $(cells[2]).find('a').first())
+      : $(cells[2]).find('a').first();
     const homeName = cells.length > 4
       ? ($(cells[4]).find('a').text().trim() || $(cells[4]).text().trim() ||
          $(cells[2]).find('a').text().trim() || $(cells[2]).text().trim())
       : $(cells[2]).text().trim();
+    const homeNumber = extractSnr($, homeLink);
 
     // Away player: cells[8] or cells[10] has name, cells[11] has rating
+    const awayLink = cells.length > 10
+      ? ($(cells[10]).find('a').first() || $(cells[8]).find('a').first())
+      : cells.length > 8
+        ? $(cells[8]).find('a').first()
+        : null;
     const awayName = cells.length > 10
       ? ($(cells[10]).find('a').text().trim() || $(cells[10]).text().trim() ||
          $(cells[8]).find('a').text().trim() || $(cells[8]).text().trim())
       : cells.length > 8
         ? $(cells[8]).text().trim()
         : '';
+    const awayNumber = awayLink ? extractSnr($, awayLink) : 0;
 
     const result = cells.length > 12 ? $(cells[12]).text().trim() :
                    cells.length > 11 ? $(cells[11]).text().trim() : '';
@@ -621,10 +639,13 @@ export function parseTeamBoardPairings(
     const isBye = awayNameLower === 'bye' || awayNameLower.includes('spielfrei') ||
       awayNameLower.includes('livre') || !awayName;
 
+    // Use unique table number: matchTable * 100 + boardNum to avoid collisions
+    const uniqueTable = currentMatch.table * 100 + boardNum;
+
     currentMatch.boards.push({
-      table: boardNum,
-      white: { name: homeName, number: 0 },
-      black: isBye ? null : { name: awayName, number: 0 },
+      table: uniqueTable,
+      white: { name: homeName, number: homeNumber },
+      black: isBye ? null : { name: awayName, number: awayNumber },
       unpairedLabel: isBye ? (awayName || 'BYE') : undefined,
       result,
     });
