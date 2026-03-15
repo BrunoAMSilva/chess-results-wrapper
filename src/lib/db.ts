@@ -113,6 +113,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tournament_players_player ON tournament_players(player_id);
   CREATE INDEX IF NOT EXISTS idx_players_name ON players(name);
   CREATE INDEX IF NOT EXISTS idx_players_fide ON players(fide_id) WHERE fide_id IS NOT NULL;
+
+  -- Referee-recorded results (separate from chess-results source of truth)
+  CREATE TABLE IF NOT EXISTS referee_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id TEXT NOT NULL,
+    round INTEGER NOT NULL,
+    table_number INTEGER NOT NULL,
+    result TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(tournament_id, round, table_number)
+  );
+  CREATE INDEX IF NOT EXISTS idx_referee_results_tournament_round ON referee_results(tournament_id, round);
 `);
 
 // ─── Database versioning ────────────────────────────────────────────────────
@@ -1064,4 +1076,30 @@ export function getPlayerResultRows(playerId: number) {
     FROM results
     WHERE white_player_id = ? OR black_player_id = ?
   `).all(playerId, playerId) as DbPlayerResultEntry[];
+}
+
+// ── Referee Results ──
+
+export function upsertRefereeResult(
+  tournamentId: string,
+  round: number,
+  tableNumber: number,
+  result: string,
+): void {
+  db.prepare(`
+    INSERT INTO referee_results (tournament_id, round, table_number, result)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(tournament_id, round, table_number) DO UPDATE SET
+      result = excluded.result,
+      created_at = datetime('now')
+  `).run(tournamentId, round, tableNumber, result);
+}
+
+export function getRefereeResults(tournamentId: string, round: number) {
+  return db.prepare(`
+    SELECT table_number, result, created_at
+    FROM referee_results
+    WHERE tournament_id = ? AND round = ?
+    ORDER BY table_number
+  `).all(tournamentId, round) as Array<{ table_number: number; result: string; created_at: string }>;
 }

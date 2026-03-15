@@ -1,12 +1,13 @@
 ---
 interface Props {
   recentLabel: string;
+  linkBase?: string;
 }
 
-const { recentLabel } = Astro.props;
+const { recentLabel, linkBase = "/pairings" } = Astro.props;
 ---
 
-<section class="recent-section hidden" id="recentTournaments" aria-label={recentLabel}>
+<section class="recent-section hidden" id="recentTournaments" aria-label={recentLabel} data-link-base={linkBase}>
   <h2 class="recent-heading">{recentLabel}</h2>
   <ul class="recent-list" id="recentList"></ul>
 </section>
@@ -91,12 +92,14 @@ const { recentLabel } = Astro.props;
       const recent: { id: string; name: string; date: string }[] = JSON.parse(stored);
       if (!Array.isArray(recent) || recent.length === 0) return;
 
+      const base = section.getAttribute('data-link-base') || '/pairings';
+
       list.innerHTML = '';
       for (const t of recent.slice(0, 5)) {
         const li = document.createElement('li');
         const a = document.createElement('a');
         a.className = 'recent-item';
-        a.href = `/pairings?tid=${encodeURIComponent(t.id)}`;
+        a.href = `${base}?tid=${encodeURIComponent(t.id)}`;
 
         const nameText = escapeHtmlRecent(t.name || `Tournament ${t.id}`);
         const dateText = t.date ? escapeHtmlRecent(t.date) : '';

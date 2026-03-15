@@ -94,10 +94,13 @@ const linkedTournaments = data?.info.linkedTournaments;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
+    min-width: 0;
   }
 
   :global(.tournament-controls) {
     margin-block-end: var(--space-4);
+    flex: 1 1 auto;
+    min-width: 0;
   }
   .pairings-list {
     display: grid;

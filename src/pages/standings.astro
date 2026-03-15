@@ -114,8 +114,17 @@ const defaultActive = hasTeams ? "teams" : "open";
   .standings-seg-wrapper {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
     z-index: 5;
     padding-block-end: var(--space-4);
+    min-width: 0;
+  }
+
+  .standings-seg-wrapper :global(.tournament-selector-wrapper) {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .standings-seg-wrapper :global(.seg-control) {

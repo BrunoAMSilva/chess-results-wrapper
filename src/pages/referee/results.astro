@@ -1,0 +1,382 @@
+---
+import ResponsiveLayout from "../../layouts/ResponsiveLayout.astro";
+import { scrapePairings } from "../../lib/scraper";
+import { getRefereeResults } from "../../lib/db";
+import { useTranslations } from "../../i18n/ui";
+import { getIntParam } from "../../lib/request-params";
+import { resolvePageLang } from "../../lib/page-lang";
+import type { Pairing, TeamPairing } from "../../lib/types";
+
+const tid = Astro.url.searchParams.get("tid") || "";
+const lang = resolvePageLang(Astro.url, Astro.cookies);
+const roundParam = Astro.url.searchParams.get("round");
+
+const t = useTranslations(lang);
+
+let error: string | null = null;
+let totalRounds = 0;
+let activeRound = 1;
+let allPairings: Pairing[] = [];
+let teamPairings: TeamPairing[] | undefined;
+let tournamentName = "";
+
+interface RefereeResult {
+  table_number: number;
+  result: string;
+  created_at: string;
+}
+
+let refereeResults: RefereeResult[] = [];
+
+if (!tid) {
+  return Astro.redirect(`/referee?lang=${lang}`);
+}
+
+try {
+  const initial = await scrapePairings(tid, 1, lang);
+  totalRounds = initial.info.totalRounds;
+  tournamentName = initial.info.currentLabel || initial.info.name;
+
+  if (roundParam) {
+    activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
+  } else {
+    // Find the latest round without results: scan from the last round backwards
+    let foundRound = 1;
+    for (let r = totalRounds; r >= 1; r--) {
+      const data = r === 1 ? initial : await scrapePairings(tid, r, lang);
+      const pairings = data.pairings || [];
+      const hasNoResults = pairings.length > 0 && pairings.every((p) => !p.result || p.result.trim() === "");
+      if (hasNoResults) {
+        foundRound = r;
+      } else if (pairings.length > 0) {
+        break;
+      }
+    }
+    activeRound = foundRound;
+  }
+
+  const activeData = activeRound === 1 ? initial : await scrapePairings(tid, activeRound, lang);
+  allPairings = activeData.pairings || [];
+  teamPairings = activeData.teamPairings;
+
+  refereeResults = getRefereeResults(tid, activeRound) as RefereeResult[];
+} catch (e) {
+  error = e instanceof Error ? e.message : t("error.load");
+}
+
+// Build table -> players lookup
+const tablePlayersMap: Record<number, { white: string; black: string }> = {};
+if (teamPairings && teamPairings.length > 0) {
+  for (const tm of teamPairings) {
+    for (const b of tm.boards) {
+      tablePlayersMap[b.table] = {
+        white: b.white.name,
+        black: b.black?.name || "—",
+      };
+    }
+  }
+} else {
+  for (const p of allPairings) {
+    tablePlayersMap[p.table] = {
+      white: p.white.name,
+      black: p.black?.name || "—",
+    };
+  }
+}
+
+// Build results lookup
+const resultsMap: Record<number, RefereeResult> = {};
+for (const r of refereeResults) {
+  resultsMap[r.table_number] = r;
+}
+
+// All table numbers sorted
+const tables = Object.keys(tablePlayersMap).map(Number).sort((a, b) => a - b);
+const submittedCount = tables.filter((t) => resultsMap[t]).length;
+---
+
+<ResponsiveLayout title={t("referee.results")} lang={lang} navMode="referee">
+  {error && (
+    <div class="error-msg">
+      <p>{error}</p>
+    </div>
+  )}
+
+  <div class="results-overview">
+    <a class="change-tournament" href={`/referee?lang=${lang}`}>
+      ← {t("referee.changeSection")}
+    </a>
+
+    <h2 class="page-title">{tournamentName}</h2>
+
+    <!-- Round selector -->
+    <div class="round-selector">
+      <label for="roundSelect">{t("referee.round")}</label>
+      <select id="roundSelect">
+        {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => (
+          <option value={r} selected={r === activeRound}>{r}</option>
+        ))}
+      </select>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="progress-section">
+      <div class="progress-text">
+        <span>{t("referee.submitted")}: {submittedCount} {t("referee.of")} {tables.length}</span>
+        {submittedCount === tables.length && tables.length > 0 && (
+          <span class="all-done">{t("referee.allSubmitted")}</span>
+        )}
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" style={`width: ${tables.length > 0 ? (submittedCount / tables.length) * 100 : 0}%`}></div>
+      </div>
+    </div>
+
+    <!-- Export button -->
+    {submittedCount > 0 && (
+      <div class="export-section">
+        <a
+          class="export-btn"
+          href={`/api/referee-export?tid=${tid}&round=${activeRound}`}
+          download={`round-${activeRound}-results.xml`}
+        >
+          {t("referee.exportXml")}
+        </a>
+      </div>
+    )}
+
+    <!-- Results table -->
+    {tables.length === 0 ? (
+      <p class="empty-state">{t("referee.noResultsYet")}</p>
+    ) : (
+      <div class="results-table">
+        <div class="results-header">
+          <span class="col-table">{t("referee.table")}</span>
+          <span class="col-players">{t("table.white")} – {t("table.black")}</span>
+          <span class="col-result">{t("referee.result")}</span>
+        </div>
+        {tables.map((tbl) => {
+          const players = tablePlayersMap[tbl];
+          const result = resultsMap[tbl];
+          return (
+            <div class:list={["results-row", { submitted: !!result, pending: !result }]}>
+              <span class="col-table">{tbl}</span>
+              <span class="col-players">
+                <span class="player-white">{players.white}</span>
+                <span class="vs">–</span>
+                <span class="player-black">{players.black}</span>
+              </span>
+              <span class:list={["col-result", { "has-result": !!result }]}>
+                {result ? result.result : t("referee.pending")}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>
+</ResponsiveLayout>
+
+<script is:inline>
+  var roundSelect = document.getElementById("roundSelect");
+  if (roundSelect) {
+    roundSelect.addEventListener("change", function() {
+      var url = new URL(window.location.href);
+      url.searchParams.set("round", roundSelect.value);
+      window.location.href = url.toString();
+    });
+  }
+
+  // Auto-refresh every 15 seconds
+  setTimeout(function() {
+    window.location.reload();
+  }, 15000);
+</script>
+
+<style>
+  .results-overview {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: var(--space-4) 0;
+  }
+
+  .change-tournament {
+    display: inline-block;
+    color: var(--accent-400);
+    text-decoration: none;
+    font-size: var(--text-sm);
+    margin-bottom: var(--space-3);
+  }
+
+  .page-title {
+    font-size: var(--text-xl);
+    font-weight: var(--font-bold);
+    color: var(--text);
+    margin-bottom: var(--space-4);
+  }
+
+  .round-selector {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-4);
+  }
+
+  .round-selector label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    color: var(--text-dim);
+  }
+
+  .round-selector select {
+    padding: var(--space-2) var(--space-3);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+  }
+
+  .progress-section {
+    margin-bottom: var(--space-4);
+  }
+
+  .progress-text {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+    margin-bottom: var(--space-2);
+  }
+
+  .all-done {
+    color: var(--success, #38a169);
+    font-weight: var(--font-semibold);
+  }
+
+  .progress-bar {
+    height: 8px;
+    background: var(--border);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent-400);
+    border-radius: var(--radius-full);
+    transition: width var(--duration-normal) var(--ease-out);
+  }
+
+  .export-section {
+    margin-bottom: var(--space-4);
+  }
+
+  .export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border: 2px solid var(--accent-400);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--accent-400);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    text-decoration: none;
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+
+  .export-btn:hover {
+    background: var(--accent-400);
+    color: var(--accent-text, #000);
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-dim);
+    padding: var(--space-8) 0;
+  }
+
+  .results-table {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .results-header {
+    display: grid;
+    grid-template-columns: 48px 1fr 80px;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .results-row {
+    display: grid;
+    grid-template-columns: 48px 1fr 80px;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    font-size: var(--text-sm);
+  }
+
+  .results-row:last-child {
+    border-bottom: none;
+  }
+
+  .results-row.pending {
+    opacity: 0.6;
+  }
+
+  .col-table {
+    font-weight: var(--font-bold);
+    text-align: center;
+  }
+
+  .col-players {
+    display: flex;
+    gap: var(--space-1);
+    overflow: hidden;
+  }
+
+  .player-white,
+  .player-black {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .vs {
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .col-result {
+    text-align: center;
+    font-weight: var(--font-semibold);
+    color: var(--text-dim);
+  }
+
+  .col-result.has-result {
+    color: var(--text);
+  }
+
+  .error-msg {
+    color: var(--danger, #e53e3e);
+    text-align: center;
+    padding: var(--space-4);
+  }
+</style>
