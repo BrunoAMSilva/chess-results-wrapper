@@ -103,8 +103,8 @@ const submittedCount = tables.filter((t) => resultsMap[t]).length;
   )}
 
   <div class="results-overview">
-    <a class="change-tournament" href={`/referee?lang=${lang}`}>
-      ← {t("referee.changeSection")}
+    <a class="change-tournament" href={`/referee/tables?tid=${tid}&lang=${lang}`}>
+      ← {t("referee.selectTable")}
     </a>
 
     <h2 class="page-title">{tournamentName}</h2>

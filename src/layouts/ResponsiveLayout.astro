@@ -18,8 +18,8 @@ const isPairings = currentPath === "/pairings" || currentPath === "/present";
 const isStandings = currentPath === "/standings";
 const isOptions = currentPath === "/options";
 const isReferee = currentPath.startsWith("/referee");
+const isRefereeTables = currentPath === "/referee/tables";
 const isRefereeResults = currentPath === "/referee/results";
-const isRefereeSearch = isReferee && !isRefereeResults;
 ---
 
 <!doctype html>
@@ -62,7 +62,7 @@ const isRefereeSearch = isReferee && !isRefereeResults;
       <div class="ambient ambient-b"></div>
 
       <header class="topbar" transition:name="topbar" transition:animate="none">
-        <a href={`/?lang=${lang}`} class="topbar-home" aria-label="Search">
+        <a href={isReferee ? `/referee?lang=${lang}` : `/?lang=${lang}`} class="topbar-home" aria-label="Search">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="8"></circle>
             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -106,8 +106,8 @@ const isRefereeSearch = isReferee && !isRefereeResults;
       {navMode === "referee" ? (
         <nav class="mobile-nav" transition:name="mobile-nav" transition:animate="none">
           <a
-            href={`/referee?lang=${lang}`}
-            class={`nav-item ${isRefereeSearch ? "active" : ""}`}
+            href={`/referee/tables${tid ? `?tid=${tid}&lang=${lang}` : `?lang=${lang}`}`}
+            class={`nav-item ${isRefereeTables ? "active" : ""}`}
           >
             <svg
               viewBox="0 0 24 24"
@@ -119,10 +119,11 @@ const isRefereeSearch = isReferee && !isRefereeResults;
               stroke-linecap="round"
               stroke-linejoin="round"
             >
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
             </svg>
-            <span>{t('referee.searchTournament')}</span>
+            <span>{t('referee.tables')}</span>
           </a>
           <a
             href={`/referee/results${tid ? `?tid=${tid}&lang=${lang}` : `?lang=${lang}`}`}
@@ -147,7 +148,7 @@ const isRefereeSearch = isReferee && !isRefereeResults;
             <span>{t('referee.results')}</span>
           </a>
           <a
-            href={`/options?lang=${lang}`}
+            href={`/options?lang=${lang}&mode=referee`}
             class={`nav-item ${isOptions ? "active" : ""}`}
           >
             <svg

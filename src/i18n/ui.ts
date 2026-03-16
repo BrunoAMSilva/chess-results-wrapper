@@ -155,6 +155,7 @@ export const ui = {
     'referee.allSubmitted': 'All results submitted!',
     'referee.of': 'of',
     'referee.viewResults': 'View Results',
+    'referee.tables': 'Tables',
   },
   10: {
     'site.title': 'Emparceiramentos',
@@ -302,6 +303,7 @@ export const ui = {
     'referee.allSubmitted': 'Todos os resultados submetidos!',
     'referee.of': 'de',
     'referee.viewResults': 'Ver Resultados',
+    'referee.tables': 'Mesas',
   },
   0: {
     'site.title': 'Schachpaarungen',
@@ -449,6 +451,7 @@ export const ui = {
     'referee.allSubmitted': 'Alle Ergebnisse eingereicht!',
     'referee.of': 'von',
     'referee.viewResults': 'Ergebnisse anzeigen',
+    'referee.tables': 'Tische',
   },
   2: {
     'site.title': 'Emparejamientos',
@@ -596,6 +599,7 @@ export const ui = {
     'referee.allSubmitted': '¡Todos los resultados enviados!',
     'referee.of': 'de',
     'referee.viewResults': 'Ver Resultados',
+    'referee.tables': 'Mesas',
   },
   20: {
     'site.title': 'Appariements',
@@ -743,6 +747,7 @@ export const ui = {
     'referee.allSubmitted': 'Tous les résultats soumis !',
     'referee.of': 'de',
     'referee.viewResults': 'Voir les Résultats',
+    'referee.tables': 'Tables',
   },
 } as const;
 

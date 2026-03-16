@@ -26,6 +26,7 @@ export type {
   Sex,
 } from './types';
 import type { TournamentData, StandingsData } from './types';
+import { TournamentType } from './types';
 
 const S2_BASE_URL = 'https://s2.chess-results.com';
 
@@ -356,8 +357,6 @@ async function scrapePlayerCards(
 
 // ─── Core scrape from remote (no DB check) ────────────────────────────────────
 
-import { TournamentType } from './types';
-
 async function scrapePairingsFromRemote(
   tournamentId: string,
   round: number,
@@ -548,7 +547,15 @@ export async function scrapePairings(
 
   if (status !== 'live') {
     const fromDb = getPairingsFromDb(tournamentId, round);
-    if (fromDb) return fromDb;
+    if (fromDb) {
+      // For team tournaments, ensure we have team pairings data.
+      // If the DB was populated before team persistence was added, fall through to remote.
+      const isTeam = fromDb.info.type === TournamentType.TeamSwiss ||
+                     fromDb.info.type === TournamentType.TeamRoundRobin;
+      if (!isTeam || (fromDb.teamPairings && fromDb.teamPairings.length > 0)) {
+        return fromDb;
+      }
+    }
   }
 
   return scrapePairingsFromRemote(tournamentId, round, lang);
