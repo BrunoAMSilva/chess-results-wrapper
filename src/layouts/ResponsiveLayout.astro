@@ -14,15 +14,34 @@ const t = useTranslations(lang);
 const langCode = languages[lang as keyof typeof languages] || "en";
 const currentPath = Astro.url.pathname;
 let tid = Astro.url.searchParams.get("tid") || "";
-const refereeMatch = currentPath.match(/^\/referee\/([^\/]+)\/(tables|results)$/);
-const refereeTid = refereeMatch ? refereeMatch[1] : "";
+// Extract tournament id from any /referee/[id]/* path
+const refereeIdMatch = currentPath.match(/^\/referee\/([^\/]+)/);
+const refereeTid = refereeIdMatch ? refereeIdMatch[1] : "";
 if (refereeTid) tid = refereeTid;
 const isPairings = currentPath === "/pairings" || currentPath === "/present";
 const isStandings = currentPath === "/standings";
 const isOptions = currentPath === "/options";
-const isReferee = currentPath.startsWith("/referee");
-const isRefereeTables = refereeMatch?.[2] === "tables";
-const isRefereeResults = refereeMatch?.[2] === "results";
+const isReferee = currentPath.startsWith("/referee") || navMode === "referee";
+const isRefereeResults = /^\/referee\/[^\/]+\/results$/.test(currentPath);
+const isRefereeTables = !!refereeTid && !isRefereeResults && !isOptions;
+
+// Contextual back URL for referee pages: go one path level up
+const round = Astro.url.searchParams.get("round");
+let refereeBackUrl = `/referee?lang=${lang}`;
+if (isReferee && refereeTid) {
+  const segments = currentPath.split('/').filter(Boolean);
+  if (segments.length > 2) {
+    const parentPath = '/' + segments.slice(0, -1).join('/');
+    const params = [`lang=${lang}`];
+    if (round) params.push(`round=${round}`);
+    refereeBackUrl = `${parentPath}?${params.join('&')}`;
+  }
+}
+if (isOptions && navMode === "referee" && tid) {
+  const params = [`lang=${lang}`];
+  if (round) params.push(`round=${round}`);
+  refereeBackUrl = `/referee/${tid}?${params.join('&')}`;
+}
 ---
 
 <!doctype html>
@@ -36,19 +55,21 @@ const isRefereeResults = refereeMatch?.[2] === "results";
       <div class="ambient ambient-b"></div>
 
       <header class="topbar" transition:name="topbar" transition:animate="none">
-        <a href={isReferee ? `/referee?lang=${lang}` : `/?lang=${lang}`} class="topbar-home" aria-label={isReferee && tid ? t('referee.back') : 'Search'}>
-          {isReferee && tid ? (
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="19" y1="12" x2="5" y2="12"></line>
-              <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          )}
-        </a>
+        {navMode !== "none" && (
+          <a href={isReferee ? refereeBackUrl : `/?lang=${lang}`} class:list={["topbar-home", { "referee-back": isReferee && !!tid }]} aria-label={isReferee && tid ? t('referee.back') : 'Search'}>
+            {isReferee && tid ? (
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            )}
+          </a>
+        )}
         <h1 class="page-title">{title}</h1>
         <div class="topbar-left">
           {navMode === "default" && (
@@ -87,9 +108,9 @@ const isRefereeResults = refereeMatch?.[2] === "results";
       </main>
 
       {navMode === "none" ? null : navMode === "referee" ? (
-        <nav class="mobile-nav" transition:name="mobile-nav" transition:animate="none">
+        <nav class="mobile-nav referee-nav" transition:name="mobile-nav" transition:animate="none">
           <a
-            href={tid ? `/referee/${tid}/tables?lang=${lang}` : `/referee?lang=${lang}`}
+            href={tid ? `/referee/${tid}?lang=${lang}` : `/referee?lang=${lang}`}
             class={`nav-item ${isRefereeTables ? "active" : ""}`}
           >
             <svg
@@ -360,6 +381,10 @@ const isRefereeResults = refereeMatch?.[2] === "results";
                 background var(--duration-fast) var(--ease-in-out);
   }
 
+  .topbar-home.referee-back {
+    display: inline-flex;
+  }
+
   .topbar-home:hover {
     color: var(--accent-text);
     background: var(--accent-subtle);
@@ -470,6 +495,10 @@ const isRefereeResults = refereeMatch?.[2] === "results";
 
     .mobile-nav {
       display: none;
+    }
+
+    .mobile-nav.referee-nav {
+      display: flex;
     }
   }
 

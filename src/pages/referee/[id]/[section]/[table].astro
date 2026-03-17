@@ -1,0 +1,453 @@
+---
+import ResponsiveLayout from "../../../../layouts/ResponsiveLayout.astro";
+import { scrapePairings } from "../../../../lib/scraper";
+import { useTranslations } from "../../../../i18n/ui";
+import { resolvePageLang } from "../../../../lib/page-lang";
+import type { Pairing, TeamPairing } from "../../../../lib/types";
+
+const tid = Astro.params.id!;
+const section = Astro.params.section!;
+const tableNum = parseInt(Astro.params.table!, 10);
+const lang = resolvePageLang(Astro.url, Astro.cookies);
+const roundParam = Astro.url.searchParams.get("round");
+const t = useTranslations(lang);
+
+let error: string | null = null;
+let activeRound = 1;
+let whiteName = "";
+let blackName = "";
+
+try {
+  const initial = await scrapePairings(section, 1, lang);
+  const totalRounds = initial.info.totalRounds;
+
+  if (roundParam) {
+    activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
+  } else {
+    activeRound = 1;
+  }
+
+  const data = activeRound === 1 ? initial : await scrapePairings(section, activeRound, lang);
+  const pairings: Pairing[] = data.pairings || [];
+  const teamPairings: TeamPairing[] | undefined = data.teamPairings;
+
+  // Find player names for this table
+  if (teamPairings && teamPairings.length > 0) {
+    for (const tm of teamPairings) {
+      for (const b of tm.boards) {
+        if (b.table === tableNum) {
+          whiteName = b.white.name;
+          blackName = b.black?.name || "—";
+          break;
+        }
+      }
+    }
+  } else {
+    for (const p of pairings) {
+      if (p.table === tableNum) {
+        whiteName = p.white.name;
+        blackName = p.black?.name || "—";
+        break;
+      }
+    }
+  }
+} catch (e) {
+  error = e instanceof Error ? e.message : t("error.load");
+}
+
+const isTeamTournament = tableNum >= 100;
+const tableLabel = isTeamTournament
+  ? `${Math.floor(tableNum / 100)}.${tableNum % 100}`
+  : String(tableNum);
+
+const q = `round=${activeRound}&lang=${lang}`;
+// Back goes to the table grid for this section
+const backUrl = `/referee/${tid}/${section}?${q}`;
+---
+
+<ResponsiveLayout title={`${t("referee.table")} ${tableLabel}`} lang={lang} navMode="referee">
+  {error && <div class="error-msg"><p>{error}</p></div>}
+
+  <div class="result-page">
+    <div class="table-matchup">
+      <span class="player white-player">{whiteName}</span>
+      <span class="vs">vs</span>
+      <span class="player black-player">{blackName}</span>
+    </div>
+
+    <div class="result-options" id="resultOptions">
+      <div class="result-row">
+        <label class="result-card white-card">
+          <input type="radio" name="gameResult" value="1-0" class="sr-only" />
+          <span class="result-label">{t("referee.white")}</span>
+          <span class="result-score">1 – 0</span>
+        </label>
+        <label class="result-card draw-card">
+          <input type="radio" name="gameResult" value="½-½" class="sr-only" />
+          <span class="result-label">{t("referee.draw")}</span>
+          <span class="result-score">½ – ½</span>
+        </label>
+        <label class="result-card black-card">
+          <input type="radio" name="gameResult" value="0-1" class="sr-only" />
+          <span class="result-label">{t("referee.black")}</span>
+          <span class="result-score">0 – 1</span>
+        </label>
+      </div>
+      <div class="result-row absent-row">
+        <label class="absent-card">
+          <input type="checkbox" name="absentWhite" class="sr-only" />
+          <span class="absent-check"></span>
+          <span>{t("referee.whiteAbsent")}</span>
+        </label>
+        <label class="absent-card">
+          <input type="checkbox" name="absentBlack" class="sr-only" />
+          <span class="absent-check"></span>
+          <span>{t("referee.blackAbsent")}</span>
+        </label>
+      </div>
+      <button class="save-btn hidden" id="saveBtn" type="button">
+        {t("referee.save")} →
+      </button>
+    </div>
+
+    <div class="feedback hidden" id="feedback"></div>
+    <a class="another-link hidden" id="anotherLink" href={backUrl}>
+      {t("referee.another")}
+    </a>
+  </div>
+</ResponsiveLayout>
+
+<style>
+  .result-page {
+    max-width: 500px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .table-matchup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-1);
+    margin-bottom: var(--space-6);
+    padding: var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    text-align: center;
+  }
+
+  .player {
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    color: var(--text);
+  }
+
+  .vs {
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+    font-weight: var(--font-medium);
+  }
+
+  .result-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    width: 100%;
+  }
+
+  .result-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-3);
+  }
+
+  .absent-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .result-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-6) var(--space-3);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    min-height: 88px;
+  }
+
+  .result-card:hover {
+    border-color: var(--accent-400);
+  }
+
+  .result-card:has(input:checked) {
+    border-color: var(--accent-400);
+    background: var(--accent-400);
+    color: var(--accent-text, #000);
+  }
+
+  .white-card:has(input:checked) {
+    background: var(--surface);
+    border-color: var(--text);
+    color: var(--text);
+  }
+
+  .draw-card:has(input:checked) {
+    background: var(--border);
+    border-color: var(--text-dim);
+    color: var(--text);
+  }
+
+  .black-card:has(input:checked) {
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--surface);
+  }
+
+  .result-options.has-absent .result-card {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .result-score {
+    font-size: var(--text-lg);
+    font-weight: var(--font-bold);
+  }
+
+  .result-label {
+    font-size: var(--text-xs);
+  }
+
+  .absent-card {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    min-height: 52px;
+    flex-shrink: 0;
+  }
+
+  .absent-card:hover {
+    border-color: var(--accent-400);
+  }
+
+  .absent-card:has(input:checked) {
+    border-color: var(--danger, #e53e3e);
+    background: var(--danger, #e53e3e);
+    color: #fff;
+  }
+
+  .absent-card:has(input:checked) .absent-check {
+    border-color: #fff;
+    background: #fff;
+  }
+
+  .absent-check {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    transition: all var(--duration-fast) var(--ease-out);
+    flex-shrink: 0;
+  }
+
+  .save-btn {
+    width: 100%;
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 2px solid var(--accent-400);
+    border-radius: var(--radius-lg);
+    background: var(--accent-400);
+    color: var(--accent-text, #000);
+    font-size: var(--text-lg);
+    font-weight: var(--font-bold);
+    cursor: pointer;
+    transition: opacity var(--duration-fast) var(--ease-out);
+  }
+
+  .save-btn:hover {
+    opacity: 0.9;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .feedback {
+    text-align: center;
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-semibold);
+    width: 100%;
+  }
+
+  .feedback.success {
+    background: var(--green-400);
+    color: #000;
+  }
+
+  .feedback.error {
+    background: var(--red-400);
+    color: #fff;
+  }
+
+  .another-link {
+    width: 100%;
+    margin-top: var(--space-4);
+    padding: var(--space-4) var(--space-6);
+    border: 2px solid var(--accent-400);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--accent-400);
+    font-size: var(--text-base);
+    font-weight: var(--font-semibold);
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+  }
+
+  .error-msg {
+    color: var(--danger, #e53e3e);
+    text-align: center;
+    padding: var(--space-4);
+  }
+</style>
+
+<script is:inline define:vars={{
+  sectionTid: section,
+  activeRound,
+  tableNum,
+  savedMsg: t("referee.saved"),
+  errorMsg: t("referee.error"),
+}}>
+(function() {
+  var resultOptions = document.getElementById("resultOptions");
+  var saveBtn = document.getElementById("saveBtn");
+  var feedback = document.getElementById("feedback");
+  var anotherLink = document.getElementById("anotherLink");
+  var gameRadios = document.querySelectorAll('input[name="gameResult"]');
+  var absentWhite = document.querySelector('input[name="absentWhite"]');
+  var absentBlack = document.querySelector('input[name="absentBlack"]');
+
+  var selectedResult = null;
+  var saving = false;
+
+  function saveResult() {
+    if (saving || !selectedResult) return;
+    saving = true;
+    if (saveBtn) saveBtn.classList.add("hidden");
+
+    fetch("/api/referee-result", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tid: sectionTid,
+        round: activeRound,
+        table: tableNum,
+        result: selectedResult,
+      }),
+    })
+      .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+      .then(function(resp) {
+        if (feedback) {
+          feedback.classList.remove("hidden", "success", "error");
+          if (resp.ok) {
+            feedback.classList.add("success");
+            feedback.textContent = savedMsg;
+            if (resultOptions) resultOptions.style.display = "none";
+            if (anotherLink) anotherLink.classList.remove("hidden");
+          } else {
+            feedback.classList.add("error");
+            feedback.textContent = resp.data.error || errorMsg;
+            saving = false;
+            if (saveBtn) saveBtn.classList.remove("hidden");
+          }
+        }
+      })
+      .catch(function() {
+        if (feedback) {
+          feedback.classList.remove("hidden", "success", "error");
+          feedback.classList.add("error");
+          feedback.textContent = errorMsg;
+        }
+        saving = false;
+        if (saveBtn) saveBtn.classList.remove("hidden");
+      });
+  }
+
+  gameRadios.forEach(function(radio) {
+    radio.addEventListener("change", function() {
+      if (absentWhite) absentWhite.checked = false;
+      if (absentBlack) absentBlack.checked = false;
+      if (resultOptions) resultOptions.classList.remove("has-absent");
+      selectedResult = radio.value;
+      if (saveBtn) saveBtn.classList.remove("hidden");
+    });
+  });
+
+  function handleAbsentChange() {
+    var wAbsent = absentWhite && absentWhite.checked;
+    var bAbsent = absentBlack && absentBlack.checked;
+
+    if (wAbsent || bAbsent) {
+      gameRadios.forEach(function(r) { r.checked = false; });
+      if (resultOptions) resultOptions.classList.add("has-absent");
+      if (wAbsent && bAbsent) {
+        selectedResult = "-:-";
+      } else if (wAbsent) {
+        selectedResult = "-:+";
+      } else {
+        selectedResult = "+:-";
+      }
+      if (saveBtn) saveBtn.classList.remove("hidden");
+    } else {
+      if (resultOptions) resultOptions.classList.remove("has-absent");
+      selectedResult = null;
+      if (saveBtn) saveBtn.classList.add("hidden");
+    }
+  }
+
+  if (absentWhite) absentWhite.addEventListener("change", handleAbsentChange);
+  if (absentBlack) absentBlack.addEventListener("change", handleAbsentChange);
+
+  if (saveBtn) {
+    saveBtn.addEventListener("click", function() {
+      if (selectedResult) saveResult();
+    });
+  }
+})();
+</script>

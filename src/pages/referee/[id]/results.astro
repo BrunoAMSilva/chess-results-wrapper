@@ -1,23 +1,25 @@
 ---
 import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
+import RoundSelector from "../../../components/RoundSelector.astro";
+import SegmentedControl from "../../../components/SegmentedControl.astro";
 import { scrapePairings } from "../../../lib/scraper";
 import { getRefereeResults } from "../../../lib/db";
 import { useTranslations } from "../../../i18n/ui";
 import { resolvePageLang } from "../../../lib/page-lang";
-import type { Pairing, TeamPairing } from "../../../lib/types";
+import type { LinkedTournament, Pairing, TeamPairing } from "../../../lib/types";
 
 const tid = Astro.params.id!;
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const roundParam = Astro.url.searchParams.get("round");
+const sectionParam = Astro.url.searchParams.get("section");
 
 const t = useTranslations(lang);
 
 let error: string | null = null;
 let totalRounds = 0;
 let activeRound = 1;
-let allPairings: Pairing[] = [];
-let teamPairings: TeamPairing[] | undefined;
-let tournamentName = "";
+let linkedTournaments: LinkedTournament[] | undefined;
+let currentLabel = "";
 
 interface RefereeResult {
   table_number: number;
@@ -25,17 +27,26 @@ interface RefereeResult {
   created_at: string;
 }
 
-let refereeResults: RefereeResult[] = [];
+interface SectionData {
+  id: string;
+  name: string;
+  tables: number[];
+  tablePlayersMap: Record<number, { white: string; black: string }>;
+  resultsMap: Record<number, RefereeResult>;
+  submittedCount: number;
+}
+
+const allSections: SectionData[] = [];
 
 try {
   const initial = await scrapePairings(tid, 1, lang);
   totalRounds = initial.info.totalRounds;
-  tournamentName = initial.info.currentLabel || initial.info.name;
+  linkedTournaments = initial.info.linkedTournaments;
+  currentLabel = initial.info.currentLabel || initial.info.name;
 
   if (roundParam) {
     activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
   } else {
-    // Find the latest round without results: scan from the last round backwards
     let foundRound = 1;
     for (let r = totalRounds; r >= 1; r--) {
       const data = r === 1 ? initial : await scrapePairings(tid, r, lang);
@@ -50,44 +61,98 @@ try {
     activeRound = foundRound;
   }
 
-  const activeData = activeRound === 1 ? initial : await scrapePairings(tid, activeRound, lang);
-  allPairings = activeData.pairings || [];
-  teamPairings = activeData.teamPairings;
+  // Build section list
+  const sectionIds: { id: string; name: string }[] = [];
+  const hasSections = !!(linkedTournaments && linkedTournaments.length > 0);
 
-  refereeResults = getRefereeResults(tid, activeRound) as RefereeResult[];
+  if (hasSections) {
+    sectionIds.push({ id: tid, name: currentLabel });
+    for (const lt of linkedTournaments!) {
+      if (lt.id !== tid) {
+        sectionIds.push({ id: lt.id, name: lt.name });
+      }
+    }
+    sectionIds.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    sectionIds.push({ id: tid, name: currentLabel });
+  }
+
+  // Determine which section to show (default to first)
+  const activeSectionId = sectionParam && sectionIds.some((s) => s.id === sectionParam)
+    ? sectionParam
+    : sectionIds[0]?.id;
+  const loadSections = sectionIds.filter((s) => s.id === activeSectionId);
+
+  for (const sec of loadSections) {
+    const data = await scrapePairings(sec.id, activeRound, lang);
+    const pairings: Pairing[] = data.pairings || [];
+    const teamPairings: TeamPairing[] | undefined = data.teamPairings;
+
+    const tablePlayersMap: Record<number, { white: string; black: string }> = {};
+    if (teamPairings && teamPairings.length > 0) {
+      for (const tm of teamPairings) {
+        for (const b of tm.boards) {
+          tablePlayersMap[b.table] = {
+            white: b.white.name,
+            black: b.black?.name || "—",
+          };
+        }
+      }
+    } else {
+      for (const p of pairings) {
+        tablePlayersMap[p.table] = {
+          white: p.white.name,
+          black: p.black?.name || "—",
+        };
+      }
+    }
+
+    const resultsMap: Record<number, RefereeResult> = {};
+    const refResults = getRefereeResults(sec.id, activeRound) as RefereeResult[];
+    for (const r of refResults) {
+      resultsMap[r.table_number] = r;
+    }
+
+    const tables = Object.keys(tablePlayersMap).map(Number).sort((a, b) => a - b);
+    const submittedCount = tables.filter((t) => resultsMap[t]).length;
+
+    allSections.push({
+      id: sec.id,
+      name: sec.name,
+      tables,
+      tablePlayersMap,
+      resultsMap,
+      submittedCount,
+    });
+  }
 } catch (e) {
   error = e instanceof Error ? e.message : t("error.load");
 }
 
-// Build table -> players lookup
-const tablePlayersMap: Record<number, { white: string; black: string }> = {};
-if (teamPairings && teamPairings.length > 0) {
-  for (const tm of teamPairings) {
-    for (const b of tm.boards) {
-      tablePlayersMap[b.table] = {
-        white: b.white.name,
-        black: b.black?.name || "—",
-      };
+const hasSections = !!(linkedTournaments && linkedTournaments.length > 0);
+const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1);
+const activeSection = allSections[0]?.id || tid;
+const roundBaseUrl = `/referee/${tid}/results?lang=${lang}&section=${activeSection}`;
+
+// Build section list for switcher
+const sectionList: { id: string; name: string }[] = [];
+if (hasSections) {
+  sectionList.push({ id: tid, name: currentLabel });
+  for (const lt of linkedTournaments!) {
+    if (lt.id !== tid) {
+      sectionList.push({ id: lt.id, name: lt.name });
     }
   }
-} else {
-  for (const p of allPairings) {
-    tablePlayersMap[p.table] = {
-      white: p.white.name,
-      black: p.black?.name || "—",
-    };
-  }
+  sectionList.sort((a, b) => a.name.localeCompare(b.name));
 }
-
-// Build results lookup
-const resultsMap: Record<number, RefereeResult> = {};
-for (const r of refereeResults) {
-  resultsMap[r.table_number] = r;
-}
-
-// All table numbers sorted
-const tables = Object.keys(tablePlayersMap).map(Number).sort((a, b) => a - b);
-const submittedCount = tables.filter((t) => resultsMap[t]).length;
+const useSelect = sectionList.length > 3;
+const sectionSegments = !useSelect
+  ? sectionList.map((s) => ({
+      value: s.id,
+      label: s.name,
+      href: `/referee/${tid}/results?round=${activeRound}&lang=${lang}&section=${s.id}`,
+    }))
+  : [];
 ---
 
 <ResponsiveLayout title={t("referee.results")} lang={lang} navMode="referee">
@@ -98,82 +163,90 @@ const submittedCount = tables.filter((t) => resultsMap[t]).length;
   )}
 
   <div class="results-overview">
-    <h2 class="page-title">{tournamentName}</h2>
+    <RoundSelector rounds={rounds} activeRound={activeRound} baseUrl={roundBaseUrl} label={t("referee.round")} />
 
-    <!-- Round selector -->
-    <div class="round-selector">
-      <label for="roundSelect">{t("referee.round")}</label>
-      <select id="roundSelect">
-        {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => (
-          <option value={r} selected={r === activeRound}>{r}</option>
-        ))}
-      </select>
-    </div>
+    {hasSections && !useSelect && sectionSegments.length > 0 && (
+      <div class="section-switcher">
+        <SegmentedControl name="results-section" segments={sectionSegments} active={activeSection} />
+      </div>
+    )}
 
-    <!-- Progress bar -->
-    <div class="progress-section">
-      <div class="progress-text">
-        <span>{t("referee.submitted")}: {submittedCount} {t("referee.of")} {tables.length}</span>
-        {submittedCount === tables.length && tables.length > 0 && (
-          <span class="all-done">{t("referee.allSubmitted")}</span>
+    {hasSections && useSelect && (
+      <div class="section-switcher">
+        <select class="section-select" id="sectionSelect">
+          {sectionList.map((s) => (
+            <option value={s.id} selected={s.id === activeSection}>{s.name}</option>
+          ))}
+        </select>
+      </div>
+    )}
+
+    {allSections.map((sec) => (
+      <div class="section-block">
+        <div class="progress-section">
+          <div class="progress-text">
+            <span>{t("referee.submitted")}: {sec.submittedCount} {t("referee.of")} {sec.tables.length}</span>
+            {sec.submittedCount === sec.tables.length && sec.tables.length > 0 && (
+              <span class="all-done">{t("referee.allSubmitted")}</span>
+            )}
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" style={`--fill: ${sec.tables.length > 0 ? (sec.submittedCount / sec.tables.length) * 100 : 0}%`} />
+          </div>
+        </div>
+
+        {sec.submittedCount > 0 && (
+          <div class="export-section">
+            <a
+              class="export-btn"
+              href={`/api/referee-export?tid=${sec.id}&round=${activeRound}`}
+              download={`round-${activeRound}-results.xml`}
+            >
+              {t("referee.exportXml")}
+            </a>
+          </div>
+        )}
+
+        {sec.tables.length === 0 ? (
+          <p class="empty-state">{t("referee.noResultsYet")}</p>
+        ) : (
+          <div class="results-table">
+            <div class="results-header">
+              <span class="col-table">{t("referee.table")}</span>
+              <span class="col-players">{t("table.white")} – {t("table.black")}</span>
+              <span class="col-result">{t("referee.result")}</span>
+            </div>
+            {sec.tables.map((tbl) => {
+              const players = sec.tablePlayersMap[tbl];
+              const result = sec.resultsMap[tbl];
+              return (
+                <div class:list={["results-row", { submitted: !!result, pending: !result }]}>
+                  <span class="col-table">{tbl}</span>
+                  <span class="col-players">
+                    <span class="player-white">{players.white}</span>
+                    <span class="vs">–</span>
+                    <span class="player-black">{players.black}</span>
+                  </span>
+                  <span class:list={["col-result", { "has-result": !!result }]}>
+                    {result ? result.result : t("referee.pending")}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
-      <div class="progress-bar">
-        <div class="progress-fill" style={`width: ${tables.length > 0 ? (submittedCount / tables.length) * 100 : 0}%`}></div>
-      </div>
-    </div>
-
-    <!-- Export button -->
-    {submittedCount > 0 && (
-      <div class="export-section">
-        <a
-          class="export-btn"
-          href={`/api/referee-export?tid=${tid}&round=${activeRound}`}
-          download={`round-${activeRound}-results.xml`}
-        >
-          {t("referee.exportXml")}
-        </a>
-      </div>
-    )}
-
-    <!-- Results table -->
-    {tables.length === 0 ? (
-      <p class="empty-state">{t("referee.noResultsYet")}</p>
-    ) : (
-      <div class="results-table">
-        <div class="results-header">
-          <span class="col-table">{t("referee.table")}</span>
-          <span class="col-players">{t("table.white")} – {t("table.black")}</span>
-          <span class="col-result">{t("referee.result")}</span>
-        </div>
-        {tables.map((tbl) => {
-          const players = tablePlayersMap[tbl];
-          const result = resultsMap[tbl];
-          return (
-            <div class:list={["results-row", { submitted: !!result, pending: !result }]}>
-              <span class="col-table">{tbl}</span>
-              <span class="col-players">
-                <span class="player-white">{players.white}</span>
-                <span class="vs">–</span>
-                <span class="player-black">{players.black}</span>
-              </span>
-              <span class:list={["col-result", { "has-result": !!result }]}>
-                {result ? result.result : t("referee.pending")}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    )}
+    ))}
   </div>
 </ResponsiveLayout>
 
 <script is:inline>
-  var roundSelect = document.getElementById("roundSelect");
-  if (roundSelect) {
-    roundSelect.addEventListener("change", function() {
+  // Section select navigation
+  var sectionSelect = document.getElementById("sectionSelect");
+  if (sectionSelect) {
+    sectionSelect.addEventListener("change", function() {
       var url = new URL(window.location.href);
-      url.searchParams.set("round", roundSelect.value);
+      url.searchParams.set("section", sectionSelect.value);
       window.location.href = url.toString();
     });
   }
@@ -191,34 +264,42 @@ const submittedCount = tables.filter((t) => resultsMap[t]).length;
     padding: var(--space-4) 0;
   }
 
-  .page-title {
-    font-size: var(--text-xl);
-    font-weight: var(--font-bold);
-    color: var(--text);
-    margin-bottom: var(--space-4);
-  }
-
-  .round-selector {
+  .section-switcher {
     display: flex;
-    align-items: center;
-    gap: var(--space-3);
+    justify-content: center;
     margin-bottom: var(--space-4);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
 
-  .round-selector label {
-    font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
-    color: var(--text-dim);
+  .section-switcher::-webkit-scrollbar {
+    display: none;
   }
 
-  .round-selector select {
-    padding: var(--space-2) var(--space-3);
+  .section-select {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
     border: 2px solid var(--border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-lg);
     background: var(--surface);
     color: var(--text);
     font-size: var(--text-base);
     font-weight: var(--font-semibold);
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-3) center;
+    padding-right: var(--space-8);
+  }
+
+  .section-block {
+    margin-bottom: var(--space-6);
+  }
+
+  .section-block:last-child {
+    margin-bottom: 0;
   }
 
   .progress-section {
@@ -251,6 +332,7 @@ const submittedCount = tables.filter((t) => resultsMap[t]).length;
     background: var(--accent-400);
     border-radius: var(--radius-full);
     transition: width var(--duration-normal) var(--ease-out);
+    width: var(--fill);
   }
 
   .export-section {

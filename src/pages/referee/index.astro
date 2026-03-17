@@ -10,7 +10,6 @@ const t = useTranslations(lang);
 
 <ResponsiveLayout title={t("referee.searchTournament")} lang={lang} navMode="none">
   <div class="referee-search" id="refereeSearch">
-    <h2 class="step-title">{t("referee.searchTournament")}</h2>
     <input
       type="text"
       id="searchInput"
@@ -19,7 +18,7 @@ const t = useTranslations(lang);
       autofocus
     />
     <div class="search-results" id="searchResults"></div>
-    <RecentTournaments recentLabel={t("home.recent")} linkBase="/referee/{id}/tables" />
+    <RecentTournaments recentLabel={t("home.recent")} linkBase="/referee/{id}" />
   </div>
 </ResponsiveLayout>
 
@@ -28,14 +27,6 @@ const t = useTranslations(lang);
     max-width: 600px;
     margin: 0 auto;
     padding: var(--space-4) 0;
-  }
-
-  .step-title {
-    font-size: var(--text-xl);
-    font-weight: var(--font-semibold);
-    color: var(--text);
-    text-align: center;
-    margin-bottom: var(--space-6);
   }
 
   .search-input {
@@ -114,7 +105,7 @@ const t = useTranslations(lang);
   }
 
   function navigateToTournament(tid) {
-    window.location.href = "/referee/" + encodeURIComponent(tid) + "/tables?lang=" + searchLang;
+    window.location.href = "/referee/" + encodeURIComponent(tid) + "?lang=" + searchLang;
   }
 
   searchInput.addEventListener("keydown", function(e) {
@@ -136,7 +127,7 @@ const t = useTranslations(lang);
 
     var directId = extractTournamentId(query);
     if (directId) {
-      var href = "/referee/" + encodeURIComponent(directId) + "/tables?lang=" + searchLang;
+      var href = "/referee/" + encodeURIComponent(directId) + "?lang=" + searchLang;
       searchResults.innerHTML = '<a class="search-result-item" href="' + href + '">'
         + '<div class="search-result-name">ID: ' + escapeHtml(directId) + '</div>'
         + '<div class="search-result-meta">↗</div>'
@@ -153,7 +144,7 @@ const t = useTranslations(lang);
             return;
           }
           searchResults.innerHTML = items.map(function(item) {
-            var href = "/referee/" + encodeURIComponent(item.id) + "/tables?lang=" + searchLang;
+            var href = "/referee/" + encodeURIComponent(item.id) + "?lang=" + searchLang;
             var meta = [item.date, item.location].filter(Boolean).join(" • ");
             return '<a class="search-result-item" href="' + href + '">'
               + '<div class="search-result-name">' + escapeHtml(item.name) + '</div>'
