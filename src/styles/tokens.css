@@ -125,7 +125,12 @@
 
   /* ── Chess piece colors ─────────────────────────────────── */
   --white-piece: #f0d9b5;
+  --white-piece-text: #3d2c1a;
+  --white-piece-border: #d4b896;
   --black-piece: #b58863;
+  --black-piece-dark: #6b4e37;
+  --black-piece-text: #3d2c1a;
+  --black-piece-border: #5a4230;
 
   /* ── Medal colors ───────────────────────────────────────── */
   --medal-gold:   #FFD700;
