@@ -99,7 +99,9 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
         const li = document.createElement('li');
         const a = document.createElement('a');
         a.className = 'recent-item';
-        a.href = `${base}?tid=${encodeURIComponent(t.id)}`;
+        a.href = base.includes('{id}')
+          ? base.replace('{id}', encodeURIComponent(t.id))
+          : `${base}?tid=${encodeURIComponent(t.id)}`;
 
         const nameText = escapeHtmlRecent(t.name || `Tournament ${t.id}`);
         const dateText = t.date ? escapeHtmlRecent(t.date) : '';

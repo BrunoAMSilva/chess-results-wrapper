@@ -6,26 +6,29 @@ import "../styles/global.css";
 interface Props {
   title: string;
   lang?: number;
-  navMode?: "default" | "referee";
+  navMode?: "default" | "referee" | "none";
 }
 
 const { title, lang = 1, navMode = "default" } = Astro.props;
 const t = useTranslations(lang);
 const langCode = languages[lang as keyof typeof languages] || "en";
 const currentPath = Astro.url.pathname;
-const tid = Astro.url.searchParams.get("tid") || "";
+let tid = Astro.url.searchParams.get("tid") || "";
+const refereeMatch = currentPath.match(/^\/referee\/([^\/]+)\/(tables|results)$/);
+const refereeTid = refereeMatch ? refereeMatch[1] : "";
+if (refereeTid) tid = refereeTid;
 const isPairings = currentPath === "/pairings" || currentPath === "/present";
 const isStandings = currentPath === "/standings";
 const isOptions = currentPath === "/options";
 const isReferee = currentPath.startsWith("/referee");
-const isRefereeTables = currentPath === "/referee/tables";
-const isRefereeResults = currentPath === "/referee/results";
+const isRefereeTables = refereeMatch?.[2] === "tables";
+const isRefereeResults = refereeMatch?.[2] === "results";
 ---
 
 <!doctype html>
 <html lang={langCode}>
   <head>
-    <BaseHead title={title} manifest={navMode === "referee" ? "/referee-manifest.json" : "/manifest.json"} />
+    <BaseHead title={title} manifest={navMode === "referee" || navMode === "none" ? "/referee-manifest.json" : "/manifest.json"} />
   </head>
   <body>
     <div class="app-shell">
@@ -33,32 +36,41 @@ const isRefereeResults = currentPath === "/referee/results";
       <div class="ambient ambient-b"></div>
 
       <header class="topbar" transition:name="topbar" transition:animate="none">
-        <a href={isReferee ? `/referee?lang=${lang}` : `/?lang=${lang}`} class="topbar-home" aria-label="Search">
-          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
+        <a href={isReferee ? `/referee?lang=${lang}` : `/?lang=${lang}`} class="topbar-home" aria-label={isReferee && tid ? t('referee.back') : 'Search'}>
+          {isReferee && tid ? (
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="19" y1="12" x2="5" y2="12"></line>
+              <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+          )}
         </a>
         <h1 class="page-title">{title}</h1>
         <div class="topbar-left">
-          <nav class="desktop-nav" aria-label="Main" transition:name="desktop-nav" transition:animate="none">
-            <a
-              href={`/pairings?tid=${tid}&lang=${lang}`}
-              class={`desktop-nav-item ${isPairings ? "active" : ""}`}
-              >{t('nav.pairings')}</a
-            >
-            <a
-              href={`/standings?tid=${tid}&lang=${lang}`}
-              class={`desktop-nav-item ${isStandings ? "active" : ""}`}
-              >{t('nav.standings')}</a
-            >
-            <a
-              href={`/options?tid=${tid}&lang=${lang}`}
-              class={`desktop-nav-item ${isOptions ? "active" : ""}`}
-              >{t('nav.settings')}</a
-            >
-          </nav>
-          {tid && (
+          {navMode === "default" && (
+            <nav class="desktop-nav" aria-label="Main" transition:name="desktop-nav" transition:animate="none">
+              <a
+                href={`/pairings?tid=${tid}&lang=${lang}`}
+                class={`desktop-nav-item ${isPairings ? "active" : ""}`}
+                >{t('nav.pairings')}</a
+              >
+              <a
+                href={`/standings?tid=${tid}&lang=${lang}`}
+                class={`desktop-nav-item ${isStandings ? "active" : ""}`}
+                >{t('nav.standings')}</a
+              >
+              <a
+                href={`/options?tid=${tid}&lang=${lang}`}
+                class={`desktop-nav-item ${isOptions ? "active" : ""}`}
+                >{t('nav.settings')}</a
+              >
+            </nav>
+          )}
+          {navMode === "default" && tid && (
             <a href={`/present?tid=${tid}&lang=${lang}`} class="presenter-link" aria-label={t('presenter.title')} title={t('presenter.title')}>
               <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
@@ -74,10 +86,10 @@ const isRefereeResults = currentPath === "/referee/results";
         <slot />
       </main>
 
-      {navMode === "referee" ? (
+      {navMode === "none" ? null : navMode === "referee" ? (
         <nav class="mobile-nav" transition:name="mobile-nav" transition:animate="none">
           <a
-            href={`/referee/tables${tid ? `?tid=${tid}&lang=${lang}` : `?lang=${lang}`}`}
+            href={tid ? `/referee/${tid}/tables?lang=${lang}` : `/referee?lang=${lang}`}
             class={`nav-item ${isRefereeTables ? "active" : ""}`}
           >
             <svg
@@ -97,7 +109,7 @@ const isRefereeResults = currentPath === "/referee/results";
             <span>{t('referee.tables')}</span>
           </a>
           <a
-            href={`/referee/results${tid ? `?tid=${tid}&lang=${lang}` : `?lang=${lang}`}`}
+            href={tid ? `/referee/${tid}/results?lang=${lang}` : `/referee?lang=${lang}`}
             class={`nav-item ${isRefereeResults ? "active" : ""}`}
           >
             <svg
@@ -119,7 +131,7 @@ const isRefereeResults = currentPath === "/referee/results";
             <span>{t('referee.results')}</span>
           </a>
           <a
-            href={`/options?lang=${lang}&mode=referee`}
+            href={`/options?${tid ? `tid=${tid}&` : ''}lang=${lang}&mode=referee`}
             class={`nav-item ${isOptions ? "active" : ""}`}
           >
             <svg

@@ -1,13 +1,12 @@
 ---
-import ResponsiveLayout from "../../layouts/ResponsiveLayout.astro";
-import { scrapePairings } from "../../lib/scraper";
-import { getRefereeResults } from "../../lib/db";
-import { useTranslations } from "../../i18n/ui";
-import { getIntParam } from "../../lib/request-params";
-import { resolvePageLang } from "../../lib/page-lang";
-import type { Pairing, TeamPairing } from "../../lib/types";
+import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
+import { scrapePairings } from "../../../lib/scraper";
+import { getRefereeResults } from "../../../lib/db";
+import { useTranslations } from "../../../i18n/ui";
+import { resolvePageLang } from "../../../lib/page-lang";
+import type { Pairing, TeamPairing } from "../../../lib/types";
 
-const tid = Astro.url.searchParams.get("tid") || "";
+const tid = Astro.params.id!;
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const roundParam = Astro.url.searchParams.get("round");
 
@@ -27,10 +26,6 @@ interface RefereeResult {
 }
 
 let refereeResults: RefereeResult[] = [];
-
-if (!tid) {
-  return Astro.redirect(`/referee?lang=${lang}`);
-}
 
 try {
   const initial = await scrapePairings(tid, 1, lang);
@@ -103,10 +98,6 @@ const submittedCount = tables.filter((t) => resultsMap[t]).length;
   )}
 
   <div class="results-overview">
-    <a class="change-tournament" href={`/referee/tables?tid=${tid}&lang=${lang}`}>
-      ← {t("referee.selectTable")}
-    </a>
-
     <h2 class="page-title">{tournamentName}</h2>
 
     <!-- Round selector -->
@@ -198,14 +189,6 @@ const submittedCount = tables.filter((t) => resultsMap[t]).length;
     max-width: 700px;
     margin: 0 auto;
     padding: var(--space-4) 0;
-  }
-
-  .change-tournament {
-    display: inline-block;
-    color: var(--accent-400);
-    text-decoration: none;
-    font-size: var(--text-sm);
-    margin-bottom: var(--space-3);
   }
 
   .page-title {

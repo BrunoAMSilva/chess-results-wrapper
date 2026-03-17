@@ -1,22 +1,18 @@
 ---
-import ResponsiveLayout from "../../layouts/ResponsiveLayout.astro";
-import { scrapePairings } from "../../lib/scraper";
-import { getRefereeResults } from "../../lib/db";
-import { useTranslations } from "../../i18n/ui";
-import { getIntParam } from "../../lib/request-params";
-import { resolvePageLang } from "../../lib/page-lang";
-import type { LinkedTournament, Pairing, TeamPairing } from "../../lib/types";
+import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
+import { scrapePairings } from "../../../lib/scraper";
+import { getRefereeResults } from "../../../lib/db";
+import { useTranslations } from "../../../i18n/ui";
+import { getIntParam } from "../../../lib/request-params";
+import { resolvePageLang } from "../../../lib/page-lang";
+import type { LinkedTournament, Pairing, TeamPairing } from "../../../lib/types";
 
-const tid = Astro.url.searchParams.get("tid") || "";
+const tid = Astro.params.id!;
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const stepParam = getIntParam(Astro.url.searchParams.get("step"), -1, 0, 2);
 const roundParam = Astro.url.searchParams.get("round");
 
 const t = useTranslations(lang);
-
-if (!tid) {
-  return Astro.redirect(`/referee?lang=${lang}`);
-}
 
 let error: string | null = null;
 let totalRounds = 0;
@@ -121,7 +117,7 @@ for (const r of refResults) {
 }
 ---
 
-<ResponsiveLayout title={t("referee.title")} lang={lang} navMode="referee">
+<ResponsiveLayout title={t("referee.selectTable")} lang={lang} navMode="referee">
   {error && (
     <div class="error-msg">
       <p>{error}</p>
@@ -739,7 +735,7 @@ for (const r of refResults) {
   function buildUrl(overrides) {
     var tid = overrides.tid || selectedSection;
     var st = overrides.step != null ? overrides.step : "";
-    var url = "/referee/tables?tid=" + encodeURIComponent(tid) + "&lang=" + lang;
+    var url = "/referee/" + encodeURIComponent(tid) + "/tables?lang=" + lang;
     if (st !== "" && st >= 0) url += "&step=" + st;
     url += "&round=" + currentRound;
     return url;
