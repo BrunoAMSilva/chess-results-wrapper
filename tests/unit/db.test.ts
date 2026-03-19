@@ -233,7 +233,7 @@ describe('Database - Players', () => {
   beforeEach(clearAllTables);
 
   it('should insert a new player and return its ID', () => {
-    const id = upsertPlayer('Silva, Bruno', 'POR', 'M', 'Chess Club Lisbon', 1800);
+    const id = upsertPlayer('Silva, Bruno', 'POR', 'M');
     expect(id).toBeGreaterThan(0);
 
     const player = getPlayerById(id);
@@ -241,8 +241,6 @@ describe('Database - Players', () => {
     expect(player!.name).toBe('Silva, Bruno');
     expect(player!.federation).toBe('POR');
     expect(player!.sex).toBe('M');
-    expect(player!.club).toBe('Chess Club Lisbon');
-    expect(player!.rating).toBe(1800);
   });
 
   it('should return existing player ID on duplicate (name + federation)', () => {
@@ -252,33 +250,27 @@ describe('Database - Players', () => {
   });
 
   it('should update player fields on upsert without overwriting non-empty with empty', () => {
-    const id = upsertPlayer('Silva, Bruno', 'POR', 'M', 'Club A', 1800);
+    const id = upsertPlayer('Silva, Bruno', 'POR', 'M');
 
-    // Upsert with empty sex/club — should keep originals
-    upsertPlayer('Silva, Bruno', 'POR', '', '', null);
+    // Upsert with empty sex — should keep original
+    upsertPlayer('Silva, Bruno', 'POR', '');
 
     const player = getPlayerById(id);
     expect(player!.sex).toBe('M');
-    expect(player!.club).toBe('Club A');
-    expect(player!.rating).toBe(1800);
   });
 
   it('should match by FIDE ID when available', () => {
-    const id1 = upsertPlayer('Smith, John', 'USA', 'M', '', 2000, '12345678');
-    const id2 = upsertPlayer('Smith, John', 'USA', '', '', null, '12345678');
+    const id1 = upsertPlayer('Smith, John', 'USA', 'M', '12345678');
+    const id2 = upsertPlayer('Smith, John', 'USA', '', '12345678');
     expect(id1).toBe(id2);
   });
 
   it('should update player via FIDE ID even with different federation', () => {
-    const id = upsertPlayer('Van der Berg, Anna', 'NED', 'F', '', 2100, '99887766');
+    const id = upsertPlayer('Van der Berg, Anna', 'NED', 'F', '99887766');
 
     // Same FIDE ID but different detail: should update, not create new row
-    const id2 = upsertPlayer('Van der Berg, Anna', 'NED', '', 'New Club', 2150, '99887766');
+    const id2 = upsertPlayer('Van der Berg, Anna', 'NED', '', '99887766');
     expect(id2).toBe(id);
-
-    const player = getPlayerById(id);
-    expect(player!.club).toBe('New Club');
-    expect(player!.rating).toBe(2150);
   });
 
   it('should adopt placeholder player when federation becomes known', () => {
@@ -286,7 +278,7 @@ describe('Database - Players', () => {
     const idPlaceholder = upsertPlayer('Santos, Maria', '');
 
     // Standings page later provides federation
-    const idWithFed = upsertPlayer('Santos, Maria', 'POR', 'F', 'Club B', 1500);
+    const idWithFed = upsertPlayer('Santos, Maria', 'POR', 'F');
 
     expect(idWithFed).toBe(idPlaceholder);
 
@@ -317,11 +309,10 @@ describe('Database - Players', () => {
   });
 
   it('should trim whitespace from all fields', () => {
-    const id = upsertPlayer('  Silva, Bruno  ', '  POR  ', 'M', '  Club  ', 1800, '  12345  ');
+    const id = upsertPlayer('  Silva, Bruno  ', '  POR  ', 'M', '  12345  ');
     const player = getPlayerById(id);
     expect(player!.name).toBe('Silva, Bruno');
     expect(player!.federation).toBe('POR');
-    expect(player!.club).toBe('Club');
     expect(player!.fide_id).toBe('12345');
   });
 
@@ -329,7 +320,7 @@ describe('Database - Players', () => {
     // Create placeholder
     upsertPlayer('Test Player', '');
     // Create richer record
-    upsertPlayer('Test Player', 'POR', 'M', 'Club', 1800);
+    upsertPlayer('Test Player', 'POR', 'M');
 
     const found = findPlayerByIdentity('Test Player');
     expect(found).toBeDefined();
@@ -383,6 +374,21 @@ describe('Database - Tournament-Player Links', () => {
     expect(history[0].starting_number).toBe(2);
     expect(history[0].tournament_rating).toBe(1600);
     expect(history[0].tournament_club).toBe('Club Y');
+  });
+
+  it('should preserve non-zero starting_number on re-link with 0', () => {
+    upsertTournament(makeTournamentInfo(), 'T001');
+    const playerId = upsertPlayer('Player A', 'POR');
+
+    linkPlayerToTournament('T001', playerId, 5, 1500, 'Club X');
+    // Re-link with starting_number=0 (e.g. from player card without Starting Rank field)
+    linkPlayerToTournament('T001', playerId, 0, null, '');
+
+    const history = getPlayerTournamentHistory(playerId);
+    expect(history).toHaveLength(1);
+    expect(history[0].starting_number).toBe(5); // preserved, not overwritten to 0
+    expect(history[0].tournament_rating).toBe(1500); // COALESCE preserves
+    expect(history[0].tournament_club).toBe('Club X'); // CASE preserves
   });
 
   it('should link a player to multiple tournaments', () => {
@@ -684,7 +690,6 @@ describe('Database - persistStandings', () => {
     // Verify players were created
     const p1 = findPlayerByIdentity('First, Player', 'POR');
     expect(p1).toBeDefined();
-    expect(p1!.rating).toBe(2100);
   });
 
   it('should update standings on re-persist (idempotent)', () => {
@@ -958,10 +963,10 @@ describe('Database - persistPlayerCard', () => {
     expect(player!.fide_id).toBe('1982532');
     expect(player!.birth_year).toBe(2008);
     expect(player!.national_id).toBe('47919');
-    expect(player!.rating).toBe(1675);
 
     const history = getPlayerTournamentHistory(player!.id!);
     expect(history).toHaveLength(1);
+    expect(history[0].tournament_rating).toBe(1675);
     expect(history[0].national_rating).toBe(1500);
     expect(history[0].performance_rating).toBe(1470);
     expect(history[0].rating_change).toBe('-8,4');
@@ -969,7 +974,7 @@ describe('Database - persistPlayerCard', () => {
 
   it('should preserve existing player data when card has empty values', () => {
     upsertTournament(makeTournamentInfo(), 'T001');
-    const playerId = upsertPlayer('Existing Player', 'POR', 'M', 'Some Club', 1800, '9999999', 1990, '11111');
+    const playerId = upsertPlayer('Existing Player', 'POR', 'M', '9999999', 1990, '11111');
 
     // Persist a card with sparse data — should not overwrite existing birth_year/national_id
     persistPlayerCard('T001', {
@@ -991,8 +996,6 @@ describe('Database - persistPlayerCard', () => {
     const player = getPlayerById(playerId);
     expect(player!.birth_year).toBe(1990);
     expect(player!.national_id).toBe('11111');
-    expect(player!.club).toBe('Some Club');
-    expect(player!.rating).toBe(1800);
   });
 });
 

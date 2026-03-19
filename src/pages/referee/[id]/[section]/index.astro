@@ -20,7 +20,7 @@ let allPairings: Pairing[] = [];
 let teamPairings: TeamPairing[] | undefined;
 
 try {
-  const initial = await scrapePairings(section, 1, lang);
+  const initial = await scrapePairings(section, 1);
   totalRounds = initial.info.totalRounds;
 
   if (roundParam) {
@@ -28,7 +28,7 @@ try {
   } else {
     let foundRound = 1;
     for (let r = totalRounds; r >= 1; r--) {
-      const data = r === 1 ? initial : await scrapePairings(section, r, lang);
+      const data = r === 1 ? initial : await scrapePairings(section, r);
       const pairings = data.pairings || [];
       const hasNoResults = pairings.length > 0 && pairings.every((p) => !p.result || p.result.trim() === "");
       if (hasNoResults) {
@@ -40,7 +40,7 @@ try {
     activeRound = foundRound;
   }
 
-  const activeData = activeRound === 1 ? initial : await scrapePairings(section, activeRound, lang);
+  const activeData = activeRound === 1 ? initial : await scrapePairings(section, activeRound);
   allPairings = activeData.pairings || [];
   teamPairings = activeData.teamPairings;
 } catch (e) {

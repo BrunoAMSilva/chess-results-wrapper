@@ -41,7 +41,7 @@ if (!player) {
     const enrichTargets = history.slice(0, 5);
     await Promise.allSettled(
       enrichTargets.map((entry) =>
-        scrapeStandings(entry.tournament_id, lang),
+        scrapeStandings(entry.tournament_id),
       ),
     );
     resolvedPlayer = getPlayerById(resolvedPlayer.id!) || resolvedPlayer;

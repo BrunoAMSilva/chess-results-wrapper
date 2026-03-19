@@ -23,7 +23,7 @@ let allPairings: Pairing[] = [];
 let teamPairings: TeamPairing[] | undefined;
 
 try {
-  data = await scrapePairings(tid, round, lang);
+  data = await scrapePairings(tid, round);
   allPairings = data.pairings || [];
   teamPairings = data.teamPairings;
 } catch (e) {

@@ -39,7 +39,7 @@ interface SectionData {
 const allSections: SectionData[] = [];
 
 try {
-  const initial = await scrapePairings(tid, 1, lang);
+  const initial = await scrapePairings(tid, 1);
   totalRounds = initial.info.totalRounds;
   linkedTournaments = initial.info.linkedTournaments;
   currentLabel = initial.info.currentLabel || initial.info.name;
@@ -49,7 +49,7 @@ try {
   } else {
     let foundRound = 1;
     for (let r = totalRounds; r >= 1; r--) {
-      const data = r === 1 ? initial : await scrapePairings(tid, r, lang);
+      const data = r === 1 ? initial : await scrapePairings(tid, r);
       const pairings = data.pairings || [];
       const hasNoResults = pairings.length > 0 && pairings.every((p) => !p.result || p.result.trim() === "");
       if (hasNoResults) {
@@ -84,7 +84,7 @@ try {
   const loadSections = sectionIds.filter((s) => s.id === activeSectionId);
 
   for (const sec of loadSections) {
-    const data = await scrapePairings(sec.id, activeRound, lang);
+    const data = await scrapePairings(sec.id, activeRound);
     const pairings: Pairing[] = data.pairings || [];
     const teamPairings: TeamPairing[] | undefined = data.teamPairings;
 

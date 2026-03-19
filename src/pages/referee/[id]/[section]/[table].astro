@@ -18,7 +18,7 @@ let whiteName = "";
 let blackName = "";
 
 try {
-  const initial = await scrapePairings(section, 1, lang);
+  const initial = await scrapePairings(section, 1);
   const totalRounds = initial.info.totalRounds;
 
   if (roundParam) {
@@ -27,7 +27,7 @@ try {
     activeRound = 1;
   }
 
-  const data = activeRound === 1 ? initial : await scrapePairings(section, activeRound, lang);
+  const data = activeRound === 1 ? initial : await scrapePairings(section, activeRound);
   const pairings: Pairing[] = data.pairings || [];
   const teamPairings: TeamPairing[] | undefined = data.teamPairings;
 

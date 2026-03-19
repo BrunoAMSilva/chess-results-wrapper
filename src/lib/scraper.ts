@@ -30,6 +30,10 @@ import { TournamentType } from './types';
 
 const S2_BASE_URL = 'https://s2.chess-results.com';
 
+// Always scrape chess-results.com in English for consistent column headers
+// and reduced overhead. User's UI language is separate from scraping language.
+const SCRAPE_LANG = 1;
+
 class SimpleCookieJar {
   private readonly jar = new Map<string, string>();
 
@@ -93,7 +97,7 @@ function extractHiddenFields(html: string): Map<string, string> {
   return fields;
 }
 
-async function fetchTournamentHtml(url: string, tournamentId: string, lang: number): Promise<string> {
+async function fetchTournamentHtml(url: string, tournamentId: string): Promise<string> {
   const primaryRes = await fetch(url);
   if (!primaryRes.ok) {
     throw new Error(`Failed to fetch tournament page: HTTP ${primaryRes.status} for tournament ${tournamentId}`);
@@ -146,7 +150,7 @@ async function fetchTournamentHtml(url: string, tournamentId: string, lang: numb
     }
   }
 
-  const gateUrl = `${S2_BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&turdet=YES&SNode=S0`;
+  const gateUrl = `${S2_BASE_URL}/tnr${tournamentId}.aspx?lan=${SCRAPE_LANG}&turdet=YES&SNode=S0`;
   const jar = new SimpleCookieJar();
 
   const gateGet = await fetch(gateUrl);
@@ -215,12 +219,12 @@ async function fetchTournamentHtml(url: string, tournamentId: string, lang: numb
   return unlockedRes.text();
 }
 
-function buildUrl(tournamentId: string, round: number, lang = 1): string {
-  return `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=2&rd=${round}&turdet=YES`;
+function buildUrl(tournamentId: string, round: number): string {
+  return `${BASE_URL}/tnr${tournamentId}.aspx?lan=${SCRAPE_LANG}&art=2&rd=${round}&turdet=YES`;
 }
 
-function buildBoardPairingsUrl(tournamentId: string, round: number, lang = 1): string {
-  return `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=3&rd=${round}&turdet=YES`;
+function buildBoardPairingsUrl(tournamentId: string, round: number): string {
+  return `${BASE_URL}/tnr${tournamentId}.aspx?lan=${SCRAPE_LANG}&art=3&rd=${round}&turdet=YES`;
 }
 
 // ─── Freshness helpers ────────────────────────────────────────────────────────
@@ -248,11 +252,10 @@ function isTournamentFinished(dateStr: string): boolean {
  */
 async function fetchRemoteLastUpdated(
   tournamentId: string,
-  lang: number,
 ): Promise<string | undefined> {
   try {
-    const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&turdet=YES`;
-    const html = await fetchTournamentHtml(url, tournamentId, lang);
+    const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${SCRAPE_LANG}&turdet=YES`;
+    const html = await fetchTournamentHtml(url, tournamentId);
     const $ = cheerio.load(html);
     const meta = parseTournamentMeta($);
     return meta.lastUpdated;
@@ -295,38 +298,66 @@ function enrichFromDb(
  * Scrape all rounds of pairings + standings for a tournament.
  * Used when a tournament is new or its data is stale.
  */
-async function scrapeFullTournament(
+export async function scrapeFullTournament(
   tournamentId: string,
-  lang: number,
 ): Promise<void> {
   // First, determine totalRounds from a pairings page
-  const firstUrl = buildUrl(tournamentId, 1, lang);
-  const firstHtml = await fetchTournamentHtml(firstUrl, tournamentId, lang);
+  const firstUrl = buildUrl(tournamentId, 1);
+  const firstHtml = await fetchTournamentHtml(firstUrl, tournamentId);
   const firstData = parseHtml(firstHtml, 1);
   enrichFromDb(firstData.info, tournamentId);
 
   const totalRounds = firstData.info.totalRounds;
+  const isTeam = firstData.info.type === TournamentType.TeamSwiss ||
+                 firstData.info.type === TournamentType.TeamRoundRobin;
+
+  // For team tournaments, also fetch board-level pairings (art=3) for round 1
+  if (isTeam) {
+    try {
+      const boardUrl = buildBoardPairingsUrl(tournamentId, 1);
+      const boardHtml = await fetchTournamentHtml(boardUrl, tournamentId);
+      const boardData = parseBoardPairingsHtml(boardHtml, 1);
+      if (boardData.teamPairings && boardData.teamPairings.length > 0) {
+        firstData.teamPairings = boardData.teamPairings;
+        firstData.pairings = boardData.pairings;
+      }
+    } catch (_) { /* board pairings are best-effort */ }
+  }
 
   // Persist round 1
-  try { persistPairings(tournamentId, firstData.info, 1, firstData.pairings); } catch (_) {}
+  try { persistPairings(tournamentId, firstData.info, 1, firstData.pairings, firstData.teamPairings); } catch (_) {}
 
   // Scrape remaining rounds
   for (let rd = 2; rd <= totalRounds; rd++) {
     try {
-      const url = buildUrl(tournamentId, rd, lang);
-      const html = await fetchTournamentHtml(url, tournamentId, lang);
+      const url = buildUrl(tournamentId, rd);
+      const html = await fetchTournamentHtml(url, tournamentId);
       const data = parseHtml(html, rd);
-      persistPairings(tournamentId, data.info, rd, data.pairings);
+
+      // For team tournaments, also fetch board-level pairings (art=3)
+      if (isTeam) {
+        try {
+          const boardUrl = buildBoardPairingsUrl(tournamentId, rd);
+          const boardHtml = await fetchTournamentHtml(boardUrl, tournamentId);
+          const boardData = parseBoardPairingsHtml(boardHtml, rd);
+          if (boardData.teamPairings && boardData.teamPairings.length > 0) {
+            data.teamPairings = boardData.teamPairings;
+            data.pairings = boardData.pairings;
+          }
+        } catch (_) { /* board pairings are best-effort */ }
+      }
+
+      persistPairings(tournamentId, data.info, rd, data.pairings, data.teamPairings);
     } catch (_) { /* individual round failures are non-critical */ }
   }
 
   // Scrape standings
   try {
-    const standingsData = await scrapeStandingsFromRemote(tournamentId, lang);
+    const standingsData = await scrapeStandingsFromRemote(tournamentId);
     persistStandings(tournamentId, standingsData.info, standingsData.standings, standingsData.womenStandings);
 
     // Scrape player cards (art=9) for extended player data
-    await scrapePlayerCards(tournamentId, lang, standingsData.standings);
+    await scrapePlayerCards(tournamentId, standingsData.standings);
   } catch (_) { /* standings are non-critical during full scrape */ }
 }
 
@@ -338,14 +369,13 @@ import type { Standing } from './types';
  */
 async function scrapePlayerCards(
   tournamentId: string,
-  lang: number,
   standings: Standing[],
 ): Promise<void> {
   for (const s of standings) {
     if (!s.startingNumber) continue;
     try {
-      const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=9&turdet=YES&snr=${s.startingNumber}`;
-      const html = await fetchTournamentHtml(url, tournamentId, lang);
+      const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${SCRAPE_LANG}&art=9&turdet=YES&snr=${s.startingNumber}`;
+      const html = await fetchTournamentHtml(url, tournamentId);
       const $ = cheerio.load(html);
       const card = parsePlayerCard($);
       if (card.name) {
@@ -360,10 +390,9 @@ async function scrapePlayerCards(
 async function scrapePairingsFromRemote(
   tournamentId: string,
   round: number,
-  lang: number,
 ): Promise<TournamentData> {
-  const url = buildUrl(tournamentId, round, lang);
-  const html = await fetchTournamentHtml(url, tournamentId, lang);
+  const url = buildUrl(tournamentId, round);
+  const html = await fetchTournamentHtml(url, tournamentId);
 
   try {
     const data = parseHtml(html, round);
@@ -375,8 +404,8 @@ async function scrapePairingsFromRemote(
     // For team tournaments, also fetch board-level pairings (art=3)
     if (isTeam) {
       try {
-        const boardUrl = buildBoardPairingsUrl(tournamentId, round, lang);
-        const boardHtml = await fetchTournamentHtml(boardUrl, tournamentId, lang);
+        const boardUrl = buildBoardPairingsUrl(tournamentId, round);
+        const boardHtml = await fetchTournamentHtml(boardUrl, tournamentId);
         const boardData = parseBoardPairingsHtml(boardHtml, round);
         enrichFromDb(boardData.info, tournamentId);
 
@@ -399,15 +428,14 @@ async function scrapePairingsFromRemote(
 
 async function scrapeStandingsFromRemote(
   tournamentId: string,
-  lang: number,
 ): Promise<StandingsData> {
   let result: StandingsData | null = null;
   let usedArt = 0;
 
   // Try crosstable first (art=4), fall back to standard list (art=1)
   for (const art of [4, 1]) {
-    const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=${art}&turdet=YES`;
-    const html = await fetchTournamentHtml(url, tournamentId, lang);
+    const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${SCRAPE_LANG}&art=${art}&turdet=YES`;
+    const html = await fetchTournamentHtml(url, tournamentId);
 
     try {
       const data = parseStandingsHtml(html);
@@ -427,23 +455,36 @@ async function scrapeStandingsFromRemote(
     throw new Error(`No standings found for tournament ${tournamentId}`);
   }
 
-  // Crosstables (art=4) lack the sex column and team standings.
-  // If we used art=4, fetch art=1 for women's standings and team composition.
+  // Crosstables (art=4) lack the sex column, team standings, and sometimes startingNumbers.
+  // If we used art=4, fetch art=1 to supplement missing data.
   if (usedArt !== 1 && result.standings.length > 0) {
     const isTeam = result.info.type === TournamentType.TeamSwiss ||
                    result.info.type === TournamentType.TeamRoundRobin;
-    const needsFallback = result.womenStandings.length === 0 || (isTeam && !result.teamStandings?.length);
+    const missingSnr = result.standings.some(s => !s.startingNumber);
+    const needsFallback = result.womenStandings.length === 0 || missingSnr || (isTeam && !result.teamStandings?.length);
 
     if (needsFallback) {
       try {
-        const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${lang}&art=1&turdet=YES`;
-        const html = await fetchTournamentHtml(url, tournamentId, lang);
+        const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${SCRAPE_LANG}&art=1&turdet=YES`;
+        const html = await fetchTournamentHtml(url, tournamentId);
         const fallback = parseStandingsHtml(html);
         if (fallback.womenStandings.length > 0) {
           result = { ...result, womenStandings: fallback.womenStandings };
         }
         if (isTeam && fallback.teamStandings && fallback.teamStandings.length > 0) {
           result = { ...result, teamStandings: fallback.teamStandings };
+        }
+        // Merge startingNumbers from art=1 when art=4 lacks them
+        if (missingSnr && fallback.standings.length > 0) {
+          const snrByName = new Map(fallback.standings.map(s => [s.name, s.startingNumber]));
+          result = {
+            ...result,
+            standings: result.standings.map(s =>
+              !s.startingNumber && snrByName.has(s.name)
+                ? { ...s, startingNumber: snrByName.get(s.name)! }
+                : s
+            ),
+          };
         }
       } catch (_) { /* best-effort: supplementary data is optional */ }
     }
@@ -488,7 +529,6 @@ const FRESHNESS_CACHE_TTL = 60_000; // 1 minute
  */
 export async function ensureTournamentData(
   tournamentId: string,
-  lang: number,
 ): Promise<'fresh' | 'scraped' | 'live'> {
   const cached = freshnessCache.get(tournamentId);
   if (cached && Date.now() - cached.timestamp < FRESHNESS_CACHE_TTL) {
@@ -499,7 +539,7 @@ export async function ensureTournamentData(
 
   if (!dbTournament) {
     try {
-      await scrapeFullTournament(tournamentId, lang);
+      await scrapeFullTournament(tournamentId);
       freshnessCache.set(tournamentId, { status: 'scraped', timestamp: Date.now() });
       return 'scraped';
     } catch (_) {
@@ -513,7 +553,7 @@ export async function ensureTournamentData(
   }
 
   // Finished tournament — check remote freshness
-  const remoteLastUpdated = await fetchRemoteLastUpdated(tournamentId, lang);
+  const remoteLastUpdated = await fetchRemoteLastUpdated(tournamentId);
 
   if (remoteLastUpdated && dbTournament.last_updated && remoteLastUpdated <= dbTournament.last_updated) {
     freshnessCache.set(tournamentId, { status: 'fresh', timestamp: Date.now() });
@@ -522,7 +562,7 @@ export async function ensureTournamentData(
 
   if (remoteLastUpdated && (!dbTournament.last_updated || remoteLastUpdated > dbTournament.last_updated)) {
     try {
-      await scrapeFullTournament(tournamentId, lang);
+      await scrapeFullTournament(tournamentId);
       freshnessCache.set(tournamentId, { status: 'scraped', timestamp: Date.now() });
       return 'scraped';
     } catch (_) {
@@ -541,9 +581,8 @@ export async function ensureTournamentData(
 export async function scrapePairings(
   tournamentId: string,
   round: number,
-  lang = 1,
 ): Promise<TournamentData> {
-  const status = await ensureTournamentData(tournamentId, lang);
+  const status = await ensureTournamentData(tournamentId);
 
   if (status !== 'live') {
     const fromDb = getPairingsFromDb(tournamentId, round);
@@ -558,18 +597,17 @@ export async function scrapePairings(
     }
   }
 
-  return scrapePairingsFromRemote(tournamentId, round, lang);
+  return scrapePairingsFromRemote(tournamentId, round);
 }
 
 export async function scrapeStandings(
   tournamentId: string,
-  lang = 1,
 ): Promise<StandingsData> {
-  const cacheKey = `standings:v3:${tournamentId}:${lang}`;
+  const cacheKey = `standings:v3:${tournamentId}`;
   const cached = getCache<StandingsData>(cacheKey);
   if (cached) return cached;
 
-  const status = await ensureTournamentData(tournamentId, lang);
+  const status = await ensureTournamentData(tournamentId);
 
   if (status !== 'live') {
     const fromDb = getStandingsFromDb(tournamentId);
@@ -579,7 +617,7 @@ export async function scrapeStandings(
     }
   }
 
-  const result = await scrapeStandingsFromRemote(tournamentId, lang);
+  const result = await scrapeStandingsFromRemote(tournamentId);
   setCache(cacheKey, result, CACHE_TTL);
 
   try {
@@ -587,6 +625,29 @@ export async function scrapeStandings(
   } catch (_) { /* DB write is non-critical */ }
 
   return result;
+}
+
+/**
+ * Ensure player card data (national IDs, birth year, etc.) is populated.
+ * Scrapes art=9 pages for all players that are missing national_id.
+ * Called before XML export to guarantee player IDs are available.
+ */
+export async function ensurePlayerCards(
+  tournamentId: string,
+): Promise<void> {
+  const { getPlayerNationalIds } = await import('./db');
+  const existingIds = getPlayerNationalIds(tournamentId);
+
+  // If some players already have national IDs, assume cards were scraped
+  if (Object.keys(existingIds).length > 0) return;
+
+  // Otherwise, scrape standings to get player list, then fetch cards
+  try {
+    const standingsData = await scrapeStandingsFromRemote(tournamentId);
+    if (standingsData.standings.length > 0) {
+      await scrapePlayerCards(tournamentId, standingsData.standings);
+    }
+  } catch (_) { /* best-effort */ }
 }
 
 // ─── Parsing functions (delegate to strategy) ─────────────────────────────────

@@ -357,15 +357,12 @@ export function upsertPlayer(
   name: string,
   federation: string,
   sex: Sex = '',
-  club = '',
-  rating: number | null = null,
   fideId: string | null = null,
   birthYear: number | null = null,
   nationalId: string | null = null,
 ): number {
   const normalizedName = name.trim();
   const normalizedFed = federation.trim();
-  const normalizedClub = club.trim();
   const normalizedFideId = fideId?.trim() || null;
   const normalizedNationalId = nationalId?.trim() || null;
 
@@ -380,8 +377,6 @@ export function upsertPlayer(
           name = CASE WHEN ? != '' THEN ? ELSE name END,
           federation = CASE WHEN ? != '' THEN ? ELSE federation END,
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
-          club = CASE WHEN ? != '' THEN ? ELSE club END,
-          rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
           fide_id = ?,
           birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -394,10 +389,6 @@ export function upsertPlayer(
         normalizedFed,
         sex,
         sex,
-        normalizedClub,
-        normalizedClub,
-        rating,
-        rating,
         normalizedFideId,
         birthYear,
         birthYear,
@@ -418,8 +409,6 @@ export function upsertPlayer(
     db.prepare(`
       UPDATE players SET
         sex = CASE WHEN ? != '' THEN ? ELSE sex END,
-        club = CASE WHEN ? != '' THEN ? ELSE club END,
-        rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
         fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
         birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
         national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -428,10 +417,6 @@ export function upsertPlayer(
     `).run(
       sex,
       sex,
-      normalizedClub,
-      normalizedClub,
-      rating,
-      rating,
       normalizedFideId,
       normalizedFideId,
       birthYear,
@@ -456,8 +441,6 @@ export function upsertPlayer(
       db.prepare(`
         UPDATE players SET
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
-          club = CASE WHEN ? != '' THEN ? ELSE club END,
-          rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
           fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
           birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -466,10 +449,6 @@ export function upsertPlayer(
       `).run(
         sex,
         sex,
-        normalizedClub,
-        normalizedClub,
-        rating,
-        rating,
         normalizedFideId,
         normalizedFideId,
         birthYear,
@@ -491,8 +470,6 @@ export function upsertPlayer(
         UPDATE players SET
           federation = ?,
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
-          club = CASE WHEN ? != '' THEN ? ELSE club END,
-          rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
           fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
           birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -502,10 +479,6 @@ export function upsertPlayer(
         normalizedFed,
         sex,
         sex,
-        normalizedClub,
-        normalizedClub,
-        rating,
-        rating,
         normalizedFideId,
         normalizedFideId,
         birthYear,
@@ -519,9 +492,9 @@ export function upsertPlayer(
   }
 
   const result = db.prepare(`
-    INSERT INTO players (name, federation, sex, club, rating, fide_id, birth_year, national_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(normalizedName, normalizedFed, sex, normalizedClub, rating, normalizedFideId, birthYear, normalizedNationalId);
+    INSERT INTO players (name, federation, sex, fide_id, birth_year, national_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(normalizedName, normalizedFed, sex, normalizedFideId, birthYear, normalizedNationalId);
 
   return Number(result.lastInsertRowid);
 }
@@ -540,7 +513,7 @@ export function linkPlayerToTournament(
     INSERT INTO tournament_players (tournament_id, player_id, starting_number, rating, club, national_rating, performance_rating, rating_change)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(tournament_id, player_id) DO UPDATE SET
-      starting_number = excluded.starting_number,
+      starting_number = CASE WHEN excluded.starting_number > 0 THEN excluded.starting_number ELSE tournament_players.starting_number END,
       rating = COALESCE(excluded.rating, tournament_players.rating),
       club = CASE WHEN excluded.club != '' THEN excluded.club ELSE tournament_players.club END,
       national_rating = COALESCE(excluded.national_rating, tournament_players.national_rating),
@@ -848,8 +821,8 @@ export function upsertStanding(
 export function getStandings(tournamentId: string, type: string = 'open') {
   return db.prepare(`
     SELECT s.rank, p.name, p.federation AS fed, p.sex,
-           COALESCE(tp.rating, p.rating, 0) AS rating,
-           COALESCE(tp.club, p.club, '') AS club,
+           COALESCE(tp.rating, 0) AS rating,
+           COALESCE(tp.club, '') AS club,
            s.points, s.tie_break_1, s.tie_break_2, s.tie_break_3,
            s.tie_break_4, s.tie_break_5, s.tie_break_6,
            tp.starting_number, p.fide_id
@@ -876,8 +849,6 @@ export function persistStandings(
         s.name,
         s.fed,
         s.sex,
-        s.club,
-        s.rating ? parseInt(s.rating) || null : null,
         s.fideId || null,
       );
       linkPlayerToTournament(
@@ -967,8 +938,6 @@ export function persistPlayerCard(
     card.name,
     card.federation,
     '',
-    card.club,
-    card.rating,
     card.fideId || null,
     card.birthYear,
     card.nationalId || null,

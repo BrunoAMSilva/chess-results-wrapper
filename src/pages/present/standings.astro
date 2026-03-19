@@ -30,7 +30,7 @@ let data;
 let error: string | null = null;
 
 try {
-  data = await scrapeStandings(tid, lang);
+  data = await scrapeStandings(tid);
 } catch (e) {
   error = e instanceof Error ? e.message : t('error.load');
 }
