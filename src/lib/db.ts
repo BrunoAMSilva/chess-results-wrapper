@@ -275,6 +275,7 @@ export default db;
 
 import type {
   DbTournament,
+  DbTournamentSummary,
   DbPlayer,
   LinkedTournament,
   Sex,
@@ -956,30 +957,48 @@ export function persistPlayerCard(
 
 // ── Search ──
 
-export function searchTournaments(query: string, limit = 10): DbTournament[] {
+export function searchTournaments(query: string, limit = 10): DbTournamentSummary[] {
   return db.prepare(`
-    SELECT * FROM tournaments
-    WHERE name LIKE '%' || ? || '%'
-    ORDER BY updated_at DESC
+    SELECT t.*,
+      (
+        SELECT COUNT(*)
+        FROM tournament_players tp
+        WHERE tp.tournament_id = t.id
+      ) AS player_count
+    FROM tournaments t
+    WHERE t.name LIKE '%' || ? || '%'
+    ORDER BY datetime(t.updated_at) DESC
     LIMIT ?
-  `).all(query, limit) as DbTournament[];
+  `).all(query, limit) as DbTournamentSummary[];
 }
 
-export function listTournaments(limit = 20, offset = 0): DbTournament[] {
+export function listTournaments(limit = 20, offset = 0): DbTournamentSummary[] {
   return db.prepare(`
-    SELECT * FROM tournaments
-    ORDER BY datetime(updated_at) DESC
+    SELECT t.*,
+      (
+        SELECT COUNT(*)
+        FROM tournament_players tp
+        WHERE tp.tournament_id = t.id
+      ) AS player_count
+    FROM tournaments t
+    ORDER BY datetime(t.updated_at) DESC
     LIMIT ? OFFSET ?
-  `).all(limit, offset) as DbTournament[];
+  `).all(limit, offset) as DbTournamentSummary[];
 }
 
-export function searchTournamentsPaged(query: string, limit = 20, offset = 0): DbTournament[] {
+export function searchTournamentsPaged(query: string, limit = 20, offset = 0): DbTournamentSummary[] {
   return db.prepare(`
-    SELECT * FROM tournaments
-    WHERE name LIKE '%' || ? || '%'
-    ORDER BY datetime(updated_at) DESC
+    SELECT t.*,
+      (
+        SELECT COUNT(*)
+        FROM tournament_players tp
+        WHERE tp.tournament_id = t.id
+      ) AS player_count
+    FROM tournaments t
+    WHERE t.name LIKE '%' || ? || '%'
+    ORDER BY datetime(t.updated_at) DESC
     LIMIT ? OFFSET ?
-  `).all(query, limit, offset) as DbTournament[];
+  `).all(query, limit, offset) as DbTournamentSummary[];
 }
 
 export function countTournaments(query = ''): number {

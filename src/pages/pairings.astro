@@ -33,6 +33,14 @@ try {
 const isTeamView = teamPairings && teamPairings.length > 0;
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
 const linkedTournaments = data?.info.linkedTournaments;
+const recentPlayerCount = !isTeamView
+  ? new Set(
+      allPairings
+        .flatMap((pairing) => [pairing.white.name, pairing.black?.name])
+        .filter((name): name is string => typeof name === 'string' && name.length > 0)
+        .filter((name) => !/^(bye|livre)$/i.test(name))
+    ).size
+  : 0;
 ---
 
 <ResponsiveLayout title={data?.info.name || t('site.title')} lang={lang}>
@@ -125,15 +133,27 @@ const linkedTournaments = data?.info.linkedTournaments;
   }
 </style>
 
-<script is:inline define:vars={{ tid, tournamentName: data?.info.name || '', tournamentDate: data?.info.date || '' }}>
+<script is:inline define:vars={{ tid, tournamentName: data?.info.name || '', tournamentDate: data?.info.date || '', tournamentLocation: data?.info.location || '', tournamentType: data?.info.type || '', tournamentPlayerCount: recentPlayerCount }}>
   (function() {
     try {
       if (!tid || !tournamentName) return;
       var key = 'recentTournaments';
       var stored = localStorage.getItem(key);
       var recent = stored ? JSON.parse(stored) : [];
+      var existing = recent.find(function(r) { return r.id === tid; });
       recent = recent.filter(function(r) { return r.id !== tid; });
-      recent.unshift({ id: tid, name: tournamentName, date: tournamentDate });
+      recent.unshift({
+        id: tid,
+        name: tournamentName || (existing && existing.name) || ('Tournament ' + tid),
+        type: tournamentType || (existing && existing.type) || '',
+        date: tournamentDate || (existing && existing.date) || '',
+        location: tournamentLocation || (existing && existing.location) || '',
+        playerCount: tournamentPlayerCount > 0
+          ? tournamentPlayerCount
+          : existing && typeof existing.playerCount === 'number'
+            ? existing.playerCount
+            : undefined,
+      });
       recent = recent.slice(0, 5);
       localStorage.setItem(key, JSON.stringify(recent));
     } catch(e) { /* localStorage unavailable */ }

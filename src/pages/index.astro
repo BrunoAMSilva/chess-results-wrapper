@@ -512,7 +512,14 @@ const discoverLessHref = `${discoverBase}`;
 
     let debounceTimer: ReturnType<typeof setTimeout>;
     let activeIndex = -1;
-    let currentResults: { id: string; name: string }[] = [];
+    let currentResults: {
+      id: string;
+      name: string;
+      type?: string;
+      date?: string;
+      location?: string;
+      player_count?: number;
+    }[] = [];
 
     // Alias to non-nullable after guard
     const resultsEl = searchResults;
@@ -616,7 +623,7 @@ const discoverLessHref = `${discoverBase}`;
       }
     }
 
-    function renderResults(results: { id: string; name: string; total_rounds: number; date: string; location: string; event_label: string; linked_tournaments: string }[]) {
+    function renderResults(results: { id: string; name: string; type: string; total_rounds: number; date: string; location: string; event_label: string; linked_tournaments: string; player_count?: number }[]) {
       currentResults = results;
       activeIndex = -1;
 
@@ -723,9 +730,8 @@ const discoverLessHref = `${discoverBase}`;
 
     function navigateToTournament(tid: string) {
       // Save to recent tournaments
-      const match = currentResults.find(r => r.id === tid);
-      const entry = match as { id: string; name: string; date?: string } | undefined;
-      saveRecentTournament(tid, entry?.name, (entry as any)?.date);
+      const entry = currentResults.find(r => r.id === tid);
+      saveRecentTournament(entry || { id: tid, name: `Tournament ${tid}` });
 
       const langMatch = document.cookie.match(/(?:^|;\s*)lang=([^;]*)/);
       const savedLang = langMatch ? langMatch[1] : null;
@@ -742,13 +748,37 @@ const discoverLessHref = `${discoverBase}`;
     return null;
   }
 
-  function saveRecentTournament(tid: string, name?: string, date?: string) {
+  function saveRecentTournament(entry: {
+    id: string;
+    name?: string;
+    type?: string;
+    date?: string;
+    location?: string;
+    player_count?: number;
+  }) {
     try {
       const key = 'recentTournaments';
       const stored = localStorage.getItem(key);
-      let recent: { id: string; name: string; date: string }[] = stored ? JSON.parse(stored) : [];
-      recent = recent.filter(r => r.id !== tid);
-      recent.unshift({ id: tid, name: name || `Tournament ${tid}`, date: date || '' });
+      let recent: Array<{
+        id: string;
+        name: string;
+        type?: string;
+        date?: string;
+        location?: string;
+        playerCount?: number;
+      }> = stored ? JSON.parse(stored) : [];
+      const existing = recent.find(r => r.id === entry.id);
+      recent = recent.filter(r => r.id !== entry.id);
+      recent.unshift({
+        id: entry.id,
+        name: entry.name || existing?.name || `Tournament ${entry.id}`,
+        type: entry.type || existing?.type || '',
+        date: entry.date || existing?.date || '',
+        location: entry.location || existing?.location || '',
+        playerCount: typeof entry.player_count === 'number' && entry.player_count > 0
+          ? entry.player_count
+          : existing?.playerCount,
+      });
       recent = recent.slice(0, 5);
       localStorage.setItem(key, JSON.stringify(recent));
     } catch { /* localStorage unavailable */ }

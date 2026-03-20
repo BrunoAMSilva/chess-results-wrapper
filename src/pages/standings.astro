@@ -29,6 +29,7 @@ const teamStandings = data?.teamStandings || [];
 const hasWomen = womenStandings.length > 0;
 const hasTeams = teamStandings.length > 0;
 const linkedTournaments = data?.info.linkedTournaments;
+const recentPlayerCount = allStandings.length;
 
 // Build segments for the segmented control
 const segments: { value: string; label: string }[] = [];
@@ -178,6 +179,9 @@ const defaultActive = hasTeams ? "teams" : "open";
     tid,
     tournamentName: data?.info.name || "",
     tournamentDate: data?.info.date || "",
+    tournamentLocation: data?.info.location || "",
+    tournamentType: data?.info.type || "",
+    tournamentPlayerCount: recentPlayerCount,
   }}
 >
   (function () {
@@ -186,10 +190,25 @@ const defaultActive = hasTeams ? "teams" : "open";
       var key = "recentTournaments";
       var stored = localStorage.getItem(key);
       var recent = stored ? JSON.parse(stored) : [];
+      var existing = recent.find(function (r) {
+        return r.id === tid;
+      });
       recent = recent.filter(function (r) {
         return r.id !== tid;
       });
-      recent.unshift({ id: tid, name: tournamentName, date: tournamentDate });
+      recent.unshift({
+        id: tid,
+        name: tournamentName || (existing && existing.name) || ("Tournament " + tid),
+        type: tournamentType || (existing && existing.type) || "",
+        date: tournamentDate || (existing && existing.date) || "",
+        location: tournamentLocation || (existing && existing.location) || "",
+        playerCount:
+          tournamentPlayerCount > 0
+            ? tournamentPlayerCount
+            : existing && typeof existing.playerCount === "number"
+              ? existing.playerCount
+              : undefined,
+      });
       recent = recent.slice(0, 5);
       localStorage.setItem(key, JSON.stringify(recent));
     } catch (e) {

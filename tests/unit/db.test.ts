@@ -145,9 +145,14 @@ describe('Database - Tournaments', () => {
     upsertTournament(makeTournamentInfo({ name: 'Spanish Open 2026' }), 'T002');
     upsertTournament(makeTournamentInfo({ name: 'Portuguese Open 2026' }), 'T003');
 
+    const playerId = upsertPlayer('Silva, Bruno', 'POR');
+    linkPlayerToTournament('T001', playerId, 1);
+    linkPlayerToTournament('T003', playerId, 1);
+
     const results = searchTournaments('Portuguese');
     expect(results).toHaveLength(2);
     expect(results.map(r => r.id).sort()).toEqual(['T001', 'T003']);
+    expect(results.find((r) => r.id === 'T001')?.player_count).toBe(1);
   });
 
   it('should list tournaments with pagination', () => {
@@ -155,11 +160,15 @@ describe('Database - Tournaments', () => {
     upsertTournament(makeTournamentInfo({ name: 'B Tournament' }), 'T002');
     upsertTournament(makeTournamentInfo({ name: 'C Tournament' }), 'T003');
 
+    const playerId = upsertPlayer('Costa, Ana', 'POR');
+    linkPlayerToTournament('T002', playerId, 1);
+
     const page1 = listTournaments(2, 0);
     const page2 = listTournaments(2, 2);
 
     expect(page1).toHaveLength(2);
     expect(page2).toHaveLength(1);
+    expect(page1.every((row) => typeof row.player_count === 'number')).toBe(true);
   });
 
   it('should search tournaments with pagination and count totals', () => {
