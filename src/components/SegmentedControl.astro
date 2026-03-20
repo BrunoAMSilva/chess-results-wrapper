@@ -76,7 +76,6 @@ const { name, segments, active, class: className = "" } = Astro.props;
     color: var(--text-dim);
     text-decoration: none;
     cursor: pointer;
-    border: 1px solid transparent;
     background: transparent;
     white-space: nowrap;
     transition: color var(--duration-fast) var(--ease-in-out),
@@ -92,7 +91,6 @@ const { name, segments, active, class: className = "" } = Astro.props;
   .seg-item.active {
     color: var(--seg-active-text);
     background: var(--seg-active-bg);
-    border-color: var(--seg-active-border);
     box-shadow: var(--shadow-sm);
   }
 

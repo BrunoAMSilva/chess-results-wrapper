@@ -329,7 +329,7 @@ const sectionSegments = !useSelect
 
   .progress-fill {
     height: 100%;
-    background: var(--accent-400);
+    background: var(--accent-hover);
     border-radius: var(--radius-full);
     transition: width var(--duration-normal) var(--ease-out);
     width: var(--fill);
@@ -344,10 +344,10 @@ const sectionSegments = !useSelect
     align-items: center;
     gap: var(--space-2);
     padding: var(--space-2) var(--space-4);
-    border: 2px solid var(--accent-400);
+    border: 2px solid var(--accent-hover);
     border-radius: var(--radius-md);
     background: transparent;
-    color: var(--accent-400);
+    color: var(--accent-text);
     font-size: var(--text-sm);
     font-weight: var(--font-semibold);
     text-decoration: none;
@@ -355,7 +355,7 @@ const sectionSegments = !useSelect
   }
 
   .export-btn:hover {
-    background: var(--accent-400);
+    background: var(--accent-hover);
     color: var(--accent-text, #000);
   }
 
@@ -368,7 +368,6 @@ const sectionSegments = !useSelect
   .results-table {
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     overflow: hidden;
   }
@@ -391,7 +390,6 @@ const sectionSegments = !useSelect
     grid-template-columns: 48px 1fr 80px;
     gap: var(--space-2);
     padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--border);
     align-items: center;
     font-size: var(--text-sm);
   }

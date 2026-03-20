@@ -42,7 +42,6 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
     gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     background: var(--surface);
-    border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     text-decoration: none;
     color: var(--text);
@@ -52,7 +51,6 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
 
   .recent-list :global(.recent-item:hover) {
     background: var(--surface-hover);
-    border-color: var(--border);
   }
 
   .recent-list :global(.recent-item-icon) {

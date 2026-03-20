@@ -111,6 +111,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
 
   .title {
     font-size: var(--text-3xl);
+    font-family: var(--font-display);
     font-weight: var(--weight-extrabold);
     line-height: var(--leading-tight);
     color: var(--text);
@@ -158,8 +159,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     align-items: center;
     gap: 1rem;
     padding: 0.35rem 2rem;
-    background: var(--bg);
-    border-top: 1px solid var(--border);
+    background: var(--surface-container-low);
     flex-shrink: 0;
   }
 
@@ -208,7 +208,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     flex: 1;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--border);
+    background: var(--surface-container-low);
     border-radius: var(--radius-lg);
     overflow: hidden;
     min-height: 0;
@@ -225,8 +225,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
 
   /* Error */
   .error-card {
-    background: rgba(248, 113, 113, 0.1);
-    border: 1px solid rgba(248, 113, 113, 0.3);
+    background: var(--loss-subtle);
     border-radius: var(--radius-lg);
     padding: var(--space-6);
     text-align: center;
@@ -272,19 +271,18 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--surface-container-high);
     color: var(--text);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-ambient);
   }
 
   .config-toggle:hover {
-    border-color: var(--accent-text);
+    background: var(--surface-container-highest);
     transform: rotate(90deg);
   }
 
@@ -293,8 +291,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     bottom: 50px;
     right: 0;
     width: 260px;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--surface-container-high);
     border-radius: var(--radius-lg);
     padding: var(--space-4);
     display: none;
@@ -353,7 +350,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   .config-input {
     padding: 0.5rem 0.6rem;
     border-radius: 6px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--outline-variant);
     background: var(--bg);
     color: var(--text);
     font-size: 0.85rem;

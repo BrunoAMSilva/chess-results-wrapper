@@ -339,9 +339,8 @@ if (isOptions && navMode === "referee" && tid) {
     gap: 0.45rem;
     margin-left: 1rem;
     padding: 0.28rem;
-    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    background: var(--seg-bg);
+    background: var(--surface-container-low);
   }
 
   .desktop-nav-item {
@@ -349,12 +348,10 @@ if (isOptions && navMode === "referee" && tid) {
     color: var(--text-dim);
     padding: 0.45rem 0.78rem;
     border-radius: calc(var(--radius-lg) - 3px);
-    border: 1px solid transparent;
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
     transition:
       background var(--duration-fast) var(--ease-in-out),
-      border-color var(--duration-fast) var(--ease-in-out),
       color var(--duration-fast) var(--ease-in-out);
   }
 
@@ -365,7 +362,6 @@ if (isOptions && navMode === "referee" && tid) {
 
   .desktop-nav-item.active {
     color: var(--seg-active-text);
-    border-color: var(--seg-active-border);
     background: var(--seg-active-bg);
   }
 
@@ -411,6 +407,7 @@ if (isOptions && navMode === "referee" && tid) {
   .page-title {
     display: block;
     font-size: var(--text-lg);
+    font-family: var(--font-display);
     font-weight: var(--weight-bold);
     white-space: nowrap;
     overflow: hidden;
@@ -438,11 +435,10 @@ if (isOptions && navMode === "referee" && tid) {
   .mobile-nav {
     display: flex;
     background: var(--nav-bg);
-    border-top: 1px solid var(--border);
     padding: 0.5rem 1rem;
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     position: relative;
     z-index: 5;
   }

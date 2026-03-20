@@ -148,7 +148,6 @@ const delayClass = `delay-${delayStep}`;
       display: flex;
       background: var(--surface);
       border-radius: var(--radius-xl);
-      border: 1px solid var(--border-light);
       overflow: hidden;
       box-shadow: var(--shadow-card);
       margin-bottom: 0px;
@@ -165,10 +164,9 @@ const delayClass = `delay-${delayStep}`;
       width: var(--space-12);
       background: linear-gradient(
         180deg,
-        rgba(255, 255, 255, 0.05),
+        var(--surface-container-low),
         transparent
       );
-      border-right: 1px solid var(--border-light);
       position: relative;
       overflow: hidden;
       flex-shrink: 0;
@@ -177,6 +175,7 @@ const delayClass = `delay-${delayStep}`;
     .board-number {
       font-size: var(--text-xl);
       font-weight: var(--weight-medium);
+      font-family: var(--font-display);
       color: var(--text-dim);
       opacity: 1;
     }
@@ -198,7 +197,7 @@ const delayClass = `delay-${delayStep}`;
     }
 
     .player-row:first-child {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--surface-container-low);
     }
 
     .winner-row .player-name,
@@ -211,7 +210,7 @@ const delayClass = `delay-${delayStep}`;
     }
 
     .player-row:hover {
-      background-color: rgba(255, 255, 255, 0.02);
+      background-color: var(--surface-container-low);
     }
 
     .score-divider {
@@ -244,17 +243,10 @@ const delayClass = `delay-${delayStep}`;
 
     .white-piece {
       background: linear-gradient(135deg, var(--white-piece) 0%, var(--neutral-200) 100%);
-      box-shadow:
-        0 2px 4px rgba(0, 0, 0, 0.2),
-        inset 0 -2px 0 rgba(0, 0, 0, 0.1);
     }
 
     .black-piece {
       background: linear-gradient(135deg, var(--black-piece) 0%, var(--neutral-800) 100%);
-      border: 1px solid var(--neutral-900);
-      box-shadow:
-        0 2px 4px rgba(0, 0, 0, 0.4),
-        inset 0 2px 0 rgba(255, 255, 255, 0.1);
     }
 
     .name-wrapper {

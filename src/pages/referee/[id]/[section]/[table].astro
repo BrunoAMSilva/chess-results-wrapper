@@ -4,6 +4,7 @@ import { scrapePairings } from "../../../../lib/scraper";
 import { useTranslations } from "../../../../i18n/ui";
 import { resolvePageLang } from "../../../../lib/page-lang";
 import type { Pairing, TeamPairing } from "../../../../lib/types";
+import Matchup from "../../../../components/Matchup.astro";
 
 const tid = Astro.params.id!;
 const section = Astro.params.section!;
@@ -69,21 +70,10 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
   {error && <div class="error-msg"><p>{error}</p></div>}
 
   <div class="result-page">
-    <div class="table-matchup">
-      <div class="player-row">
-        <span class="piece-icon white-icon">♔</span>
-        <span class="player-name">{whiteName}</span>
-      </div>
-      <div class="matchup-divider" aria-hidden="true">
-        <hr class="divider-line" />
-        <span class="divider-label">vs</span>
-        <hr class="divider-line" />
-      </div>
-      <div class="player-row">
-        <span class="piece-icon black-icon">♚</span>
-        <span class="player-name">{blackName}</span>
-      </div>
-    </div>
+    <Matchup
+      whiteName={whiteName}
+      blackName={blackName}
+    />
 
     <div class="result-options" id="resultOptions">
       <div class="result-row">
@@ -139,71 +129,7 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
     align-items: center;
   }
 
-  .table-matchup {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    margin-bottom: var(--space-6);
-    width: 100%;
-  }
-
-  .player-row {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-3) 0;
-  }
-
-  .piece-icon {
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: var(--radius-full, 50%);
-    font-size: var(--text-lg);
-    line-height: 1;
-    flex-shrink: 0;
-  }
-
-  .white-icon {
-    background: var(--white-piece);
-    color: var(--white-piece-text);
-  }
-
-  .black-icon {
-    background: var(--black-piece-dark);
-    color: var(--white-piece);
-  }
-
-  .player-name {
-    font-size: var(--text-lg);
-    font-weight: var(--font-semibold);
-    line-height: var(--leading-tight);
-    color: var(--text);
-  }
-
-  .matchup-divider {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    padding: var(--space-1) 0;
-  }
-
-  .divider-line {
-    flex: 1;
-    border: none;
-    border-top: 1px solid var(--border);
-    margin: 0;
-  }
-
-  .divider-label {
-    font-size: var(--text-xs);
-    font-weight: var(--font-bold);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-wider);
-    color: var(--text-dim);
-  }
+  
 
   .result-options {
     display: flex;
@@ -277,7 +203,7 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
   }
 
   .draw-result:has(input:checked) {
-    background: var(--accent-400);
+    background: var(--accent-hover);
     border-color: var(--accent);
     color: var(--accent-text, #000);
   }
@@ -324,7 +250,7 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
   }
 
   .absent-card:hover {
-    border-color: var(--accent-400);
+    border-color: var(--accent-hover);
   }
 
   .absent-card:has(input:checked) {
@@ -400,10 +326,10 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
     width: 100%;
     margin-top: var(--space-4);
     padding: var(--space-4) var(--space-6);
-    border: 2px solid var(--accent-400);
+    border: 2px solid var(--accent-hover);
     border-radius: var(--radius-lg);
     background: var(--surface);
-    color: var(--accent-400);
+    color: var(--accent-text);
     font-size: var(--text-base);
     font-weight: var(--font-semibold);
     cursor: pointer;

@@ -78,7 +78,6 @@ const attributes = tid
         rgb(from var(--text-muted) r g b / var(--hover-opacity))
       ),
       linear-gradient(var(--surface), var(--surface));
-    border-bottom: 1px solid var(--border);
     padding: 0 var(--space-2) 0 0;
     animation: fadeInUp var(--duration-slow) ease both;
     color: var(--text);
@@ -88,7 +87,6 @@ const attributes = tid
   }
 
   .standing-row:last-child {
-    border-bottom: none;
   }
 
   .standing-row.top-3 {
@@ -133,6 +131,7 @@ const attributes = tid
     align-items: center;
     font-size: var(--text-2xl);
     font-weight: 900;
+    font-family: var(--font-display);
     color: var(--text-dim);
     line-height: 1;
     grid-row: span 2;
@@ -216,7 +215,7 @@ const attributes = tid
     align-items: center;
     justify-content: center;
     width: var(--size-standing-main-stat-sm);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--surface-container-low);
     margin-right: 0;
     height: 100%;
     border-radius: 0;
