@@ -179,6 +179,9 @@
   --win:          var(--green-400);
   --loss:         var(--red-400);
   --draw:         var(--amber-400);
+  --danger:       var(--red-400);
+  --on-win:       #052e16;
+  --on-loss:      #fff;
 
   --shadow-card:  0 4px 15px rgba(0, 0, 0, 0.15);
   --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.3);
@@ -260,6 +263,9 @@
   --win:          var(--green-600);
   --loss:         var(--red-500);
   --draw:         var(--gold-500);
+  --danger:       var(--red-500);
+  --on-win:       #fff;
+  --on-loss:      #fff;
 
   --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -340,6 +346,9 @@
     --win:          var(--green-600);
     --loss:         var(--red-500);
     --draw:         var(--gold-500);
+    --danger:       var(--red-500);
+    --on-win:       #fff;
+    --on-loss:      #fff;
 
     --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
     --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);

@@ -76,14 +76,25 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
       blackName={blackName}
     />
 
-    <div class="result-options" id="resultOptions">
-      <ResultOptions />
-      <button class="save-btn hidden" id="saveBtn" type="button">
-        {t("referee.save")} →
-      </button>
-    </div>
+    <form
+      class="result-form"
+      id="resultForm"
+      action="/api/referee-result"
+      method="POST"
+    >
+      <input type="hidden" name="tid" value={section} />
+      <input type="hidden" name="round" value={String(activeRound)} />
+      <input type="hidden" name="table" value={String(tableNum)} />
+      <input type="hidden" name="_redirect" value={backUrl} />
 
-    <div class="feedback hidden" id="feedback"></div>
+      <ResultOptions />
+      <button class="save-btn" id="saveBtn" type="submit">
+        <span class="save-label">{t("referee.save")} →</span>
+        <span class="saving-label" aria-hidden="true">{t("referee.saving")}</span>
+      </button>
+    </form>
+
+    <div class="feedback hidden" id="feedback" aria-live="assertive" tabindex="-1"></div>
     <a class="another-link hidden" id="anotherLink" href={backUrl}>
       {t("referee.another")}
     </a>
@@ -99,9 +110,7 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
     align-items: center;
   }
 
-  
-
-  .result-options {
+  .result-form {
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -115,9 +124,9 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
     border: none;
     border-radius: var(--radius-lg);
     background: var(--accent);
-    color: #000;
+    color: var(--on-accent);
     font-size: var(--text-lg);
-    font-weight: var(--font-bold);
+    font-weight: var(--weight-bold);
     cursor: pointer;
     transition: all var(--duration-fast) var(--ease-out);
     box-shadow: var(--shadow-md);
@@ -132,7 +141,33 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
     transform: scale(0.98);
   }
 
+  .save-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .save-btn[aria-disabled="true"] {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .saving-label {
+    display: none;
+  }
+
+  .save-btn[aria-disabled="true"] .save-label {
+    display: none;
+  }
+
+  .save-btn[aria-disabled="true"] .saving-label {
+    display: inline;
+  }
+
   .hidden {
+    display: none;
+  }
+
+  .form-hidden {
     display: none;
   }
 
@@ -146,98 +181,67 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
   }
 
   .feedback.success {
-    background: var(--green-400);
-    color: #000;
+    background: var(--win);
+    color: var(--on-win);
   }
 
   .feedback.error {
-    background: var(--red-400);
-    color: #fff;
+    background: var(--loss);
+    color: var(--on-loss);
   }
 
   .another-link {
     width: 100%;
     margin-top: var(--space-4);
     padding: var(--space-4) var(--space-6);
-    border: 2px solid var(--accent-hover);
     border-radius: var(--radius-lg);
-    background: var(--surface);
+    background: var(--surface-container-high);
     color: var(--accent-text);
     font-size: var(--text-base);
-    font-weight: var(--font-semibold);
+    font-weight: var(--weight-semibold);
     cursor: pointer;
     text-decoration: none;
     text-align: center;
   }
 
+  .another-link:hover {
+    background: var(--surface-container-highest);
+  }
+
+  .another-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
   .error-msg {
-    color: var(--danger, #e53e3e);
+    color: var(--danger);
     text-align: center;
     padding: var(--space-4);
   }
 </style>
 
 <script is:inline define:vars={{
-  sectionTid: section,
-  activeRound,
-  tableNum,
   savedMsg: t("referee.saved"),
   errorMsg: t("referee.error"),
+  savingMsg: t("referee.saving"),
 }}>
 (function() {
-  var resultOptions = document.getElementById("resultOptions");
-  var resultFieldset = resultOptions && resultOptions.querySelector('fieldset');
+  var form = document.getElementById("resultForm");
   var saveBtn = document.getElementById("saveBtn");
   var feedback = document.getElementById("feedback");
   var anotherLink = document.getElementById("anotherLink");
+  var resultFieldset = form && form.querySelector("fieldset");
   var gameRadios = document.querySelectorAll('input[name="gameResult"]');
   var absentWhite = document.querySelector('input[name="absentWhite"]');
   var absentBlack = document.querySelector('input[name="absentBlack"]');
 
-  var selectedResult = null;
   var saving = false;
 
-  function saveResult() {
-    if (saving || !selectedResult) return;
-    saving = true;
-    if (saveBtn) saveBtn.classList.add("hidden");
+  // Progressive enhancement: hide save button until a selection is made
+  if (saveBtn) saveBtn.classList.add("hidden");
 
-    fetch("/api/referee-result", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tid: sectionTid,
-        round: activeRound,
-        table: tableNum,
-        result: selectedResult,
-      }),
-    })
-      .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
-      .then(function(resp) {
-        if (feedback) {
-          feedback.classList.remove("hidden", "success", "error");
-          if (resp.ok) {
-            feedback.classList.add("success");
-            feedback.textContent = savedMsg;
-            if (resultOptions) resultOptions.style.display = "none";
-            if (anotherLink) anotherLink.classList.remove("hidden");
-          } else {
-            feedback.classList.add("error");
-            feedback.textContent = resp.data.error || errorMsg;
-            saving = false;
-            if (saveBtn) saveBtn.classList.remove("hidden");
-          }
-        }
-      })
-      .catch(function() {
-        if (feedback) {
-          feedback.classList.remove("hidden", "success", "error");
-          feedback.classList.add("error");
-          feedback.textContent = errorMsg;
-        }
-        saving = false;
-        if (saveBtn) saveBtn.classList.remove("hidden");
-      });
+  function showSave() {
+    if (saveBtn) saveBtn.classList.remove("hidden");
   }
 
   gameRadios.forEach(function(radio) {
@@ -245,8 +249,7 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
       if (absentWhite) absentWhite.checked = false;
       if (absentBlack) absentBlack.checked = false;
       if (resultFieldset) resultFieldset.classList.remove("has-absent");
-      selectedResult = radio.value;
-      if (saveBtn) saveBtn.classList.remove("hidden");
+      showSave();
     });
   });
 
@@ -257,17 +260,9 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
     if (wAbsent || bAbsent) {
       gameRadios.forEach(function(r) { r.checked = false; });
       if (resultFieldset) resultFieldset.classList.add("has-absent");
-      if (wAbsent && bAbsent) {
-        selectedResult = "-:-";
-      } else if (wAbsent) {
-        selectedResult = "-:+";
-      } else {
-        selectedResult = "+:-";
-      }
-      if (saveBtn) saveBtn.classList.remove("hidden");
+      showSave();
     } else {
       if (resultFieldset) resultFieldset.classList.remove("has-absent");
-      selectedResult = null;
       if (saveBtn) saveBtn.classList.add("hidden");
     }
   }
@@ -275,9 +270,76 @@ const backUrl = `/referee/${tid}/${section}?${q}`;
   if (absentWhite) absentWhite.addEventListener("change", handleAbsentChange);
   if (absentBlack) absentBlack.addEventListener("change", handleAbsentChange);
 
-  if (saveBtn) {
-    saveBtn.addEventListener("click", function() {
-      if (selectedResult) saveResult();
+  // Progressive enhancement: intercept submit for AJAX experience
+  if (form) {
+    form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      if (saving) return;
+
+      var fd = new FormData(form);
+      var wAbsent = fd.get("absentWhite") === "on";
+      var bAbsent = fd.get("absentBlack") === "on";
+      var result;
+
+      if (wAbsent && bAbsent) {
+        result = "-:-";
+      } else if (wAbsent) {
+        result = "-:+";
+      } else if (bAbsent) {
+        result = "+:-";
+      } else {
+        result = fd.get("gameResult");
+      }
+
+      if (!result) return;
+      saving = true;
+      if (saveBtn) saveBtn.setAttribute("aria-disabled", "true");
+
+      fetch(form.action, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tid: fd.get("tid"),
+          round: Number(fd.get("round")),
+          table: Number(fd.get("table")),
+          result: result,
+        }),
+      })
+        .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+        .then(function(resp) {
+          if (feedback) {
+            feedback.classList.remove("hidden", "success", "error");
+            if (resp.ok) {
+              feedback.classList.add("success");
+              feedback.textContent = savedMsg;
+              if (form) form.classList.add("form-hidden");
+              if (anotherLink) anotherLink.classList.remove("hidden");
+              feedback.focus();
+            } else {
+              feedback.classList.add("error");
+              feedback.textContent = resp.data.error || errorMsg;
+              saving = false;
+              if (saveBtn) {
+                saveBtn.removeAttribute("aria-disabled");
+                saveBtn.classList.remove("hidden");
+              }
+              feedback.focus();
+            }
+          }
+        })
+        .catch(function() {
+          if (feedback) {
+            feedback.classList.remove("hidden", "success", "error");
+            feedback.classList.add("error");
+            feedback.textContent = errorMsg;
+            feedback.focus();
+          }
+          saving = false;
+          if (saveBtn) {
+            saveBtn.removeAttribute("aria-disabled");
+            saveBtn.classList.remove("hidden");
+          }
+        });
     });
   }
 })();

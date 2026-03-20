@@ -1,51 +1,88 @@
 import type { APIRoute } from "astro";
 import { upsertRefereeResult, getRefereeResults } from "../../lib/db";
 
+const VALID_RESULTS = ["1-0", "0-1", "½-½", "+:-", "-:+", "-:-"];
+
+function parseBody(raw: {
+  tid?: unknown;
+  round?: unknown;
+  table?: unknown;
+  result?: unknown;
+  gameResult?: unknown;
+  absentWhite?: unknown;
+  absentBlack?: unknown;
+  _redirect?: unknown;
+}) {
+  const tid = typeof raw.tid === "string" ? raw.tid : "";
+  const round = Number(raw.round);
+  const table = Number(raw.table);
+
+  // Derive result: explicit `result` field (JSON path) or form fields
+  let result = typeof raw.result === "string" ? raw.result : "";
+  if (!result) {
+    const wAbsent = raw.absentWhite === "on" || raw.absentWhite === "true";
+    const bAbsent = raw.absentBlack === "on" || raw.absentBlack === "true";
+    if (wAbsent && bAbsent) {
+      result = "-:-";
+    } else if (wAbsent) {
+      result = "-:+";
+    } else if (bAbsent) {
+      result = "+:-";
+    } else {
+      result = typeof raw.gameResult === "string" ? raw.gameResult : "";
+    }
+  }
+
+  const redirect = typeof raw._redirect === "string" ? raw._redirect : "";
+
+  return { tid, round, table, result, redirect };
+}
+
+function jsonError(message: string, status: number) {
+  return new Response(JSON.stringify({ error: message }), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const body = await request.json();
-    const { tid, round, table, result } = body;
+    const contentType = request.headers.get("content-type") || "";
+    let raw: Record<string, unknown>;
 
-    if (!tid || typeof tid !== "string") {
-      return new Response(JSON.stringify({ error: "Missing or invalid tid" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+    if (contentType.includes("application/x-www-form-urlencoded")) {
+      const formData = await request.formData();
+      raw = Object.fromEntries(formData.entries());
+    } else {
+      raw = await request.json();
     }
 
-    if (!Number.isInteger(round) || round < 1 || round > 64) {
-      return new Response(JSON.stringify({ error: "Invalid round" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    const { tid, round, table, result, redirect } = parseBody(raw);
 
-    if (!Number.isInteger(table) || table < 1) {
-      return new Response(JSON.stringify({ error: "Invalid table number" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    const validResults = ["1-0", "0-1", "½-½", "+:-", "-:+", "-:-"];
-    if (!validResults.includes(result)) {
-      return new Response(JSON.stringify({ error: "Invalid result" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    if (!tid) return jsonError("Missing or invalid tid", 400);
+    if (!Number.isInteger(round) || round < 1 || round > 64)
+      return jsonError("Invalid round", 400);
+    if (!Number.isInteger(table) || table < 1)
+      return jsonError("Invalid table number", 400);
+    if (!VALID_RESULTS.includes(result))
+      return jsonError("Invalid result", 400);
 
     upsertRefereeResult(tid, round, table, result);
+
+    // PRG redirect for native form submissions (relative paths only)
+    if (redirect && redirect.startsWith("/")) {
+      return new Response(null, {
+        status: 303,
+        headers: { Location: redirect },
+      });
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to save result";
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonError(message, 500);
   }
 };
 
