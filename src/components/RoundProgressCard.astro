@@ -1,0 +1,194 @@
+---
+interface Props {
+  round: number;
+  submittedCount: number;
+  totalCount: number;
+  sectionName: string;
+  roundLabel: string;
+  completionLabel: string;
+  submittedLabel: string;
+  ofLabel: string;
+  allSubmittedLabel: string;
+  remainingSingularLabel: string;
+  remainingPluralLabel: string;
+}
+
+const {
+  round,
+  submittedCount,
+  totalCount,
+  sectionName,
+  roundLabel,
+  completionLabel,
+  submittedLabel,
+  ofLabel,
+  allSubmittedLabel,
+  remainingSingularLabel,
+  remainingPluralLabel,
+} = Astro.props;
+
+const safeTotal = Math.max(totalCount, 0);
+const safeSubmitted = Math.min(Math.max(submittedCount, 0), safeTotal);
+const remainingCount = Math.max(safeTotal - safeSubmitted, 0);
+const progressValue = safeTotal > 0 ? (safeSubmitted / safeTotal) * 100 : 0;
+const eyebrow = `${roundLabel} ${round} ${completionLabel}`;
+const progressLabel = `${submittedLabel}: ${safeSubmitted} ${ofLabel} ${safeTotal}`;
+const remainingText = remainingCount === 0
+  ? allSubmittedLabel
+  : `${remainingCount} ${remainingCount === 1 ? remainingSingularLabel : remainingPluralLabel} ${sectionName}`;
+---
+
+<section class="round-progress-card" aria-label={eyebrow}>
+  <p class="eyebrow">{eyebrow}</p>
+
+  <p class="progress-value" aria-label={progressLabel}>
+    <span class="progress-value-primary">{safeSubmitted}</span>
+    <span class="progress-value-secondary">/ {safeTotal}</span>
+  </p>
+
+  <div
+    class="progress-bar"
+    role="progressbar"
+    aria-label={progressLabel}
+    aria-valuemin="0"
+    aria-valuemax={safeTotal}
+    aria-valuenow={safeSubmitted}
+  >
+    <div class="progress-fill" style={`--progress: ${progressValue}%`} />
+  </div>
+
+  <p class:list={["progress-supporting", { complete: remainingCount === 0 }]}>
+    {remainingText}
+  </p>
+</section>
+
+<style>
+  .round-progress-card {
+    position: relative;
+    display: grid;
+    gap: var(--space-6);
+    padding: var(--space-8);
+    border-radius: var(--radius-xl);
+    background:
+      radial-gradient(circle at 84% 72%, var(--accent-glow), transparent 30%),
+      linear-gradient(120deg, var(--neutral-900) 0%, var(--neutral-900) 48%, var(--surface-container-low) 100%);
+    color: var(--gold-50);
+    box-shadow: var(--shadow-elevated);
+    overflow: hidden;
+  }
+
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wider);
+    line-height: var(--leading-tight);
+    text-transform: uppercase;
+    color: var(--gold-100);
+  }
+
+  .progress-value {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    font-family: var(--font-display);
+    line-height: var(--leading-none);
+  }
+
+  .progress-value-primary {
+    font-size: var(--text-display-xl);
+    font-weight: var(--weight-extrabold);
+    letter-spacing: var(--tracking-tight);
+    line-height: 0.9;
+    color: var(--gold-300);
+  }
+
+  .progress-value-secondary {
+    font-size: var(--text-display-md);
+    font-weight: var(--weight-bold);
+    color: var(--gold-100);
+    opacity: 0.9;
+  }
+
+  .progress-bar {
+    position: relative;
+    z-index: 1;
+    height: var(--space-3);
+    background: var(--neutral-700);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: var(--progress);
+    border-radius: var(--radius-full);
+    background: linear-gradient(90deg, var(--gold-300), var(--gold-200));
+    transition: width var(--duration-normal) var(--ease-out);
+  }
+
+  .progress-supporting {
+    font-size: var(--text-md);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-tight);
+    color: var(--gold-100);
+    text-wrap: balance;
+  }
+
+  .progress-supporting.complete {
+    color: var(--gold-300);
+  }
+
+  @media (max-width: 40rem) {
+    .round-progress-card {
+      gap: var(--space-6);
+      padding: var(--space-8);
+    }
+
+    .eyebrow {
+      font-size: var(--text-sm);
+    }
+
+    .progress-value-primary {
+      font-size: var(--text-6xl);
+    }
+
+    .progress-value-secondary {
+      font-size: var(--text-3xl);
+    }
+
+    .progress-supporting {
+      font-size: var(--text-md);
+    }
+  }
+
+  @media (forced-colors: active) {
+    .round-progress-card {
+      background: Canvas;
+      box-shadow: none;
+      border: 1px solid ButtonBorder;
+    }
+
+    .round-progress-card::after {
+      display: none;
+    }
+
+    .eyebrow,
+    .progress-value-primary,
+    .progress-value-secondary,
+    .progress-supporting,
+    .progress-supporting.complete {
+      color: CanvasText;
+    }
+
+    .progress-bar {
+      background: GrayText;
+    }
+
+    .progress-fill {
+      background: Highlight;
+    }
+  }
+</style>

@@ -2,6 +2,7 @@
 import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
 import RoundSelector from "../../../components/RoundSelector.astro";
 import SegmentedControl from "../../../components/SegmentedControl.astro";
+import RoundProgressCard from "../../../components/RoundProgressCard.astro";
 import { scrapePairings } from "../../../lib/scraper";
 import { getRefereeResults } from "../../../lib/db";
 import { useTranslations } from "../../../i18n/ui";
@@ -163,37 +164,41 @@ const sectionSegments = !useSelect
   )}
 
   <div class="results-overview">
-    <RoundSelector rounds={rounds} activeRound={activeRound} baseUrl={roundBaseUrl} label={t("referee.round")} />
+    <div class="results-sticky-controls">
+      <RoundSelector rounds={rounds} activeRound={activeRound} baseUrl={roundBaseUrl} label={t("referee.round")} sticky={false} />
 
-    {hasSections && !useSelect && sectionSegments.length > 0 && (
-      <div class="section-switcher">
-        <SegmentedControl name="results-section" segments={sectionSegments} active={activeSection} />
-      </div>
-    )}
+      {hasSections && !useSelect && sectionSegments.length > 0 && (
+        <div class="section-switcher">
+          <SegmentedControl name="results-section" segments={sectionSegments} active={activeSection} />
+        </div>
+      )}
 
-    {hasSections && useSelect && (
-      <div class="section-switcher">
-        <select class="section-select" id="sectionSelect">
-          {sectionList.map((s) => (
-            <option value={s.id} selected={s.id === activeSection}>{s.name}</option>
-          ))}
-        </select>
-      </div>
-    )}
+      {hasSections && useSelect && (
+        <div class="section-switcher">
+          <select class="section-select" id="sectionSelect">
+            {sectionList.map((s) => (
+              <option value={s.id} selected={s.id === activeSection}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
 
     {allSections.map((sec) => (
       <div class="section-block">
-        <div class="progress-section">
-          <div class="progress-text">
-            <span>{t("referee.submitted")}: {sec.submittedCount} {t("referee.of")} {sec.tables.length}</span>
-            {sec.submittedCount === sec.tables.length && sec.tables.length > 0 && (
-              <span class="all-done">{t("referee.allSubmitted")}</span>
-            )}
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" style={`--fill: ${sec.tables.length > 0 ? (sec.submittedCount / sec.tables.length) * 100 : 0}%`} />
-          </div>
-        </div>
+        <RoundProgressCard
+          round={activeRound}
+          submittedCount={sec.submittedCount}
+          totalCount={sec.tables.length}
+          sectionName={sec.name}
+          roundLabel={t("referee.round")}
+          completionLabel={t("referee.completion")}
+          submittedLabel={t("referee.submitted")}
+          ofLabel={t("referee.of")}
+          allSubmittedLabel={t("referee.allSubmitted")}
+          remainingSingularLabel={t("referee.matchRemainingIn")}
+          remainingPluralLabel={t("referee.matchesRemainingIn")}
+        />
 
         {sec.submittedCount > 0 && (
           <div class="export-section">
@@ -264,6 +269,14 @@ const sectionSegments = !useSelect
     padding: var(--space-4) 0;
   }
 
+  .results-sticky-controls {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    padding-block-end: var(--space-3);
+    background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 72%, transparent 100%);
+  }
+
   .section-switcher {
     display: flex;
     justify-content: center;
@@ -300,39 +313,6 @@ const sectionSegments = !useSelect
 
   .section-block:last-child {
     margin-bottom: 0;
-  }
-
-  .progress-section {
-    margin-bottom: var(--space-4);
-  }
-
-  .progress-text {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: var(--text-sm);
-    color: var(--text-dim);
-    margin-bottom: var(--space-2);
-  }
-
-  .all-done {
-    color: var(--success, #38a169);
-    font-weight: var(--font-semibold);
-  }
-
-  .progress-bar {
-    height: 8px;
-    background: var(--border);
-    border-radius: var(--radius-full);
-    overflow: hidden;
-  }
-
-  .progress-fill {
-    height: 100%;
-    background: var(--accent-hover);
-    border-radius: var(--radius-full);
-    transition: width var(--duration-normal) var(--ease-out);
-    width: var(--fill);
   }
 
   .export-section {

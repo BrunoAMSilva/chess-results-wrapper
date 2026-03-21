@@ -158,6 +158,9 @@ export const ui = {
     'referee.of': 'of',
     'referee.viewResults': 'View Results',
     'referee.tables': 'Tables',
+    'referee.completion': 'Completion',
+    'referee.matchRemainingIn': 'match remaining in',
+    'referee.matchesRemainingIn': 'matches remaining in',
   },
   10: {
     'site.title': 'Emparceiramentos',
@@ -308,6 +311,9 @@ export const ui = {
     'referee.of': 'de',
     'referee.viewResults': 'Ver Resultados',
     'referee.tables': 'Mesas',
+    'referee.completion': 'Conclusão',
+    'referee.matchRemainingIn': 'partida restante em',
+    'referee.matchesRemainingIn': 'partidas restantes em',
   },
   0: {
     'site.title': 'Schachpaarungen',
@@ -458,6 +464,9 @@ export const ui = {
     'referee.of': 'von',
     'referee.viewResults': 'Ergebnisse anzeigen',
     'referee.tables': 'Tische',
+    'referee.completion': 'Abschluss',
+    'referee.matchRemainingIn': 'verbleibende Partie in',
+    'referee.matchesRemainingIn': 'verbleibende Partien in',
   },
   2: {
     'site.title': 'Emparejamientos',
@@ -608,6 +617,9 @@ export const ui = {
     'referee.of': 'de',
     'referee.viewResults': 'Ver Resultados',
     'referee.tables': 'Mesas',
+    'referee.completion': 'Finalización',
+    'referee.matchRemainingIn': 'partida restante en',
+    'referee.matchesRemainingIn': 'partidas restantes en',
   },
   20: {
     'site.title': 'Appariements',
@@ -758,6 +770,9 @@ export const ui = {
     'referee.of': 'de',
     'referee.viewResults': 'Voir les Résultats',
     'referee.tables': 'Tables',
+    'referee.completion': 'Avancement',
+    'referee.matchRemainingIn': 'partie restante dans',
+    'referee.matchesRemainingIn': 'parties restantes dans',
   },
 } as const;
 

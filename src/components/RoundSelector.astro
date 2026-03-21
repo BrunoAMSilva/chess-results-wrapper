@@ -11,12 +11,13 @@ interface Props {
   activeRound: number;
   baseUrl: string;
   label?: string;
+  sticky?: boolean;
 }
 
-const { rounds, activeRound, baseUrl, label = "Round" } = Astro.props;
+const { rounds, activeRound, baseUrl, label = "Round", sticky = true } = Astro.props;
 ---
 
-<div class="round-selector">
+<div class:list={["round-selector", { sticky }]}>
   <span class="round-label">{label}</span>
   <div class="round-track" id="roundTrack">
     {rounds.map((r) => (
@@ -33,18 +34,23 @@ const { rounds, activeRound, baseUrl, label = "Round" } = Astro.props;
 
 <style>
   .round-selector {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    margin-block-end: 1rem;
+    margin-block-end: var(--space-4);
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    background: var(--surface-container-low);
+    background: linear-gradient(180deg, var(--bg), var(--surface-container-low));
     backdrop-filter: blur(24px) saturate(2.2);
     -webkit-backdrop-filter: blur(24px) saturate(2.2);
     border-radius: var(--radius-lg);
     padding: var(--space-2) var(--space-3);
+    box-shadow: var(--shadow-card);
+  }
+
+  .round-selector.sticky {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    isolation: isolate;
   }
 
   .round-label {

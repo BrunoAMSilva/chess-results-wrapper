@@ -29,6 +29,7 @@
   --text-display-sm: 1.8rem;
   --text-display-md: 2.6rem;
   --text-display-lg: 3.5rem;  /* Reserved for table numbers — legible from 5ft */
+  --text-display-xl: 5rem;
 
   /* Font weights */
   --weight-normal: 400;
