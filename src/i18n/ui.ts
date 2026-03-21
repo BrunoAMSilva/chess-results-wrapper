@@ -161,6 +161,10 @@ export const ui = {
     'referee.completion': 'Completion',
     'referee.matchRemainingIn': 'match remaining in',
     'referee.matchesRemainingIn': 'matches remaining in',
+    'referee.roundCompletion': 'Round {round} Completion',
+    'referee.progressStatus': 'Submitted: {submitted} of {total}',
+    'referee.progressRemainingSingular': '{count} match remaining in {section}',
+    'referee.progressRemainingPlural': '{count} matches remaining in {section}',
   },
   10: {
     'site.title': 'Emparceiramentos',
@@ -314,6 +318,10 @@ export const ui = {
     'referee.completion': 'Conclusão',
     'referee.matchRemainingIn': 'partida restante em',
     'referee.matchesRemainingIn': 'partidas restantes em',
+    'referee.roundCompletion': 'Conclusão da Ronda {round}',
+    'referee.progressStatus': 'Submetido: {submitted} de {total}',
+    'referee.progressRemainingSingular': '{count} partida restante em {section}',
+    'referee.progressRemainingPlural': '{count} partidas restantes em {section}',
   },
   0: {
     'site.title': 'Schachpaarungen',
@@ -467,6 +475,10 @@ export const ui = {
     'referee.completion': 'Abschluss',
     'referee.matchRemainingIn': 'verbleibende Partie in',
     'referee.matchesRemainingIn': 'verbleibende Partien in',
+    'referee.roundCompletion': 'Runde {round} Abschluss',
+    'referee.progressStatus': 'Eingereicht: {submitted} von {total}',
+    'referee.progressRemainingSingular': '{count} verbleibende Partie in {section}',
+    'referee.progressRemainingPlural': '{count} verbleibende Partien in {section}',
   },
   2: {
     'site.title': 'Emparejamientos',
@@ -620,6 +632,10 @@ export const ui = {
     'referee.completion': 'Finalización',
     'referee.matchRemainingIn': 'partida restante en',
     'referee.matchesRemainingIn': 'partidas restantes en',
+    'referee.roundCompletion': 'Finalización de la Ronda {round}',
+    'referee.progressStatus': 'Enviado: {submitted} de {total}',
+    'referee.progressRemainingSingular': '{count} partida restante en {section}',
+    'referee.progressRemainingPlural': '{count} partidas restantes en {section}',
   },
   20: {
     'site.title': 'Appariements',
@@ -773,6 +789,10 @@ export const ui = {
     'referee.completion': 'Avancement',
     'referee.matchRemainingIn': 'partie restante dans',
     'referee.matchesRemainingIn': 'parties restantes dans',
+    'referee.roundCompletion': 'Ronde {round} Avancement',
+    'referee.progressStatus': 'Soumis : {submitted} sur {total}',
+    'referee.progressRemainingSingular': '{count} partie restante dans {section}',
+    'referee.progressRemainingPlural': '{count} parties restantes dans {section}',
   },
 } as const;
 

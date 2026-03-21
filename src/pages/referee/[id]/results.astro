@@ -1,7 +1,5 @@
 ---
 import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
-import RoundSelector from "../../../components/RoundSelector.astro";
-import SegmentedControl from "../../../components/SegmentedControl.astro";
 import RoundProgressCard from "../../../components/RoundProgressCard.astro";
 import { scrapePairings } from "../../../lib/scraper";
 import { getRefereeResults } from "../../../lib/db";
@@ -135,6 +133,14 @@ const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1);
 const activeSection = allSections[0]?.id || tid;
 const roundBaseUrl = `/referee/${tid}/results?lang=${lang}&section=${activeSection}`;
 
+function formatTemplate(template: string, values: Record<string, string | number>) {
+  let formatted = template;
+  for (const [key, value] of Object.entries(values)) {
+    formatted = formatted.replaceAll(`{${key}}`, String(value));
+  }
+  return formatted;
+}
+
 // Build section list for switcher
 const sectionList: { id: string; name: string }[] = [];
 if (hasSections) {
@@ -146,14 +152,6 @@ if (hasSections) {
   }
   sectionList.sort((a, b) => a.name.localeCompare(b.name));
 }
-const useSelect = sectionList.length > 3;
-const sectionSegments = !useSelect
-  ? sectionList.map((s) => ({
-      value: s.id,
-      label: s.name,
-      href: `/referee/${tid}/results?round=${activeRound}&lang=${lang}&section=${s.id}`,
-    }))
-  : [];
 ---
 
 <ResponsiveLayout title={t("referee.results")} lang={lang} navMode="referee">
@@ -164,41 +162,59 @@ const sectionSegments = !useSelect
   )}
 
   <div class="results-overview">
-    <div class="results-sticky-controls">
-      <RoundSelector rounds={rounds} activeRound={activeRound} baseUrl={roundBaseUrl} label={t("referee.round")} sticky={false} />
+    {allSections.map((sec, index) => {
+      const remainingCount = Math.max(sec.tables.length - sec.submittedCount, 0);
+      const eyebrowText = formatTemplate(t("referee.roundCompletion"), {
+        round: activeRound,
+      });
+      const progressLabel = formatTemplate(t("referee.progressStatus"), {
+        submitted: sec.submittedCount,
+        total: sec.tables.length,
+      });
+      const remainingTemplate = remainingCount === 1
+        ? t("referee.progressRemainingSingular")
+        : t("referee.progressRemainingPlural");
+      const summaryText = remainingCount === 0 && sec.tables.length > 0
+        ? t("referee.allSubmitted")
+        : formatTemplate(remainingTemplate, {
+            count: remainingCount,
+            section: sec.name,
+          });
+      const progressValueText = `${progressLabel}. ${summaryText}`;
 
-      {hasSections && !useSelect && sectionSegments.length > 0 && (
-        <div class="section-switcher">
-          <SegmentedControl name="results-section" segments={sectionSegments} active={activeSection} />
-        </div>
-      )}
-
-      {hasSections && useSelect && (
-        <div class="section-switcher">
-          <select class="section-select" id="sectionSelect">
-            {sectionList.map((s) => (
-              <option value={s.id} selected={s.id === activeSection}>{s.name}</option>
-            ))}
-          </select>
-        </div>
-      )}
-    </div>
-
-    {allSections.map((sec) => (
+      return (
       <div class="section-block">
         <RoundProgressCard
-          round={activeRound}
           submittedCount={sec.submittedCount}
           totalCount={sec.tables.length}
-          sectionName={sec.name}
-          roundLabel={t("referee.round")}
-          completionLabel={t("referee.completion")}
-          submittedLabel={t("referee.submitted")}
-          ofLabel={t("referee.of")}
-          allSubmittedLabel={t("referee.allSubmitted")}
-          remainingSingularLabel={t("referee.matchRemainingIn")}
-          remainingPluralLabel={t("referee.matchesRemainingIn")}
-        />
+          eyebrowText={eyebrowText}
+          progressLabel={progressLabel}
+          summaryText={summaryText}
+          progressValueText={progressValueText}
+        >
+          {index === 0 && (
+            <Fragment slot="eyebrow-controls">
+              <select class="card-inline-select round-inline-select" id="roundSelect" aria-label={t("referee.round")}>
+                {rounds.map((round) => (
+                  <option value={round} selected={round === activeRound}>{round}</option>
+                ))}
+              </select>
+
+            </Fragment>
+          )}
+
+          {index === 0 && (
+            <Fragment slot="supporting-controls">
+              {hasSections && sectionList.length > 0 && (
+                <select class="card-inline-select section-inline-select" id="sectionSelect" aria-label={t("referee.changeSection")}>
+                  {sectionList.map((s) => (
+                    <option value={s.id} selected={s.id === activeSection}>{s.name}</option>
+                  ))}
+                </select>
+              )}
+            </Fragment>
+          )}
+        </RoundProgressCard>
 
         {sec.submittedCount > 0 && (
           <div class="export-section">
@@ -241,11 +257,22 @@ const sectionSegments = !useSelect
           </div>
         )}
       </div>
-    ))}
+      );
+    })}
   </div>
 </ResponsiveLayout>
 
 <script is:inline>
+  // Round select navigation
+  var roundSelect = document.getElementById("roundSelect");
+  if (roundSelect) {
+    roundSelect.addEventListener("change", function() {
+      var url = new URL(window.location.href);
+      url.searchParams.set("round", roundSelect.value);
+      window.location.href = url.toString();
+    });
+  }
+
   // Section select navigation
   var sectionSelect = document.getElementById("sectionSelect");
   if (sectionSelect) {
@@ -267,44 +294,6 @@ const sectionSegments = !useSelect
     max-width: 700px;
     margin: 0 auto;
     padding: var(--space-4) 0;
-  }
-
-  .results-sticky-controls {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    padding-block-end: var(--space-3);
-    background: linear-gradient(180deg, var(--bg) 0%, var(--bg) 72%, transparent 100%);
-  }
-
-  .section-switcher {
-    display: flex;
-    justify-content: center;
-    margin-bottom: var(--space-4);
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-  }
-
-  .section-switcher::-webkit-scrollbar {
-    display: none;
-  }
-
-  .section-select {
-    width: 100%;
-    padding: var(--space-3) var(--space-4);
-    border: 2px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-    color: var(--text);
-    font-size: var(--text-base);
-    font-weight: var(--font-semibold);
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right var(--space-3) center;
-    padding-right: var(--space-8);
   }
 
   .section-block {

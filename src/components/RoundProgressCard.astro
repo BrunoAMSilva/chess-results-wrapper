@@ -1,47 +1,41 @@
 ---
 interface Props {
-  round: number;
   submittedCount: number;
   totalCount: number;
-  sectionName: string;
-  roundLabel: string;
-  completionLabel: string;
-  submittedLabel: string;
-  ofLabel: string;
-  allSubmittedLabel: string;
-  remainingSingularLabel: string;
-  remainingPluralLabel: string;
+  eyebrowText: string;
+  progressLabel: string;
+  summaryText: string;
+  progressValueText?: string;
 }
 
 const {
-  round,
   submittedCount,
   totalCount,
-  sectionName,
-  roundLabel,
-  completionLabel,
-  submittedLabel,
-  ofLabel,
-  allSubmittedLabel,
-  remainingSingularLabel,
-  remainingPluralLabel,
+  eyebrowText,
+  progressLabel,
+  summaryText,
+  progressValueText,
 } = Astro.props;
 
+const hasEyebrowControls = Astro.slots.has("eyebrow-controls");
+const hasSupportingControls = Astro.slots.has("supporting-controls");
 const safeTotal = Math.max(totalCount, 0);
 const safeSubmitted = Math.min(Math.max(submittedCount, 0), safeTotal);
-const remainingCount = Math.max(safeTotal - safeSubmitted, 0);
 const progressValue = safeTotal > 0 ? (safeSubmitted / safeTotal) * 100 : 0;
-const eyebrow = `${roundLabel} ${round} ${completionLabel}`;
-const progressLabel = `${submittedLabel}: ${safeSubmitted} ${ofLabel} ${safeTotal}`;
-const remainingText = remainingCount === 0
-  ? allSubmittedLabel
-  : `${remainingCount} ${remainingCount === 1 ? remainingSingularLabel : remainingPluralLabel} ${sectionName}`;
+const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summaryText}`;
 ---
 
-<section class="round-progress-card" aria-label={eyebrow}>
-  <p class="eyebrow">{eyebrow}</p>
+<section class="round-progress-card" aria-label={eyebrowText}>
+  <div class="eyebrow-row">
+    <h2 class="eyebrow">{eyebrowText}</h2>
+    {hasEyebrowControls && (
+      <div class="eyebrow-controls">
+        <slot name="eyebrow-controls" />
+      </div>
+    )}
+  </div>
 
-  <p class="progress-value" aria-label={progressLabel}>
+  <p class="progress-value" aria-hidden="true">
     <span class="progress-value-primary">{safeSubmitted}</span>
     <span class="progress-value-secondary">/ {safeTotal}</span>
   </p>
@@ -53,13 +47,21 @@ const remainingText = remainingCount === 0
     aria-valuemin="0"
     aria-valuemax={safeTotal}
     aria-valuenow={safeSubmitted}
+    aria-valuetext={resolvedProgressValueText}
   >
     <div class="progress-fill" style={`--progress: ${progressValue}%`} />
   </div>
 
-  <p class:list={["progress-supporting", { complete: remainingCount === 0 }]}>
-    {remainingText}
-  </p>
+  <div class="supporting-row">
+    <p class="progress-supporting">
+      {summaryText}
+    </p>
+    {hasSupportingControls && (
+      <div class="supporting-controls">
+        <slot name="supporting-controls" />
+      </div>
+    )}
+  </div>
 </section>
 
 <style>
@@ -77,8 +79,48 @@ const remainingText = remainingCount === 0
     overflow: hidden;
   }
 
+  .eyebrow-row,
+  .supporting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .eyebrow-controls,
+  .supporting-controls {
+    flex-shrink: 0;
+  }
+
+  .eyebrow-controls :global(.card-inline-select),
+  .supporting-controls :global(.card-inline-select) {
+    min-width: 0;
+    padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
+    border: 1px solid var(--neutral-700);
+    border-radius: var(--radius-full);
+    background-color: var(--neutral-800);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fde68a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-3) center;
+    color: var(--gold-100);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .eyebrow-controls :global(.card-inline-select) {
+    width: 5.5rem;
+  }
+
+  .supporting-controls :global(.card-inline-select) {
+    width: min(11rem, 42vw);
+  }
+
 
   .eyebrow {
+    margin: 0;
     font-family: var(--font-display);
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
@@ -89,6 +131,7 @@ const remainingText = remainingCount === 0
   }
 
   .progress-value {
+    margin: 0;
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
@@ -130,21 +173,33 @@ const remainingText = remainingCount === 0
   }
 
   .progress-supporting {
-    font-size: var(--text-md);
+    margin: 0;
+    font-size: var(--text-base);
     font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
     color: var(--gold-100);
     text-wrap: balance;
-  }
-
-  .progress-supporting.complete {
-    color: var(--gold-300);
+    flex: 1;
+    min-width: 0;
   }
 
   @media (max-width: 40rem) {
     .round-progress-card {
       gap: var(--space-6);
       padding: var(--space-8);
+    }
+
+    .eyebrow-row,
+    .supporting-row {
+      gap: var(--space-3);
+    }
+
+    .eyebrow-controls :global(.card-inline-select) {
+      width: 5rem;
+    }
+
+    .supporting-controls :global(.card-inline-select) {
+      width: min(10rem, 40vw);
     }
 
     .eyebrow {
@@ -160,7 +215,7 @@ const remainingText = remainingCount === 0
     }
 
     .progress-supporting {
-      font-size: var(--text-md);
+      font-size: var(--text-base);
     }
   }
 
@@ -171,15 +226,10 @@ const remainingText = remainingCount === 0
       border: 1px solid ButtonBorder;
     }
 
-    .round-progress-card::after {
-      display: none;
-    }
-
     .eyebrow,
     .progress-value-primary,
     .progress-value-secondary,
-    .progress-supporting,
-    .progress-supporting.complete {
+    .progress-supporting {
       color: CanvasText;
     }
 
