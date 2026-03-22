@@ -19,6 +19,7 @@ let totalRounds = 0;
 let activeRound = 1;
 let linkedTournaments: LinkedTournament[] | undefined;
 let currentLabel = "";
+let tournamentName = "";
 
 interface RefereeResult {
   table_number: number;
@@ -41,6 +42,7 @@ try {
   const initial = await scrapePairings(tid, 1);
   totalRounds = initial.info.totalRounds;
   linkedTournaments = initial.info.linkedTournaments;
+  tournamentName = initial.info.name;
   currentLabel = initial.info.currentLabel || initial.info.name;
 
   if (roundParam) {
@@ -152,9 +154,12 @@ if (hasSections) {
   }
   sectionList.sort((a, b) => a.name.localeCompare(b.name));
 }
+
+const resultsTitle = allSections[0]?.name || currentLabel || t("referee.results");
+const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentName : undefined;
 ---
 
-<ResponsiveLayout title={t("referee.results")} lang={lang} navMode="referee">
+<ResponsiveLayout title={resultsTitle} eyebrow={eyebrow} lang={lang} navMode="referee">
   {error && (
     <div class="error-msg">
       <p>{error}</p>

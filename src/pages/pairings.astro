@@ -33,6 +33,8 @@ try {
 const isTeamView = teamPairings && teamPairings.length > 0;
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
 const linkedTournaments = data?.info.linkedTournaments;
+const sectionTitle = data?.info.currentLabel || data?.info.name || t('site.title');
+const tournamentEyebrow = data?.info.currentLabel ? data.info.name : undefined;
 const recentPlayerCount = !isTeamView
   ? new Set(
       allPairings
@@ -43,7 +45,7 @@ const recentPlayerCount = !isTeamView
   : 0;
 ---
 
-<ResponsiveLayout title={data?.info.name || t('site.title')} lang={lang}>
+<ResponsiveLayout title={sectionTitle} eyebrow={tournamentEyebrow} lang={lang}>
   {error && (
     <div class="error-msg">
       <p>{error}</p>

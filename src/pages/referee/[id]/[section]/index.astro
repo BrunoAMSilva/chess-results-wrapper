@@ -18,10 +18,14 @@ let totalRounds = 0;
 let activeRound = 1;
 let allPairings: Pairing[] = [];
 let teamPairings: TeamPairing[] | undefined;
+let tournamentName = "";
+let sectionTitle = "";
 
 try {
   const initial = await scrapePairings(section, 1);
   totalRounds = initial.info.totalRounds;
+  tournamentName = initial.info.name;
+  sectionTitle = initial.info.currentLabel || initial.info.name;
 
   if (roundParam) {
     activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
@@ -81,9 +85,11 @@ for (const r of refResults) {
 const q = `round=${activeRound}&lang=${lang}`;
 const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1);
 const roundBaseUrl = `/referee/${tid}/${section}?lang=${lang}`;
+const pageTitle = sectionTitle || t("referee.selectTable");
+const eyebrow = tournamentName && tournamentName !== pageTitle ? tournamentName : undefined;
 ---
 
-<ResponsiveLayout title={t("referee.selectTable")} lang={lang} navMode="referee">
+<ResponsiveLayout title={pageTitle} eyebrow={eyebrow} lang={lang} navMode="referee">
   {error && <div class="error-msg"><p>{error}</p></div>}
 
   <div class="referee-page">

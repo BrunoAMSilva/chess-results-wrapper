@@ -52,12 +52,14 @@ if (match.result) {
 const normalizedResult = match.result.trim();
 const isBye = !match.black && (/bye|spielfrei/i.test(match.unpairedLabel || "") || normalizedResult === "1");
 const unpairedLabel = !match.black
-  ? (match.unpairedLabel?.trim() || (normalizedResult === "1" ? "BYE" : t("match.notPaired")))
+  ? (match.unpairedLabel?.trim() || (normalizedResult === "1" ? t("match.bye") : t("match.notPaired")))
   : "";
 const wName = match.white ? match.white.name : "---";
 const bName = match.black ? match.black.name : "---";
 const delayStep = Math.max(0, Math.min(10, Math.round(delay / 40)));
 const delayClass = `delay-${delayStep}`;
+const whitePlayerLabel = reverseName(wName);
+const blackPlayerLabel = match.black ? reverseName(bName) : (isBye ? t("match.bye") : unpairedLabel);
 ---
 
 <div class:list={["match-card", "animate-enter", delayClass]}>
@@ -71,6 +73,7 @@ const delayClass = `delay-${delayStep}`;
         <a
           href={`/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(match.white?.name || "")}&lang=${lang}`}
           class={`player-row white-player ${whiteWins ? "winner-row" : ""}`}
+          aria-label={whitePlayerLabel}
         >
           <div class="player-info">
             <span class="piece-icon white-piece" />
@@ -100,21 +103,16 @@ const delayClass = `delay-${delayStep}`;
     <div class="score-divider"></div>
 
     {
-      tid ? (
+      tid && match.black ? (
         <a
-          href={`/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(match.black?.name || "")}&lang=${lang}`}
+          href={`/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(match.black.name)}&lang=${lang}`}
           class={`player-row black-player ${blackWins ? "winner-row" : ""}`}
+          aria-label={blackPlayerLabel}
         >
           <div class="player-info">
             <span class="piece-icon black-piece" />
             <div class="name-wrapper">
-              {isBye ? (
-                <span class="player-name bye-text">BYE</span>
-              ) : !match.black ? (
-                <span class="player-name bye-text">{unpairedLabel}</span>
-              ) : (
-                <span class="player-name">{reverseName(bName)}</span>
-              )}
+              <span class="player-name">{reverseName(bName)}</span>
             </div>
           </div>
           <div class:list={["player-score", blackScoreClass]}>
@@ -127,7 +125,7 @@ const delayClass = `delay-${delayStep}`;
             <span class="piece-icon black-piece" />
             <div class="name-wrapper">
               {isBye ? (
-                <span class="player-name bye-text">BYE</span>
+                <span class="player-name bye-text">{t("match.bye")}</span>
               ) : !match.black ? (
                 <span class="player-name bye-text">{unpairedLabel}</span>
               ) : (

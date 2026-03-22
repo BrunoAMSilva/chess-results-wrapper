@@ -19,11 +19,13 @@ let allPairings: Pairing[] = [];
 let teamPairings: TeamPairing[] | undefined;
 let linkedTournaments: LinkedTournament[] | undefined;
 let currentLabel = "";
+let tournamentName = "";
 
 try {
-  const initial = await scrapePairings(tid, 1, lang);
+  const initial = await scrapePairings(tid, 1);
   totalRounds = initial.info.totalRounds;
   linkedTournaments = initial.info.linkedTournaments;
+  tournamentName = initial.info.name;
   currentLabel = initial.info.currentLabel || initial.info.name;
 
   if (roundParam) {
@@ -31,7 +33,7 @@ try {
   } else {
     let foundRound = 1;
     for (let r = totalRounds; r >= 1; r--) {
-      const data = r === 1 ? initial : await scrapePairings(tid, r, lang);
+      const data = r === 1 ? initial : await scrapePairings(tid, r);
       const pairings = data.pairings || [];
       const hasNoResults = pairings.length > 0 && pairings.every((p) => !p.result || p.result.trim() === "");
       if (hasNoResults) {
@@ -43,7 +45,7 @@ try {
     activeRound = foundRound;
   }
 
-  const activeData = activeRound === 1 ? initial : await scrapePairings(tid, activeRound, lang);
+  const activeData = activeRound === 1 ? initial : await scrapePairings(tid, activeRound);
   allPairings = activeData.pairings || [];
   teamPairings = activeData.teamPairings;
 } catch (e) {
@@ -99,13 +101,15 @@ if (!hasSections) {
   }
 }
 
-const title = hasSections ? t("referee.selectSection") : t("referee.selectTable");
+const sectionTitle = currentLabel || t("referee.selectTable");
+const title = hasSections ? t("referee.selectSection") : sectionTitle;
+const eyebrow = tournamentName && tournamentName !== title ? tournamentName : undefined;
 const q = `round=${activeRound}&lang=${lang}`;
 const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1);
 const roundBaseUrl = `/referee/${tid}?lang=${lang}`;
 ---
 
-<ResponsiveLayout title={title} lang={lang} navMode="referee">
+<ResponsiveLayout title={title} eyebrow={eyebrow} lang={lang} navMode="referee">
   {error && <div class="error-msg"><p>{error}</p></div>}
 
   <div class="referee-page">

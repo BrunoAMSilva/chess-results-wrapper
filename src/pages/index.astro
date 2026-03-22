@@ -1,12 +1,14 @@
 ---
 import RecentTournaments from "../components/RecentTournaments.astro";
-import { useTranslations } from "../i18n/ui";
+import TournamentCard from "../components/TournamentCard.astro";
+import { languages, useTranslations } from "../i18n/ui";
 import { resolvePageLang } from "../lib/page-lang";
 import { countTournaments, listTournaments } from "../lib/db";
 import "../styles/global.css";
 
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const t = useTranslations(lang);
+const langCode = languages[lang as keyof typeof languages] || "en";
 const discoverExpanded = Astro.url.searchParams.get("discover") === "all";
 const discoverLimit = discoverExpanded ? 24 : 3;
 const discoverOffset = 0;
@@ -19,14 +21,14 @@ const discoverLessHref = `${discoverBase}`;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={langCode}>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#fcd34d" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{t('home.title')}</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
@@ -50,7 +52,8 @@ const discoverLessHref = `${discoverBase}`;
   </head>
   <body>
     <div class="home-shell">
-      <main class="home-main">
+      <a class="skip-link" href="#maincontent">{t('a11y.skipToMain')}</a>
+      <main id="maincontent" class="home-main" tabindex="-1">
         <div class="home-content animate-enter">
           <div class="home-icon">
             <img src="logo.svg" alt="" width="128" height="128" />
@@ -59,6 +62,7 @@ const discoverLessHref = `${discoverBase}`;
           <p class="home-subtitle">{t('home.subtitle')}</p>
 
           <form class="search-form" id="searchForm">
+            <label class="search-label" for="tournamentInput">{t('nav.search')}</label>
             <div class="input-wrapper">
               <svg class="input-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <circle cx="11" cy="11" r="8"></circle>
@@ -76,6 +80,7 @@ const discoverLessHref = `${discoverBase}`;
                 aria-controls="searchResults"
                 aria-autocomplete="list"
                 aria-activedescendant=""
+                aria-describedby="searchHint"
               />
               <div class="search-results hidden" id="searchResults" role="listbox" aria-label="Search results">
                 <p class="search-loading hidden" id="searchLoading">{t('home.loading')}</p>
@@ -92,7 +97,7 @@ const discoverLessHref = `${discoverBase}`;
             </button>
           </form>
 
-          <p class="home-hint">{t('home.example')}</p>
+          <p class="home-hint" id="searchHint">{t('home.example')}</p>
           <p class="error-hint hidden" id="errorHint">{t('home.invalid')}</p>
 
           <RecentTournaments recentLabel={t('home.recent')} />
@@ -102,11 +107,14 @@ const discoverLessHref = `${discoverBase}`;
             {discoverRows.length > 0 ? (
               <div class="discover-list">
                 {discoverRows.map((item) => (
-                  <a class="discover-card" href={`/standings?tid=${item.id}&lang=${lang}`}>
-                    <h3 class="discover-name">{item.name}</h3>
-                    <p class="discover-line">{item.date || "Date not available"}</p>
-                    <p class="discover-line discover-location">{item.location || "Location not available"}</p>
-                  </a>
+                  <TournamentCard
+                    name={item.name}
+                    href={`/standings?tid=${item.id}&lang=${lang}`}
+                    date={item.date || undefined}
+                    location={item.location || undefined}
+                    type={item.type}
+                    playerCount={item.player_count}
+                  />
                 ))}
               </div>
             ) : (
@@ -185,6 +193,13 @@ const discoverLessHref = `${discoverBase}`;
     gap: var(--space-3);
     width: 100%;
     margin-top: var(--space-3);
+  }
+
+  .search-label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text);
+    text-align: left;
   }
 
   .input-wrapper {
@@ -377,47 +392,10 @@ const discoverLessHref = `${discoverBase}`;
     margin-bottom: var(--space-4);
   }
 
-  .discover-card {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    border-radius: var(--radius-md);
-    background: linear-gradient(180deg, var(--surface), var(--surface-hover));
-    padding: var(--space-3);
-    text-align: left;
-    text-decoration: none;
+  .discover-list :global(.tournament-card) {
     flex: 1 1 280px;
     min-width: 0;
-    transition: transform var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-in-out),
-      box-shadow var(--duration-fast) var(--ease-in-out);
-  }
-
-  .discover-card:hover,
-  .discover-card:focus-visible {
-    transform: translateY(-2px);
-    border-color: var(--accent);
-    box-shadow: var(--shadow-md);
-    outline: none;
-  }
-
-  .discover-name {
-    font-size: var(--text-base);
-    color: var(--text);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-tight);
-    margin: 0;
-  }
-
-  .discover-line {
-    margin: 0;
-    color: var(--text-dim);
-    font-size: var(--text-sm);
-    line-height: var(--leading-normal);
-  }
-
-  .discover-location {
-    color: var(--text-muted);
+    align-self: stretch;
   }
 
   .discover-empty {
@@ -465,7 +443,7 @@ const discoverLessHref = `${discoverBase}`;
 
   .home-hint {
     font-size: var(--text-sm);
-    color: var(--text-muted);
+    color: var(--text-dim);
     font-family: var(--font-mono);
   }
 
@@ -486,13 +464,13 @@ const discoverLessHref = `${discoverBase}`;
       padding: var(--space-4) var(--space-6);
     }
 
-    .discover-card {
+    .discover-list :global(.tournament-card) {
       flex-basis: calc(50% - var(--space-2));
     }
   }
 
   @media (min-width: 1024px) {
-    .discover-card {
+    .discover-list :global(.tournament-card) {
       flex-basis: calc(33.333% - var(--space-2));
     }
   }

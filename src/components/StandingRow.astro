@@ -19,9 +19,11 @@ const rankClass = standing.rank <= 3 ? `rank-${standing.rank}` : "";
 const Tag = tid ? "a" : "div";
 const delayStep = Math.max(0, Math.min(10, index));
 const delayClass = `delay-${delayStep}`;
+const playerDisplayName = reverseName(standing.name);
 const attributes = tid
   ? {
       href: `/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(standing.name)}&lang=${lang}`,
+      'aria-label': playerDisplayName,
     }
   : {};
 ---
@@ -35,7 +37,7 @@ const attributes = tid
   </div>
 
   <div class="player-info">
-    <span class="player-name">{reverseName(standing.name)}</span>
+    <span class="player-name">{playerDisplayName}</span>
     <span class="player-fed">
       {standing.fed}
       {

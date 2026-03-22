@@ -12,23 +12,24 @@ interface Props {
 
 const { name, href, date, location, type, playerCount } = Astro.props;
 
-function getTournamentIcon(kind?: TournamentType): string {
-  switch (kind) {
-    case TournamentType.RoundRobin:
-      return '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 11.31-2.72" /><path d="M18 4v4h-4" /><path d="M18 16a6 6 0 0 1-11.31 2.72" /><path d="M6 20v-4h4" /></svg>';
-    case TournamentType.TeamSwiss:
-      return '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /><circle cx="9.5" cy="7" r="3" /><path d="M21 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 4.13a4 4 0 0 1 0 7.75" /></svg>';
-    case TournamentType.TeamRoundRobin:
-      return '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 19a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4" /><circle cx="8" cy="9" r="3" /><path d="M14 7h6" /><path d="M17 4l3 3-3 3" /><path d="M20 17h-6" /><path d="M17 14l-3 3 3 3" /></svg>';
-    case TournamentType.Swiss:
-    default:
-      return '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h6v6H5z" /><path d="M13 14h6v6h-6z" /><path d="M8 10v2a2 2 0 0 0 2 2h3" /><path d="M16 10V8a2 2 0 0 0-2-2h-3" /></svg>';
-  }
-}
+const TOURNAMENT_ICONS: Record<TournamentType, string> = {
+  [TournamentType.Swiss]: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h6v6H5z" /><path d="M13 14h6v6h-6z" /><path d="M8 10v2a2 2 0 0 0 2 2h3" /><path d="M16 10V8a2 2 0 0 0-2-2h-3" /></svg>',
+  [TournamentType.RoundRobin]: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 11.31-2.72" /><path d="M18 4v4h-4" /><path d="M18 16a6 6 0 0 1-11.31 2.72" /><path d="M6 20v-4h4" /></svg>',
+  [TournamentType.TeamSwiss]: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" /><circle cx="9.5" cy="7" r="3" /><path d="M21 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 4.13a4 4 0 0 1 0 7.75" /></svg>',
+  [TournamentType.TeamRoundRobin]: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 19a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4" /><circle cx="8" cy="9" r="3" /><path d="M14 7h6" /><path d="M17 4l3 3-3 3" /><path d="M20 17h-6" /><path d="M17 14l-3 3 3 3" /></svg>',
+};
+
+const tournamentType = type ?? TournamentType.Swiss;
+const tournamentIcon = TOURNAMENT_ICONS[tournamentType];
 ---
 
 <a class="tournament-card" href={href}>
-  <span class="card-icon" aria-hidden="true" set:html={getTournamentIcon(type)} />
+  <span
+    class="card-icon"
+    data-tournament-type={tournamentType}
+    aria-hidden="true"
+    set:html={tournamentIcon}
+  />
   <span class="card-body">
     <span class="card-name">{name}</span>
     {(date || location || playerCount) && (
@@ -94,6 +95,22 @@ function getTournamentIcon(kind?: TournamentType): string {
     border-radius: var(--radius-md);
     background: var(--surface-container-highest);
     color: var(--primary-container);
+  }
+
+  .card-icon[data-tournament-type="swiss"] {
+    color: var(--primary-container);
+  }
+
+  .card-icon[data-tournament-type="round-robin"] {
+    color: var(--primary-fixed-dim);
+  }
+
+  .card-icon[data-tournament-type="team-swiss"] {
+    color: var(--secondary-fixed-dim);
+  }
+
+  .card-icon[data-tournament-type="team-round-robin"] {
+    color: var(--tertiary-fixed-dim);
   }
 
   .card-body {

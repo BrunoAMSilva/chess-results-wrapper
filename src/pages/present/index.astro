@@ -42,7 +42,7 @@ let error: string | null = null;
 let playerList: import("../../lib/scraper").Standing[] = [];
 
 try {
-  data = await scrapePairings(tid, round, lang);
+  data = await scrapePairings(tid, round);
 } catch (e) {
   error = e instanceof Error ? e.message : t('error.load');
 }
@@ -64,7 +64,7 @@ const visiblePairings = hideNonPaired
 let womenPlayerList: import("../../lib/scraper").Standing[] = [];
 if (allPairings.length === 0 && !error) {
   try {
-    const standingsData = await scrapeStandings(tid, lang);
+    const standingsData = await scrapeStandings(tid);
     playerList = standingsData.standings;
     womenPlayerList = standingsData.womenStandings;
   } catch (_) { /* ignore - show empty state */ }
@@ -73,6 +73,13 @@ if (allPairings.length === 0 && !error) {
 const activePairings = visiblePairings.filter((p) => p.black !== null);
 const totalPlayers = activePairings.length * 2 + visiblePairings.filter((p) => !p.black).length;
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
+const totalRounds = data?.info.totalRounds ?? 1;
+const previousRound = Math.max(1, round - 1);
+const nextRound = Math.min(totalRounds, round + 1);
+const hasPreviousRound = round > 1;
+const hasNextRound = round < totalRounds;
+const sectionTitle = data?.info.currentLabel || data?.info.name || t('site.title');
+const tournamentEyebrow = data?.info.currentLabel ? data.info.name : undefined;
 
 // Group pairings into pages
 const pages = paginateArray(visiblePairings, rowsPerPage);
@@ -97,13 +104,16 @@ function isTournamentLive(dateStr?: string): boolean {
 const autoRefresh = isTournamentLive(data?.info.date);
 ---
 
-<Layout title={data?.info.name || t('site.title')} lang={lang} autoRefresh={autoRefresh}>
+<Layout title={sectionTitle} eyebrow={tournamentEyebrow} lang={lang} autoRefresh={autoRefresh}>
   <div class="container">
     <header class="header">
       <div class="header-left">
         <div class="title-row">
           <img class="icon-logo" src="/logo.svg" alt="" />
-          <h1 class="title">{data?.info.name || t('site.title')}</h1>
+          <div class="title-stack">
+            {tournamentEyebrow && <p class="eyebrow">{tournamentEyebrow}</p>}
+            <h1 class="title">{sectionTitle}</h1>
+          </div>
         </div>
       </div>
 
@@ -128,12 +138,24 @@ const autoRefresh = isTournamentLive(data?.info.date);
             </span>
             
             <div class="round-nav">
-              <a href={`/present?tid=${tid}&round=${round - 1}&lang=${lang}${presenterExtraSuffix}`} class:list={["nav-btn", { disabled: round <= 1 }]} aria-label={t('header.prevRound')}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-              </a>
-              <a href={`/present?tid=${tid}&round=${round + 1}&lang=${lang}${presenterExtraSuffix}`} class:list={["nav-btn", { disabled: round >= data.info.totalRounds }]} aria-label={t('header.nextRound')}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-              </a>
+              {hasPreviousRound ? (
+                <a href={`/present?tid=${tid}&round=${previousRound}&lang=${lang}${presenterExtraSuffix}`} class="nav-btn" aria-label={t('header.prevRound')}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </a>
+              ) : (
+                <span class:list={["nav-btn", "disabled"]} aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </span>
+              )}
+              {hasNextRound ? (
+                <a href={`/present?tid=${tid}&round=${nextRound}&lang=${lang}${presenterExtraSuffix}`} class="nav-btn" aria-label={t('header.nextRound')}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </a>
+              ) : (
+                <span class:list={["nav-btn", "disabled"]} aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </span>
+              )}
             </div>
           </div>
         )}

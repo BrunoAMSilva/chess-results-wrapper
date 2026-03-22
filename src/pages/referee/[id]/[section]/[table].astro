@@ -18,10 +18,14 @@ let error: string | null = null;
 let activeRound = 1;
 let whiteName = "";
 let blackName = "";
+let tournamentName = "";
+let sectionTitle = "";
 
 try {
   const initial = await scrapePairings(section, 1);
   const totalRounds = initial.info.totalRounds;
+  tournamentName = initial.info.name;
+  sectionTitle = initial.info.currentLabel || initial.info.name;
 
   if (roundParam) {
     activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
@@ -65,9 +69,12 @@ const tableLabel = isTeamTournament
 const q = `round=${activeRound}&lang=${lang}`;
 // Back goes to the table grid for this section
 const backUrl = `/referee/${tid}/${section}?${q}`;
+const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableLabel}`
+  ? sectionTitle
+  : tournamentName || undefined;
 ---
 
-<ResponsiveLayout title={`${t("referee.table")} ${tableLabel}`} lang={lang} navMode="referee">
+<ResponsiveLayout title={`${t("referee.table")} ${tableLabel}`} eyebrow={eyebrow} lang={lang} navMode="referee">
   {error && <div class="error-msg"><p>{error}</p></div>}
 
   <div class="result-page">

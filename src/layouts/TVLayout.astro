@@ -1,23 +1,24 @@
 ---
-import { ViewTransitions } from "astro:transitions";
 import { languages } from "../i18n/ui";
 import BaseHead from "../components/BaseHead.astro";
 import "../styles/global.css";
 
 interface Props {
   title: string;
+  eyebrow?: string;
   lang?: number;
   autoRefresh?: boolean;
 }
 
-const { title, lang = 1, autoRefresh = true } = Astro.props;
+const { title, eyebrow, lang = 1, autoRefresh = true } = Astro.props;
 const langCode = languages[lang as keyof typeof languages] || 'en';
+const documentTitle = eyebrow ? `${eyebrow} - ${title}` : title;
 ---
 
 <!doctype html>
 <html lang={langCode}>
   <head>
-    <BaseHead title={title} />
+    <BaseHead title={documentTitle} />
   </head>
   <body>
     <slot />
@@ -102,6 +103,25 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     overflow: hidden;
   }
 
+  .title-stack {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: var(--space-1);
+  }
+
+  .eyebrow {
+    font-size: clamp(var(--text-xs), 0.9vw, var(--text-base));
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+  }
+
   .icon-logo {
     width: 28px;
     height: 28px;
@@ -110,7 +130,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   }
 
   .title {
-    font-size: var(--text-3xl);
+    font-size: clamp(var(--text-2xl), 2.4vw, var(--text-4xl));
     font-family: var(--font-display);
     font-weight: var(--weight-extrabold);
     line-height: var(--leading-tight);
@@ -118,8 +138,8 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-transform: uppercase;
     letter-spacing: var(--tracking-tight);
+    margin: 0;
   }
 
   /* Carousel */

@@ -11,6 +11,7 @@ export const defaultLang = 1;
 export const ui = {
   1: {
     'site.title': 'Chess Pairings',
+    'a11y.skipToMain': 'Skip to main content',
     'header.matches': 'Matches',
     'header.players': 'Players',
     'header.round': 'Rd.',
@@ -168,6 +169,7 @@ export const ui = {
   },
   10: {
     'site.title': 'Emparceiramentos',
+    'a11y.skipToMain': 'Saltar para o conteúdo principal',
     'header.matches': 'Jogos',
     'header.players': 'Jogadores',
     'header.round': 'Rod.',
@@ -325,6 +327,7 @@ export const ui = {
   },
   0: {
     'site.title': 'Schachpaarungen',
+    'a11y.skipToMain': 'Zum Hauptinhalt springen',
     'header.matches': 'Partien',
     'header.players': 'Spieler',
     'header.round': 'Rd.',
@@ -482,6 +485,7 @@ export const ui = {
   },
   2: {
     'site.title': 'Emparejamientos',
+    'a11y.skipToMain': 'Saltar al contenido principal',
     'header.matches': 'Partidas',
     'header.players': 'Jugadores',
     'header.round': 'Rd.',
@@ -639,6 +643,7 @@ export const ui = {
   },
   20: {
     'site.title': 'Appariements',
+    'a11y.skipToMain': 'Aller au contenu principal',
     'header.matches': 'Matchs',
     'header.players': 'Joueurs',
     'header.round': 'Rd.',

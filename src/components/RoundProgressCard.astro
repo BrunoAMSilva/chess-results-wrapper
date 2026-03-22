@@ -66,6 +66,16 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
 
 <style>
   .round-progress-card {
+    --rpc-surface-start: var(--neutral-900);
+    --rpc-surface-end: var(--surface-container-low);
+    --rpc-text: var(--gold-50);
+    --rpc-text-muted: var(--gold-100);
+    --rpc-text-strong: var(--gold-300);
+    --rpc-progress-track: var(--neutral-700);
+    --rpc-select-border: var(--neutral-700);
+    --rpc-select-bg: var(--neutral-800);
+    --rpc-select-text: var(--gold-100);
+    --rpc-shadow: var(--shadow-elevated);
     position: relative;
     display: grid;
     gap: var(--space-6);
@@ -73,10 +83,38 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     border-radius: var(--radius-xl);
     background:
       radial-gradient(circle at 84% 72%, var(--accent-glow), transparent 30%),
-      linear-gradient(120deg, var(--neutral-900) 0%, var(--neutral-900) 48%, var(--surface-container-low) 100%);
-    color: var(--gold-50);
-    box-shadow: var(--shadow-elevated);
+      linear-gradient(120deg, var(--rpc-surface-start) 0%, var(--rpc-surface-start) 48%, var(--rpc-surface-end) 100%);
+    color: var(--rpc-text);
+    box-shadow: var(--rpc-shadow);
     overflow: hidden;
+  }
+
+  :global([data-theme="light"]) .round-progress-card {
+    --rpc-surface-start: var(--surface);
+    --rpc-surface-end: var(--surface-container-low);
+    --rpc-text: var(--text);
+    --rpc-text-muted: var(--text-secondary);
+    --rpc-text-strong: var(--accent-text);
+    --rpc-progress-track: var(--surface-container-highest);
+    --rpc-select-border: var(--border-strong);
+    --rpc-select-bg: var(--surface);
+    --rpc-select-text: var(--text);
+    --rpc-shadow: var(--shadow-card);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme])) .round-progress-card {
+      --rpc-surface-start: var(--surface);
+      --rpc-surface-end: var(--surface-container-low);
+      --rpc-text: var(--text);
+      --rpc-text-muted: var(--text-secondary);
+      --rpc-text-strong: var(--accent-text);
+      --rpc-progress-track: var(--surface-container-highest);
+      --rpc-select-border: var(--border-strong);
+      --rpc-select-bg: var(--surface);
+      --rpc-select-text: var(--text);
+      --rpc-shadow: var(--shadow-card);
+    }
   }
 
   .eyebrow-row,
@@ -96,13 +134,13 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
   .supporting-controls :global(.card-inline-select) {
     min-width: 0;
     padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
-    border: 1px solid var(--neutral-700);
+    border: 1px solid var(--rpc-select-border);
     border-radius: var(--radius-full);
-    background-color: var(--neutral-800);
+    background-color: var(--rpc-select-bg);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fde68a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
     background-position: right var(--space-3) center;
-    color: var(--gold-100);
+    color: var(--rpc-select-text);
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-tight);
@@ -127,7 +165,7 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     letter-spacing: var(--tracking-wider);
     line-height: var(--leading-tight);
     text-transform: uppercase;
-    color: var(--gold-100);
+    color: var(--rpc-text-muted);
   }
 
   .progress-value {
@@ -145,13 +183,13 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     font-weight: var(--weight-extrabold);
     letter-spacing: var(--tracking-tight);
     line-height: 0.9;
-    color: var(--gold-300);
+    color: var(--rpc-text-strong);
   }
 
   .progress-value-secondary {
     font-size: var(--text-display-md);
     font-weight: var(--weight-bold);
-    color: var(--gold-100);
+    color: var(--rpc-text-muted);
     opacity: 0.9;
   }
 
@@ -159,7 +197,7 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     position: relative;
     z-index: 1;
     height: var(--space-3);
-    background: var(--neutral-700);
+    background: var(--rpc-progress-track);
     border-radius: var(--radius-full);
     overflow: hidden;
   }
@@ -177,7 +215,7 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     font-size: var(--text-base);
     font-weight: var(--weight-medium);
     line-height: var(--leading-tight);
-    color: var(--gold-100);
+    color: var(--rpc-text-muted);
     text-wrap: balance;
     flex: 1;
     min-width: 0;

@@ -29,6 +29,8 @@ const teamStandings = data?.teamStandings || [];
 const hasWomen = womenStandings.length > 0;
 const hasTeams = teamStandings.length > 0;
 const linkedTournaments = data?.info.linkedTournaments;
+const sectionTitle = data?.info.currentLabel || data?.info.name || t("site.title");
+const tournamentEyebrow = data?.info.currentLabel ? data.info.name : undefined;
 const recentPlayerCount = allStandings.length;
 
 // Build segments for the segmented control
@@ -45,7 +47,7 @@ if (hasWomen) {
 const defaultActive = hasTeams ? "teams" : "open";
 ---
 
-<MobileLayout title={data?.info.name || t("site.title")} lang={lang}>
+<MobileLayout title={sectionTitle} eyebrow={tournamentEyebrow} lang={lang}>
   {
     error && (
       <div class="error-msg">
