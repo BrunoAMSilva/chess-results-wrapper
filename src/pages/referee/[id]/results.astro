@@ -143,6 +143,15 @@ function formatTemplate(template: string, values: Record<string, string | number
   return formatted;
 }
 
+function getResultTone(result?: string): "pending" | "white" | "black" | "draw" | "other" {
+  if (!result) return "pending";
+  const normalized = result.replace(/\s+/g, "").toLowerCase();
+  if (normalized.includes("1-0") || normalized.includes("1:0")) return "white";
+  if (normalized.includes("0-1") || normalized.includes("0:1")) return "black";
+  if (normalized.includes("1/2") || normalized.includes("0.5") || normalized.includes("½")) return "draw";
+  return "other";
+}
+
 // Build section list for switcher
 const sectionList: { id: string; name: string }[] = [];
 if (hasSections) {
@@ -186,6 +195,7 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
             section: sec.name,
           });
       const progressValueText = `${progressLabel}. ${summaryText}`;
+      const hasExport = sec.submittedCount > 0;
 
       return (
       <div class="section-block">
@@ -217,11 +227,20 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
                   ))}
                 </select>
               )}
+              {hasExport && (
+                <a
+                  class="export-btn"
+                  href={`/api/referee-export?tid=${sec.id}&round=${activeRound}`}
+                  download={`round-${activeRound}-results.xml`}
+                >
+                  {t("referee.exportXml")}
+                </a>
+              )}
             </Fragment>
           )}
         </RoundProgressCard>
 
-        {sec.submittedCount > 0 && (
+        {hasExport && index !== 0 && (
           <div class="export-section">
             <a
               class="export-btn"
@@ -245,16 +264,19 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
             {sec.tables.map((tbl) => {
               const players = sec.tablePlayersMap[tbl];
               const result = sec.resultsMap[tbl];
+              const resultTone = getResultTone(result?.result);
               return (
                 <div class:list={["results-row", { submitted: !!result, pending: !result }]}>
-                  <span class="col-table">{tbl}</span>
+                  <span class="col-table"><span class="table-badge">{tbl}</span></span>
                   <span class="col-players">
                     <span class="player-white">{players.white}</span>
                     <span class="vs">–</span>
                     <span class="player-black">{players.black}</span>
                   </span>
-                  <span class:list={["col-result", { "has-result": !!result }]}>
-                    {result ? result.result : t("referee.pending")}
+                  <span class="col-result">
+                    <span class:list={["result-badge", resultTone, { "has-result": !!result }]}> 
+                      {result ? result.result : t("referee.pending")}
+                    </span>
                   </span>
                 </div>
               );
@@ -296,13 +318,13 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
 
 <style>
   .results-overview {
-    max-width: 700px;
+    max-width: 760px;
     margin: 0 auto;
     padding: var(--space-4) 0;
   }
 
   .section-block {
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-8);
   }
 
   .section-block:last-child {
@@ -310,6 +332,8 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
   }
 
   .export-section {
+    display: flex;
+    justify-content: flex-end;
     margin-bottom: var(--space-4);
   }
 
@@ -317,20 +341,39 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
     display: inline-flex;
     align-items: center;
     gap: var(--space-2);
+    justify-content: center;
+    min-height: 2.5rem;
     padding: var(--space-2) var(--space-4);
-    border: 2px solid var(--accent-hover);
-    border-radius: var(--radius-md);
-    background: transparent;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-full);
+    background: var(--surface);
     color: var(--accent-text);
     font-size: var(--text-sm);
-    font-weight: var(--font-semibold);
+    font-weight: var(--weight-semibold);
     text-decoration: none;
-    transition: all var(--duration-fast) var(--ease-out);
+    box-shadow: var(--shadow-sm);
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
   }
 
   .export-btn:hover {
-    background: var(--accent-hover);
-    color: var(--accent-text, #000);
+    border-color: var(--accent-hover);
+    background: var(--accent-subtle);
+    box-shadow: var(--shadow-md);
+  }
+
+  .export-btn:focus-visible {
+    outline: 2px solid var(--input-focus);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--input-focus-ring);
+  }
+
+  .export-btn:active {
+    transform: translateY(1px);
   }
 
   .empty-state {
@@ -343,47 +386,68 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
     display: flex;
     flex-direction: column;
     border-radius: var(--radius-lg);
+    background: var(--surface-container-low);
+    box-shadow: var(--shadow-card);
     overflow: hidden;
   }
 
   .results-header {
     display: grid;
     grid-template-columns: 48px 1fr 80px;
-    gap: var(--space-2);
+    gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border-bottom: 2px solid var(--border);
+    background: var(--surface-container-high);
+    border-bottom: 1px solid var(--border-strong);
     font-size: var(--text-xs);
-    font-weight: var(--font-bold);
+    font-weight: var(--weight-bold);
     color: var(--text-dim);
     text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
   }
 
   .results-row {
     display: grid;
     grid-template-columns: 48px 1fr 80px;
-    gap: var(--space-2);
+    gap: var(--space-3);
     padding: var(--space-3) var(--space-4);
     align-items: center;
     font-size: var(--text-sm);
+    border-bottom: 1px solid var(--border-light);
+    background: var(--surface-container-low);
   }
 
   .results-row:last-child {
     border-bottom: none;
   }
 
-  .results-row.pending {
-    opacity: 0.6;
+  .results-row.submitted {
+    background: color-mix(in srgb, var(--surface-container-low) 76%, var(--accent-subtle));
   }
 
   .col-table {
-    font-weight: var(--font-bold);
+    display: flex;
+    justify-content: center;
     text-align: center;
+  }
+
+  .table-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    min-height: 2.25rem;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-full);
+    background: var(--surface-container-high);
+    color: var(--text);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-none);
   }
 
   .col-players {
     display: flex;
-    gap: var(--space-1);
+    align-items: center;
+    gap: var(--space-2);
     overflow: hidden;
   }
 
@@ -396,24 +460,127 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
     min-width: 0;
   }
 
+  .player-white {
+    font-weight: var(--weight-semibold);
+  }
+
+  .player-black {
+    color: var(--text-secondary);
+  }
+
   .vs {
     color: var(--text-dim);
     flex-shrink: 0;
   }
 
   .col-result {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .result-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 5.25rem;
+    min-height: 2.25rem;
+    padding: 0 var(--space-3);
+    border-radius: var(--radius-full);
+    background: var(--surface-container-high);
+    color: var(--text-dim);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
     text-align: center;
-    font-weight: var(--font-semibold);
+  }
+
+  .result-badge.has-result {
+    color: var(--text);
+  }
+
+  .result-badge.pending {
+    background: var(--surface-container-highest);
     color: var(--text-dim);
   }
 
-  .col-result.has-result {
+  .result-badge.white {
+    background: var(--tertiary-fixed-dim);
+    color: var(--on-primary-fixed);
+  }
+
+  .result-badge.black {
+    background: var(--secondary-fixed-dim);
+    color: var(--on-primary-fixed);
+  }
+
+  .result-badge.draw {
+    background: var(--draw-subtle);
     color: var(--text);
+  }
+
+  .result-badge.other {
+    background: var(--accent-subtle);
+    color: var(--accent-text);
   }
 
   .error-msg {
     color: var(--danger, #e53e3e);
     text-align: center;
     padding: var(--space-4);
+  }
+
+  @media screen and (max-width: 40rem), screen and (max-width: 640px) {
+    .results-overview {
+      padding: var(--space-3) 0;
+    }
+
+    .results-header {
+      display: none;
+    }
+
+    .results-row {
+      grid-template-columns: auto 1fr;
+      grid-template-areas:
+        "table result"
+        "players players";
+      align-items: start;
+      padding: var(--space-4);
+    }
+
+    .col-table {
+      grid-area: table;
+      justify-content: flex-start;
+    }
+
+    .col-result {
+      grid-area: result;
+    }
+
+    .col-players {
+      grid-area: players;
+      flex-wrap: wrap;
+      gap: var(--space-1);
+      margin-top: var(--space-2);
+    }
+
+    .player-white,
+    .player-black {
+      flex: 1 1 100%;
+    }
+
+    .vs {
+      display: none;
+    }
+
+    .result-badge {
+      min-width: 4.75rem;
+    }
+
+    .export-section {
+      justify-content: stretch;
+    }
+
+    .export-btn {
+      width: 100%;
+    }
   }
 </style>
