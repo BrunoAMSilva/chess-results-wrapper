@@ -22,6 +22,7 @@ const hasSupportingControls = Astro.slots.has("supporting-controls");
 const safeTotal = Math.max(totalCount, 0);
 const safeSubmitted = Math.min(Math.max(submittedCount, 0), safeTotal);
 const progressValue = safeTotal > 0 ? (safeSubmitted / safeTotal) * 100 : 0;
+const progressPercentLabel = `${Math.round(progressValue)}%`;
 const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summaryText}`;
 ---
 
@@ -35,10 +36,15 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     )}
   </div>
 
-  <p class="progress-value" aria-hidden="true">
+  <div class="progress-meta-row" aria-hidden="true">
+    <p class="progress-label">{progressLabel}</p>
+    <span class="progress-percent">{progressPercentLabel}</span>
+  </div>
+
+  <div class="progress-value" aria-hidden="true">
     <span class="progress-value-primary">{safeSubmitted}</span>
     <span class="progress-value-secondary">/ {safeTotal}</span>
-  </p>
+  </div>
 
   <div
     class="progress-bar"
@@ -118,16 +124,39 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
   }
 
   .eyebrow-row,
-  .supporting-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  .supporting-row,
+  .progress-meta-row {
+    display: grid;
     gap: var(--space-4);
+    min-width: 0;
+  }
+
+  .eyebrow-row,
+  .progress-meta-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .progress-meta-row {
+    align-items: flex-end;
+    margin-block-end: calc(var(--space-4) * -1);
   }
 
   .eyebrow-controls,
   .supporting-controls {
-    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  .eyebrow-controls {
+    justify-self: end;
+  }
+
+  .supporting-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: var(--space-2);
+    width: 100%;
   }
 
   .eyebrow-controls :global(.card-inline-select),
@@ -146,6 +175,31 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     line-height: var(--leading-tight);
     appearance: none;
     cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition:
+      border-color var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out),
+      transform var(--duration-fast) var(--ease-out);
+  }
+
+  .eyebrow-controls :global(.card-inline-select:hover),
+  .supporting-controls :global(.card-inline-select:hover) {
+    border-color: var(--accent-hover);
+    box-shadow: var(--shadow-md);
+  }
+
+  .eyebrow-controls :global(.card-inline-select:focus-visible),
+  .supporting-controls :global(.card-inline-select:focus-visible) {
+    outline: 2px solid var(--input-focus);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--input-focus-ring);
+  }
+
+  .eyebrow-controls :global(.card-inline-select:active),
+  .supporting-controls :global(.card-inline-select:active) {
+    transform: translateY(1px);
   }
 
   .eyebrow-controls :global(.card-inline-select) {
@@ -176,6 +230,29 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     gap: var(--space-3);
     font-family: var(--font-display);
     line-height: var(--leading-none);
+  }
+
+  .progress-label {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    color: var(--rpc-text-muted);
+  }
+
+  .progress-percent {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 3.75rem;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--rpc-text-strong) 14%, transparent);
+    color: var(--rpc-text-strong);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
   }
 
   .progress-value-primary {
@@ -221,6 +298,18 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     min-width: 0;
   }
 
+  @media (min-width: 48rem) {
+    .supporting-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+    }
+
+    .supporting-controls {
+      justify-content: flex-end;
+      width: auto;
+    }
+  }
+
   @media (max-width: 40rem) {
     .round-progress-card {
       gap: var(--space-6);
@@ -228,8 +317,15 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     }
 
     .eyebrow-row,
-    .supporting-row {
+    .supporting-row,
+    .progress-meta-row {
       gap: var(--space-3);
+    }
+
+    .eyebrow-row,
+    .progress-meta-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: flex-start;
     }
 
     .eyebrow-controls :global(.card-inline-select) {
@@ -242,6 +338,11 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
 
     .eyebrow {
       font-size: var(--text-sm);
+    }
+
+    .progress-label,
+    .progress-percent {
+      font-size: var(--text-xs);
     }
 
     .progress-value-primary {

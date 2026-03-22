@@ -17,19 +17,21 @@ function parseBody(raw: {
   const round = Number(raw.round);
   const table = Number(raw.table);
 
-  // Derive result: explicit `result` field (JSON path) or form fields
+  // Prefer the explicit result field, then the radio-group value.
+  // Legacy absent fields remain supported for older form payloads.
   let result = typeof raw.result === "string" ? raw.result : "";
   if (!result) {
-    const wAbsent = raw.absentWhite === "on" || raw.absentWhite === "true";
-    const bAbsent = raw.absentBlack === "on" || raw.absentBlack === "true";
-    if (wAbsent && bAbsent) {
-      result = "-:-";
-    } else if (wAbsent) {
-      result = "-:+";
-    } else if (bAbsent) {
-      result = "+:-";
-    } else {
-      result = typeof raw.gameResult === "string" ? raw.gameResult : "";
+    result = typeof raw.gameResult === "string" ? raw.gameResult : "";
+    if (!result) {
+      const wAbsent = raw.absentWhite === "on" || raw.absentWhite === "true";
+      const bAbsent = raw.absentBlack === "on" || raw.absentBlack === "true";
+      if (wAbsent && bAbsent) {
+        result = "-:-";
+      } else if (wAbsent) {
+        result = "-:+";
+      } else if (bAbsent) {
+        result = "+:-";
+      }
     }
   }
 

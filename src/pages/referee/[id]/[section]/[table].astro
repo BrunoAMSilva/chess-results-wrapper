@@ -4,8 +4,8 @@ import { scrapePairings } from "../../../../lib/scraper";
 import { useTranslations } from "../../../../i18n/ui";
 import { resolvePageLang } from "../../../../lib/page-lang";
 import type { Pairing, TeamPairing } from "../../../../lib/types";
-import Matchup from "../../../../components/Matchup.astro";
-import ResultOptions from "../../../../components/ResultOptions.astro";
+import Matchup from "../../../../components/referee/Matchup.astro";
+import ResultOptions from "../../../../components/referee/ResultOptions.astro";
 
 const tid = Astro.params.id!;
 const section = Astro.params.section!;
@@ -237,10 +237,7 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
   var saveBtn = document.getElementById("saveBtn");
   var feedback = document.getElementById("feedback");
   var anotherLink = document.getElementById("anotherLink");
-  var resultFieldset = form && form.querySelector("fieldset");
   var gameRadios = document.querySelectorAll('input[name="gameResult"]');
-  var absentWhite = document.querySelector('input[name="absentWhite"]');
-  var absentBlack = document.querySelector('input[name="absentBlack"]');
 
   var saving = false;
 
@@ -253,29 +250,9 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
 
   gameRadios.forEach(function(radio) {
     radio.addEventListener("change", function() {
-      if (absentWhite) absentWhite.checked = false;
-      if (absentBlack) absentBlack.checked = false;
-      if (resultFieldset) resultFieldset.classList.remove("has-absent");
       showSave();
     });
   });
-
-  function handleAbsentChange() {
-    var wAbsent = absentWhite && absentWhite.checked;
-    var bAbsent = absentBlack && absentBlack.checked;
-
-    if (wAbsent || bAbsent) {
-      gameRadios.forEach(function(r) { r.checked = false; });
-      if (resultFieldset) resultFieldset.classList.add("has-absent");
-      showSave();
-    } else {
-      if (resultFieldset) resultFieldset.classList.remove("has-absent");
-      if (saveBtn) saveBtn.classList.add("hidden");
-    }
-  }
-
-  if (absentWhite) absentWhite.addEventListener("change", handleAbsentChange);
-  if (absentBlack) absentBlack.addEventListener("change", handleAbsentChange);
 
   // Progressive enhancement: intercept submit for AJAX experience
   if (form) {
@@ -284,19 +261,7 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
       if (saving) return;
 
       var fd = new FormData(form);
-      var wAbsent = fd.get("absentWhite") === "on";
-      var bAbsent = fd.get("absentBlack") === "on";
-      var result;
-
-      if (wAbsent && bAbsent) {
-        result = "-:-";
-      } else if (wAbsent) {
-        result = "-:+";
-      } else if (bAbsent) {
-        result = "+:-";
-      } else {
-        result = fd.get("gameResult");
-      }
+      var result = fd.get("gameResult");
 
       if (!result) return;
       saving = true;

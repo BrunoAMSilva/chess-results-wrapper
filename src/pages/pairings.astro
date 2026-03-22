@@ -1,9 +1,9 @@
 ---
 import ResponsiveLayout from "../layouts/ResponsiveLayout.astro";
-import ResponsiveMatchCard from "../components/ResponsiveMatchCard.astro";
-import TeamMatchGroup from "../components/TeamMatchGroup.astro";
-import RoundSelector from "../components/RoundSelector.astro";
-import TournamentSelector from "../components/TournamentSelector.astro";
+import ResponsiveMatchCard from "../components/pairings/ResponsiveMatchCard.astro";
+import TeamMatchGroup from "../components/pairings/TeamMatchGroup.astro";
+import RoundSelector from "../components/controls/RoundSelector.astro";
+import TournamentSelector from "../components/tournaments/TournamentSelector.astro";
 import { scrapePairings } from "../lib/scraper";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";

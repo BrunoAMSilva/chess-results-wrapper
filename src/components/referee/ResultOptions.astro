@@ -1,6 +1,6 @@
 ---
-import { useTranslations } from '../i18n/ui';
-import { resolvePageLang } from '../lib/page-lang';
+import { useTranslations } from '../../i18n/ui';
+import { resolvePageLang } from '../../lib/page-lang';
 
 type Props = {
   name?: string;
@@ -37,17 +37,24 @@ const { name = 'gameResult' } = Astro.props;
     </label>
   </div>
 
-  <div class="absent-grid">
+  <div class="result-grid">
     <label class="result-card absent-card">
-      <input type="checkbox" name="absentWhite" class="sr-only" />
-      <span class="result-score absent-score" aria-hidden="true">0-0F</span>
+      <input type="radio" name={name} value="-:+" class="sr-only" />
+      <span class="result-score absent-score" aria-hidden="true">0-1F</span>
       <span class="result-label">{t('referee.whiteAbsent')}</span>
       <span class="check-badge" aria-hidden="true"></span>
     </label>
 
     <label class="result-card absent-card">
-      <input type="checkbox" name="absentBlack" class="sr-only" />
+      <input type="radio" name={name} value="-:-" class="sr-only" />
       <span class="result-score absent-score" aria-hidden="true">0-0F</span>
+      <span class="result-label">{t('referee.bothAbsent')}</span>
+      <span class="check-badge" aria-hidden="true"></span>
+    </label>
+
+    <label class="result-card absent-card">
+      <input type="radio" name={name} value="+:-" class="sr-only" />
+      <span class="result-score absent-score" aria-hidden="true">1-0F</span>
       <span class="result-label">{t('referee.blackAbsent')}</span>
       <span class="check-badge" aria-hidden="true"></span>
     </label>
@@ -84,7 +91,7 @@ const { name = 'gameResult' } = Astro.props;
 
   .absent-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--space-3);
   }
 
@@ -110,7 +117,7 @@ const { name = 'gameResult' } = Astro.props;
     padding: var(--space-6) var(--space-3);
     border-radius: var(--radius-xl);
     background: var(--surface-container-high);
-    color: var(--text-dim);
+    
     cursor: pointer;
     text-align: center;
     transition:
@@ -162,6 +169,7 @@ const { name = 'gameResult' } = Astro.props;
     text-transform: uppercase;
     letter-spacing: var(--tracking-wider);
     transition: color var(--duration-fast) var(--ease-out);
+    color: var(--text-dim);
   }
 
   /* ── Check badge (hidden by default) ──────────────────── */
@@ -212,12 +220,5 @@ const { name = 'gameResult' } = Astro.props;
 
   .result-card:has(input:checked) .check-badge {
     opacity: 1;
-  }
-
-  /* ── Disabled state (when absent is checked) ──────────── */
-
-  .result-options.has-absent .result-grid .result-card {
-    opacity: 0.3;
-    pointer-events: none;
   }
 </style>
