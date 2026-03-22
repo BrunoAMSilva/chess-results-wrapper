@@ -7,7 +7,7 @@ import SegmentedControl from "../../components/SegmentedControl.astro";
 import PresenterQrCode from "../../components/PresenterQrCode.astro";
 import { scrapePairings, scrapeStandings } from "../../lib/scraper";
 import { useTranslations } from "../../i18n/ui";
-import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
+import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, PRESENTER_PAIRINGS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
 import { paginateArray } from "../../lib/utils";
 import { getIntParam } from "../../lib/request-params";
 import { resolvePageLang } from "../../lib/page-lang";
@@ -15,7 +15,7 @@ import { resolvePageLang } from "../../lib/page-lang";
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const round = getIntParam(Astro.url.searchParams.get("round"), 1, 1, 64);
 const lang = resolvePageLang(Astro.url, Astro.cookies);
-const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAGE, 1, 50);
+const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), PRESENTER_PAIRINGS_PER_PAGE, 1, 50);
 const sponsorImage = Astro.url.searchParams.get("sponsor")?.trim() || "";
 const sponsorAlt = Astro.url.searchParams.get("sponsorAlt")?.trim() || "Sponsor";
 const hideNonPaired = Astro.url.searchParams.get("hideNonPaired") === "1";
@@ -42,7 +42,7 @@ let error: string | null = null;
 let playerList: import("../../lib/scraper").Standing[] = [];
 
 try {
-  data = await scrapePairings(tid, round, lang);
+  data = await scrapePairings(tid, round);
 } catch (e) {
   error = e instanceof Error ? e.message : t('error.load');
 }
@@ -64,7 +64,7 @@ const visiblePairings = hideNonPaired
 let womenPlayerList: import("../../lib/scraper").Standing[] = [];
 if (allPairings.length === 0 && !error) {
   try {
-    const standingsData = await scrapeStandings(tid, lang);
+    const standingsData = await scrapeStandings(tid);
     playerList = standingsData.standings;
     womenPlayerList = standingsData.womenStandings;
   } catch (_) { /* ignore - show empty state */ }
@@ -73,6 +73,13 @@ if (allPairings.length === 0 && !error) {
 const activePairings = visiblePairings.filter((p) => p.black !== null);
 const totalPlayers = activePairings.length * 2 + visiblePairings.filter((p) => !p.black).length;
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
+const totalRounds = data?.info.totalRounds ?? 1;
+const previousRound = Math.max(1, round - 1);
+const nextRound = Math.min(totalRounds, round + 1);
+const hasPreviousRound = round > 1;
+const hasNextRound = round < totalRounds;
+const sectionTitle = data?.info.currentLabel || data?.info.name || t('site.title');
+const tournamentEyebrow = data?.info.currentLabel ? data.info.name : undefined;
 
 // Group pairings into pages
 const pages = paginateArray(visiblePairings, rowsPerPage);
@@ -97,13 +104,16 @@ function isTournamentLive(dateStr?: string): boolean {
 const autoRefresh = isTournamentLive(data?.info.date);
 ---
 
-<Layout title={data?.info.name || t('site.title')} lang={lang} autoRefresh={autoRefresh}>
+<Layout title={sectionTitle} eyebrow={tournamentEyebrow} lang={lang} autoRefresh={autoRefresh}>
   <div class="container">
     <header class="header">
       <div class="header-left">
         <div class="title-row">
           <img class="icon-logo" src="/logo.svg" alt="" />
-          <h1 class="title">{data?.info.name || t('site.title')}</h1>
+          <div class="title-stack">
+            {tournamentEyebrow && <p class="eyebrow">{tournamentEyebrow}</p>}
+            <h1 class="title">{sectionTitle}</h1>
+          </div>
         </div>
       </div>
 
@@ -128,12 +138,24 @@ const autoRefresh = isTournamentLive(data?.info.date);
             </span>
             
             <div class="round-nav">
-              <a href={`/present?tid=${tid}&round=${round - 1}&lang=${lang}${presenterExtraSuffix}`} class:list={["nav-btn", { disabled: round <= 1 }]} aria-label={t('header.prevRound')}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-              </a>
-              <a href={`/present?tid=${tid}&round=${round + 1}&lang=${lang}${presenterExtraSuffix}`} class:list={["nav-btn", { disabled: round >= data.info.totalRounds }]} aria-label={t('header.nextRound')}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
-              </a>
+              {hasPreviousRound ? (
+                <a href={`/present?tid=${tid}&round=${previousRound}&lang=${lang}${presenterExtraSuffix}`} class="nav-btn" aria-label={t('header.prevRound')}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </a>
+              ) : (
+                <span class:list={["nav-btn", "disabled"]} aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                </span>
+              )}
+              {hasNextRound ? (
+                <a href={`/present?tid=${tid}&round=${nextRound}&lang=${lang}${presenterExtraSuffix}`} class="nav-btn" aria-label={t('header.nextRound')}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </a>
+              ) : (
+                <span class:list={["nav-btn", "disabled"]} aria-hidden="true">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -286,7 +308,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
         )}
 
         <PresenterQrCode
-          targetUrl={`${Astro.url.origin}/?tid=${tid}`}
+          targetPath={`/pairings?tid=${tid}&lang=${lang}`}
           label={t('scan.label')}
           hint={t('scan.hint')}
           size="large"
@@ -456,7 +478,6 @@ const autoRefresh = isTournamentLive(data?.info.date);
     gap: 0.2rem;
     padding: 0;
     color: var(--text);
-    border-right: 1px solid var(--border-strong);
     padding-right: var(--space-6);
   }
 
@@ -495,7 +516,6 @@ const autoRefresh = isTournamentLive(data?.info.date);
     align-items: center;
     padding: 0;
     background: var(--bg-subtle);
-    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
   }
 
@@ -524,7 +544,6 @@ const autoRefresh = isTournamentLive(data?.info.date);
   }
 
   .sponsor-card {
-    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     background: var(--surface);
     padding: var(--space-4);

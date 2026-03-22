@@ -16,9 +16,9 @@ describe.skipIf(process.env.SKIP_LIVE === '1')('Integration - Federated and Link
   it('should save dual standings and correctly link federated tournaments', async () => {
     // 1. Fetch Non-Federated (1361358)
     // The tournament details expansion should discover the linked "Federados" tournament
-    const p1 = await scrapePairings('1361358', 1, 1);
+    const p1 = await scrapePairings('1361358', 1);
     persistPairings('1361358', p1.info, 1, p1.pairings);
-    const s1 = await scrapeStandings('1361358', 1);
+    const s1 = await scrapeStandings('1361358');
     persistStandings('1361358', s1.info, s1.standings, s1.womenStandings);
 
     // Linked tournaments should be discovered via details expansion POST
@@ -28,9 +28,9 @@ describe.skipIf(process.env.SKIP_LIVE === '1')('Integration - Federated and Link
     expect(p1.info.currentLabel).toBeTruthy();
     
     // 2. Fetch Federated (1340832)
-    const p2 = await scrapePairings('1340832', 1, 1);
+    const p2 = await scrapePairings('1340832', 1);
     persistPairings('1340832', p2.info, 1, p2.pairings);
-    const s2 = await scrapeStandings('1340832', 1);
+    const s2 = await scrapeStandings('1340832');
     persistStandings('1340832', s2.info, s2.standings, s2.womenStandings);
 
     // Verify basic tournament data
@@ -55,7 +55,7 @@ describe.skipIf(process.env.SKIP_LIVE === '1')('Integration - Federated and Link
     expect(linkedFed[0]).toMatchObject({ id: '1361358', name: 'Não Federados' });
 
     // 3. Re-scrape should NOT erase linked tournaments (enrichFromDb + upsert preservation)
-    const p1Again = await scrapePairings('1361358', 1, 1);
+    const p1Again = await scrapePairings('1361358', 1);
     persistPairings('1361358', p1Again.info, 1, p1Again.pairings);
 
     const afterRescrape = getTournament('1361358');

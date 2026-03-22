@@ -30,7 +30,7 @@ let data;
 let error: string | null = null;
 
 try {
-  data = await scrapeStandings(tid, lang);
+  data = await scrapeStandings(tid);
 } catch (e) {
   error = e instanceof Error ? e.message : t('error.load');
 }
@@ -38,6 +38,8 @@ try {
 const allStandings = data?.standings || [];
 const womenStandings = data?.womenStandings || [];
 const hasWomen = womenStandings.length > 0;
+const sectionTitle = data?.info.currentLabel || data?.info.name || t('site.title');
+const tournamentEyebrow = data?.info.currentLabel ? data.info.name : undefined;
 
 // Group standings into pages
 const pages = paginateArray(allStandings, rowsPerPage);
@@ -58,13 +60,16 @@ function isTournamentLive(dateStr?: string): boolean {
 const autoRefresh = isTournamentLive(data?.info.date);
 ---
 
-<Layout title={data?.info.name || t('site.title')} lang={lang} autoRefresh={autoRefresh}>
+<Layout title={sectionTitle} eyebrow={tournamentEyebrow} lang={lang} autoRefresh={autoRefresh}>
   <div class="container">
     <header class="header">
       <div class="header-left">
         <div class="title-row">
           <img class="icon-logo" src="/logo.svg" alt="" />
-          <h1 class="title">{data?.info.name || t('site.title')}</h1>
+          <div class="title-stack">
+            {tournamentEyebrow && <p class="eyebrow">{tournamentEyebrow}</p>}
+            <h1 class="title">{sectionTitle}</h1>
+          </div>
         </div>
       </div>
 
@@ -181,7 +186,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
         )}
 
         <PresenterQrCode
-          targetUrl={`${Astro.url.origin}/?tid=${tid}`}
+          targetPath={`/standings?tid=${tid}&lang=${lang}`}
           label={t('scan.label')}
           hint={t('scan.hint')}
           size="large"
@@ -285,7 +290,6 @@ const autoRefresh = isTournamentLive(data?.info.date);
   }
 
   .sponsor-card {
-    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     background: var(--surface);
     padding: var(--space-4);
@@ -340,7 +344,6 @@ const autoRefresh = isTournamentLive(data?.info.date);
     align-items: center;
     padding: 0.6rem var(--space-8);
     background: var(--bg-subtle);
-    border-bottom: 1px solid var(--border);
     flex-shrink: 0;
     gap: var(--space-6);
   }

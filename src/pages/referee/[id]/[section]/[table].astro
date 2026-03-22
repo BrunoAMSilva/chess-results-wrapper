@@ -1,0 +1,353 @@
+---
+import ResponsiveLayout from "../../../../layouts/ResponsiveLayout.astro";
+import { scrapePairings } from "../../../../lib/scraper";
+import { useTranslations } from "../../../../i18n/ui";
+import { resolvePageLang } from "../../../../lib/page-lang";
+import type { Pairing, TeamPairing } from "../../../../lib/types";
+import Matchup from "../../../../components/Matchup.astro";
+import ResultOptions from "../../../../components/ResultOptions.astro";
+
+const tid = Astro.params.id!;
+const section = Astro.params.section!;
+const tableNum = parseInt(Astro.params.table!, 10);
+const lang = resolvePageLang(Astro.url, Astro.cookies);
+const roundParam = Astro.url.searchParams.get("round");
+const t = useTranslations(lang);
+
+let error: string | null = null;
+let activeRound = 1;
+let whiteName = "";
+let blackName = "";
+let tournamentName = "";
+let sectionTitle = "";
+
+try {
+  const initial = await scrapePairings(section, 1);
+  const totalRounds = initial.info.totalRounds;
+  tournamentName = initial.info.name;
+  sectionTitle = initial.info.currentLabel || initial.info.name;
+
+  if (roundParam) {
+    activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
+  } else {
+    activeRound = 1;
+  }
+
+  const data = activeRound === 1 ? initial : await scrapePairings(section, activeRound);
+  const pairings: Pairing[] = data.pairings || [];
+  const teamPairings: TeamPairing[] | undefined = data.teamPairings;
+
+  // Find player names for this table
+  if (teamPairings && teamPairings.length > 0) {
+    for (const tm of teamPairings) {
+      for (const b of tm.boards) {
+        if (b.table === tableNum) {
+          whiteName = b.white.name;
+          blackName = b.black?.name || "—";
+          break;
+        }
+      }
+    }
+  } else {
+    for (const p of pairings) {
+      if (p.table === tableNum) {
+        whiteName = p.white.name;
+        blackName = p.black?.name || "—";
+        break;
+      }
+    }
+  }
+} catch (e) {
+  error = e instanceof Error ? e.message : t("error.load");
+}
+
+const isTeamTournament = tableNum >= 100;
+const tableLabel = isTeamTournament
+  ? `${Math.floor(tableNum / 100)}.${tableNum % 100}`
+  : String(tableNum);
+
+const q = `round=${activeRound}&lang=${lang}`;
+// Back goes to the table grid for this section
+const backUrl = `/referee/${tid}/${section}?${q}`;
+const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableLabel}`
+  ? sectionTitle
+  : tournamentName || undefined;
+---
+
+<ResponsiveLayout title={`${t("referee.table")} ${tableLabel}`} eyebrow={eyebrow} lang={lang} navMode="referee">
+  {error && <div class="error-msg"><p>{error}</p></div>}
+
+  <div class="result-page">
+    <Matchup
+      whiteName={whiteName}
+      blackName={blackName}
+    />
+
+    <form
+      class="result-form"
+      id="resultForm"
+      action="/api/referee-result"
+      method="POST"
+    >
+      <input type="hidden" name="tid" value={section} />
+      <input type="hidden" name="round" value={String(activeRound)} />
+      <input type="hidden" name="table" value={String(tableNum)} />
+      <input type="hidden" name="_redirect" value={backUrl} />
+
+      <ResultOptions />
+      <button class="save-btn" id="saveBtn" type="submit">
+        <span class="save-label">{t("referee.save")} →</span>
+        <span class="saving-label" aria-hidden="true">{t("referee.saving")}</span>
+      </button>
+    </form>
+
+    <div class="feedback hidden" id="feedback" aria-live="assertive" tabindex="-1"></div>
+    <a class="another-link hidden" id="anotherLink" href={backUrl}>
+      {t("referee.another")}
+    </a>
+  </div>
+</ResponsiveLayout>
+
+<style>
+  .result-page {
+    max-width: 500px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .result-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    width: 100%;
+  }
+
+  .save-btn {
+    width: 100%;
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    border: none;
+    border-radius: var(--radius-lg);
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    box-shadow: var(--shadow-md);
+  }
+
+  .save-btn:hover {
+    background: var(--accent-hover);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .save-btn:active {
+    transform: scale(0.98);
+  }
+
+  .save-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .save-btn[aria-disabled="true"] {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .saving-label {
+    display: none;
+  }
+
+  .save-btn[aria-disabled="true"] .save-label {
+    display: none;
+  }
+
+  .save-btn[aria-disabled="true"] .saving-label {
+    display: inline;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  .form-hidden {
+    display: none;
+  }
+
+  .feedback {
+    text-align: center;
+    margin-top: var(--space-4);
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    font-weight: var(--font-semibold);
+    width: 100%;
+  }
+
+  .feedback.success {
+    background: var(--win);
+    color: var(--on-win);
+  }
+
+  .feedback.error {
+    background: var(--loss);
+    color: var(--on-loss);
+  }
+
+  .another-link {
+    width: 100%;
+    margin-top: var(--space-4);
+    padding: var(--space-4) var(--space-6);
+    border-radius: var(--radius-lg);
+    background: var(--surface-container-high);
+    color: var(--accent-text);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+  }
+
+  .another-link:hover {
+    background: var(--surface-container-highest);
+  }
+
+  .another-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .error-msg {
+    color: var(--danger);
+    text-align: center;
+    padding: var(--space-4);
+  }
+</style>
+
+<script is:inline define:vars={{
+  savedMsg: t("referee.saved"),
+  errorMsg: t("referee.error"),
+  savingMsg: t("referee.saving"),
+}}>
+(function() {
+  var form = document.getElementById("resultForm");
+  var saveBtn = document.getElementById("saveBtn");
+  var feedback = document.getElementById("feedback");
+  var anotherLink = document.getElementById("anotherLink");
+  var resultFieldset = form && form.querySelector("fieldset");
+  var gameRadios = document.querySelectorAll('input[name="gameResult"]');
+  var absentWhite = document.querySelector('input[name="absentWhite"]');
+  var absentBlack = document.querySelector('input[name="absentBlack"]');
+
+  var saving = false;
+
+  // Progressive enhancement: hide save button until a selection is made
+  if (saveBtn) saveBtn.classList.add("hidden");
+
+  function showSave() {
+    if (saveBtn) saveBtn.classList.remove("hidden");
+  }
+
+  gameRadios.forEach(function(radio) {
+    radio.addEventListener("change", function() {
+      if (absentWhite) absentWhite.checked = false;
+      if (absentBlack) absentBlack.checked = false;
+      if (resultFieldset) resultFieldset.classList.remove("has-absent");
+      showSave();
+    });
+  });
+
+  function handleAbsentChange() {
+    var wAbsent = absentWhite && absentWhite.checked;
+    var bAbsent = absentBlack && absentBlack.checked;
+
+    if (wAbsent || bAbsent) {
+      gameRadios.forEach(function(r) { r.checked = false; });
+      if (resultFieldset) resultFieldset.classList.add("has-absent");
+      showSave();
+    } else {
+      if (resultFieldset) resultFieldset.classList.remove("has-absent");
+      if (saveBtn) saveBtn.classList.add("hidden");
+    }
+  }
+
+  if (absentWhite) absentWhite.addEventListener("change", handleAbsentChange);
+  if (absentBlack) absentBlack.addEventListener("change", handleAbsentChange);
+
+  // Progressive enhancement: intercept submit for AJAX experience
+  if (form) {
+    form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      if (saving) return;
+
+      var fd = new FormData(form);
+      var wAbsent = fd.get("absentWhite") === "on";
+      var bAbsent = fd.get("absentBlack") === "on";
+      var result;
+
+      if (wAbsent && bAbsent) {
+        result = "-:-";
+      } else if (wAbsent) {
+        result = "-:+";
+      } else if (bAbsent) {
+        result = "+:-";
+      } else {
+        result = fd.get("gameResult");
+      }
+
+      if (!result) return;
+      saving = true;
+      if (saveBtn) saveBtn.setAttribute("aria-disabled", "true");
+
+      fetch(form.action, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tid: fd.get("tid"),
+          round: Number(fd.get("round")),
+          table: Number(fd.get("table")),
+          result: result,
+        }),
+      })
+        .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+        .then(function(resp) {
+          if (feedback) {
+            feedback.classList.remove("hidden", "success", "error");
+            if (resp.ok) {
+              feedback.classList.add("success");
+              feedback.textContent = savedMsg;
+              if (form) form.classList.add("form-hidden");
+              if (anotherLink) anotherLink.classList.remove("hidden");
+              feedback.focus();
+            } else {
+              feedback.classList.add("error");
+              feedback.textContent = resp.data.error || errorMsg;
+              saving = false;
+              if (saveBtn) {
+                saveBtn.removeAttribute("aria-disabled");
+                saveBtn.classList.remove("hidden");
+              }
+              feedback.focus();
+            }
+          }
+        })
+        .catch(function() {
+          if (feedback) {
+            feedback.classList.remove("hidden", "success", "error");
+            feedback.classList.add("error");
+            feedback.textContent = errorMsg;
+            feedback.focus();
+          }
+          saving = false;
+          if (saveBtn) {
+            saveBtn.removeAttribute("aria-disabled");
+            saveBtn.classList.remove("hidden");
+          }
+        });
+    });
+  }
+})();
+</script>

@@ -1,48 +1,24 @@
 ---
-import { ViewTransitions } from "astro:transitions";
 import { languages } from "../i18n/ui";
+import BaseHead from "../components/BaseHead.astro";
 import "../styles/global.css";
 
 interface Props {
   title: string;
+  eyebrow?: string;
   lang?: number;
   autoRefresh?: boolean;
 }
 
-const { title, lang = 1, autoRefresh = true } = Astro.props;
+const { title, eyebrow, lang = 1, autoRefresh = true } = Astro.props;
 const langCode = languages[lang as keyof typeof languages] || 'en';
+const documentTitle = eyebrow ? `${eyebrow} - ${title}` : title;
 ---
 
 <!doctype html>
 <html lang={langCode}>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#fcd34d" />
-    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
-    <title>{title}</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-      rel="stylesheet"
-    />
-    <script>
-      // Inline theme script to prevent FOUC
-      (function() {
-        const stored = (() => { try { return localStorage.getItem('theme'); } catch { return null; } })();
-        if (stored === 'light' || stored === 'dark') {
-          document.documentElement.setAttribute('data-theme', stored);
-        }
-      })();
-    </script>
-
-    <script src="../scripts/theme.ts"></script>
-    <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js');
-      }
-    </script>
+    <BaseHead title={documentTitle} />
   </head>
   <body>
     <slot />
@@ -127,6 +103,25 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     overflow: hidden;
   }
 
+  .title-stack {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: var(--space-1);
+  }
+
+  .eyebrow {
+    font-size: clamp(var(--text-xs), 0.9vw, var(--text-base));
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+  }
+
   .icon-logo {
     width: 28px;
     height: 28px;
@@ -135,15 +130,16 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   }
 
   .title {
-    font-size: var(--text-3xl);
+    font-size: clamp(var(--text-2xl), 2.4vw, var(--text-4xl));
+    font-family: var(--font-display);
     font-weight: var(--weight-extrabold);
     line-height: var(--leading-tight);
     color: var(--text);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-transform: uppercase;
     letter-spacing: var(--tracking-tight);
+    margin: 0;
   }
 
   /* Carousel */
@@ -183,8 +179,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     align-items: center;
     gap: 1rem;
     padding: 0.35rem 2rem;
-    background: var(--bg);
-    border-top: 1px solid var(--border);
+    background: var(--surface-container-low);
     flex-shrink: 0;
   }
 
@@ -233,7 +228,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     flex: 1;
     display: flex;
     flex-direction: column;
-    border: 1px solid var(--border);
+    background: var(--surface-container-low);
     border-radius: var(--radius-lg);
     overflow: hidden;
     min-height: 0;
@@ -250,8 +245,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
 
   /* Error */
   .error-card {
-    background: rgba(248, 113, 113, 0.1);
-    border: 1px solid rgba(248, 113, 113, 0.3);
+    background: var(--loss-subtle);
     border-radius: var(--radius-lg);
     padding: var(--space-6);
     text-align: center;
@@ -297,19 +291,18 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    border: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--surface-container-high);
     color: var(--text);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-ambient);
   }
 
   .config-toggle:hover {
-    border-color: var(--accent-text);
+    background: var(--surface-container-highest);
     transform: rotate(90deg);
   }
 
@@ -318,8 +311,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
     bottom: 50px;
     right: 0;
     width: 260px;
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--surface-container-high);
     border-radius: var(--radius-lg);
     padding: var(--space-4);
     display: none;
@@ -378,7 +370,7 @@ const langCode = languages[lang as keyof typeof languages] || 'en';
   .config-input {
     padding: 0.5rem 0.6rem;
     border-radius: 6px;
-    border: 1px solid var(--border);
+    border: 1px solid var(--outline-variant);
     background: var(--bg);
     color: var(--text);
     font-size: 0.85rem;

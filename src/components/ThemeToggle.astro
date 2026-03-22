@@ -50,7 +50,6 @@ const { class: className = "" } = Astro.props;
     font-weight: var(--weight-semibold);
     color: var(--text-dim);
     cursor: pointer;
-    border: 1px solid transparent;
     background: transparent;
     transition: color var(--duration-fast) var(--ease-in-out),
                 background var(--duration-fast) var(--ease-in-out),
@@ -67,7 +66,6 @@ const { class: className = "" } = Astro.props;
   .theme-option.active {
     color: var(--seg-active-text);
     background: var(--seg-active-bg);
-    border-color: var(--seg-active-border);
     box-shadow: var(--shadow-sm);
   }
 

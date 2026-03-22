@@ -1,0 +1,282 @@
+---
+interface Props {
+  submittedCount: number;
+  totalCount: number;
+  eyebrowText: string;
+  progressLabel: string;
+  summaryText: string;
+  progressValueText?: string;
+}
+
+const {
+  submittedCount,
+  totalCount,
+  eyebrowText,
+  progressLabel,
+  summaryText,
+  progressValueText,
+} = Astro.props;
+
+const hasEyebrowControls = Astro.slots.has("eyebrow-controls");
+const hasSupportingControls = Astro.slots.has("supporting-controls");
+const safeTotal = Math.max(totalCount, 0);
+const safeSubmitted = Math.min(Math.max(submittedCount, 0), safeTotal);
+const progressValue = safeTotal > 0 ? (safeSubmitted / safeTotal) * 100 : 0;
+const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summaryText}`;
+---
+
+<section class="round-progress-card" aria-label={eyebrowText}>
+  <div class="eyebrow-row">
+    <h2 class="eyebrow">{eyebrowText}</h2>
+    {hasEyebrowControls && (
+      <div class="eyebrow-controls">
+        <slot name="eyebrow-controls" />
+      </div>
+    )}
+  </div>
+
+  <p class="progress-value" aria-hidden="true">
+    <span class="progress-value-primary">{safeSubmitted}</span>
+    <span class="progress-value-secondary">/ {safeTotal}</span>
+  </p>
+
+  <div
+    class="progress-bar"
+    role="progressbar"
+    aria-label={progressLabel}
+    aria-valuemin="0"
+    aria-valuemax={safeTotal}
+    aria-valuenow={safeSubmitted}
+    aria-valuetext={resolvedProgressValueText}
+  >
+    <div class="progress-fill" style={`--progress: ${progressValue}%`} />
+  </div>
+
+  <div class="supporting-row">
+    <p class="progress-supporting">
+      {summaryText}
+    </p>
+    {hasSupportingControls && (
+      <div class="supporting-controls">
+        <slot name="supporting-controls" />
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .round-progress-card {
+    --rpc-surface-start: var(--neutral-900);
+    --rpc-surface-end: var(--surface-container-low);
+    --rpc-text: var(--gold-50);
+    --rpc-text-muted: var(--gold-100);
+    --rpc-text-strong: var(--gold-300);
+    --rpc-progress-track: var(--neutral-700);
+    --rpc-select-border: var(--neutral-700);
+    --rpc-select-bg: var(--neutral-800);
+    --rpc-select-text: var(--gold-100);
+    --rpc-shadow: var(--shadow-elevated);
+    position: relative;
+    display: grid;
+    gap: var(--space-6);
+    padding: var(--space-8);
+    border-radius: var(--radius-xl);
+    background:
+      radial-gradient(circle at 84% 72%, var(--accent-glow), transparent 30%),
+      linear-gradient(120deg, var(--rpc-surface-start) 0%, var(--rpc-surface-start) 48%, var(--rpc-surface-end) 100%);
+    color: var(--rpc-text);
+    box-shadow: var(--rpc-shadow);
+    overflow: hidden;
+  }
+
+  :global([data-theme="light"]) .round-progress-card {
+    --rpc-surface-start: var(--surface);
+    --rpc-surface-end: var(--surface-container-low);
+    --rpc-text: var(--text);
+    --rpc-text-muted: var(--text-secondary);
+    --rpc-text-strong: var(--accent-text);
+    --rpc-progress-track: var(--surface-container-highest);
+    --rpc-select-border: var(--border-strong);
+    --rpc-select-bg: var(--surface);
+    --rpc-select-text: var(--text);
+    --rpc-shadow: var(--shadow-card);
+  }
+
+  @media (prefers-color-scheme: light) {
+    :global(:root:not([data-theme])) .round-progress-card {
+      --rpc-surface-start: var(--surface);
+      --rpc-surface-end: var(--surface-container-low);
+      --rpc-text: var(--text);
+      --rpc-text-muted: var(--text-secondary);
+      --rpc-text-strong: var(--accent-text);
+      --rpc-progress-track: var(--surface-container-highest);
+      --rpc-select-border: var(--border-strong);
+      --rpc-select-bg: var(--surface);
+      --rpc-select-text: var(--text);
+      --rpc-shadow: var(--shadow-card);
+    }
+  }
+
+  .eyebrow-row,
+  .supporting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+
+  .eyebrow-controls,
+  .supporting-controls {
+    flex-shrink: 0;
+  }
+
+  .eyebrow-controls :global(.card-inline-select),
+  .supporting-controls :global(.card-inline-select) {
+    min-width: 0;
+    padding: var(--space-2) var(--space-8) var(--space-2) var(--space-3);
+    border: 1px solid var(--rpc-select-border);
+    border-radius: var(--radius-full);
+    background-color: var(--rpc-select-bg);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fde68a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-3) center;
+    color: var(--rpc-select-text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .eyebrow-controls :global(.card-inline-select) {
+    width: 5.5rem;
+  }
+
+  .supporting-controls :global(.card-inline-select) {
+    width: min(11rem, 42vw);
+  }
+
+
+  .eyebrow {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wider);
+    line-height: var(--leading-tight);
+    text-transform: uppercase;
+    color: var(--rpc-text-muted);
+  }
+
+  .progress-value {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    font-family: var(--font-display);
+    line-height: var(--leading-none);
+  }
+
+  .progress-value-primary {
+    font-size: var(--text-display-xl);
+    font-weight: var(--weight-extrabold);
+    letter-spacing: var(--tracking-tight);
+    line-height: 0.9;
+    color: var(--rpc-text-strong);
+  }
+
+  .progress-value-secondary {
+    font-size: var(--text-display-md);
+    font-weight: var(--weight-bold);
+    color: var(--rpc-text-muted);
+    opacity: 0.9;
+  }
+
+  .progress-bar {
+    position: relative;
+    z-index: 1;
+    height: var(--space-3);
+    background: var(--rpc-progress-track);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: var(--progress);
+    border-radius: var(--radius-full);
+    background: linear-gradient(90deg, var(--gold-300), var(--gold-200));
+    transition: width var(--duration-normal) var(--ease-out);
+  }
+
+  .progress-supporting {
+    margin: 0;
+    font-size: var(--text-base);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-tight);
+    color: var(--rpc-text-muted);
+    text-wrap: balance;
+    flex: 1;
+    min-width: 0;
+  }
+
+  @media (max-width: 40rem) {
+    .round-progress-card {
+      gap: var(--space-6);
+      padding: var(--space-8);
+    }
+
+    .eyebrow-row,
+    .supporting-row {
+      gap: var(--space-3);
+    }
+
+    .eyebrow-controls :global(.card-inline-select) {
+      width: 5rem;
+    }
+
+    .supporting-controls :global(.card-inline-select) {
+      width: min(10rem, 40vw);
+    }
+
+    .eyebrow {
+      font-size: var(--text-sm);
+    }
+
+    .progress-value-primary {
+      font-size: var(--text-6xl);
+    }
+
+    .progress-value-secondary {
+      font-size: var(--text-3xl);
+    }
+
+    .progress-supporting {
+      font-size: var(--text-base);
+    }
+  }
+
+  @media (forced-colors: active) {
+    .round-progress-card {
+      background: Canvas;
+      box-shadow: none;
+      border: 1px solid ButtonBorder;
+    }
+
+    .eyebrow,
+    .progress-value-primary,
+    .progress-value-secondary,
+    .progress-supporting {
+      color: CanvasText;
+    }
+
+    .progress-bar {
+      background: GrayText;
+    }
+
+    .progress-fill {
+      background: Highlight;
+    }
+  }
+</style>

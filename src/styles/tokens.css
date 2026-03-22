@@ -11,6 +11,7 @@
   /* ── Typography ─────────────────────────────────────────── */
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
     Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-display: "Manrope", var(--font-sans);
   --font-mono: "JetBrains Mono", "Fira Code", "SF Mono", monospace;
 
   /* Font sizes */
@@ -27,7 +28,8 @@
   --text-6xl: 3.75rem;  /* 60px */
   --text-display-sm: 1.8rem;
   --text-display-md: 2.6rem;
-  --text-display-lg: 3.2rem;
+  --text-display-lg: 3.5rem;  /* Reserved for table numbers — legible from 5ft */
+  --text-display-xl: 5rem;
 
   /* Font weights */
   --weight-normal: 400;
@@ -125,12 +127,24 @@
 
   /* ── Chess piece colors ─────────────────────────────────── */
   --white-piece: #f0d9b5;
+  --white-piece-text: #3d2c1a;
+  --white-piece-border: #d4b896;
   --black-piece: #b58863;
+  --black-piece-dark: #6b4e37;
+  --black-piece-text: #3d2c1a;
+  --black-piece-border: #5a4230;
 
   /* ── Medal colors ───────────────────────────────────────── */
   --medal-gold:   #FFD700;
   --medal-silver: #C0C0C0;
   --medal-bronze: #CD7F32;
+
+  /* ── Design system semantic aliases ──────────────────────── */
+  --primary-container: var(--gold-300);
+  --primary-fixed-dim: #fff2d6;
+  --on-primary-fixed: #1a1a24;
+  --secondary-fixed-dim: #e7bdb1;  /* Walnut/Black chess tone */
+  --tertiary-fixed-dim: #e1c299;   /* Tan/White chess tone */
 }
 
 /* ============================================================
@@ -166,6 +180,9 @@
   --win:          var(--green-400);
   --loss:         var(--red-400);
   --draw:         var(--amber-400);
+  --danger:       var(--red-400);
+  --on-win:       #052e16;
+  --on-loss:      #fff;
 
   --shadow-card:  0 4px 15px rgba(0, 0, 0, 0.15);
   --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.3);
@@ -194,6 +211,25 @@
   /* Ambient blurs */
   --ambient-a: rgba(252, 211, 77, 0.12);
   --ambient-b: rgba(245, 158, 11, 0.08);
+
+  /* Surface hierarchy (Nested Depth model) */
+  --surface-container-low: #1c1b1b;
+  --surface-container-high: #2a2a2a;
+  --surface-container-highest: #333333;
+
+  /* Ghost border */
+  --outline-variant: rgba(229, 226, 225, 0.15);
+
+  /* On-surface */
+  --on-surface: #e5e2e1;
+
+  /* Ambient shadow */
+  --shadow-ambient: 0 8px 32px rgba(229, 226, 225, 0.06);
+
+  /* Subtle result backgrounds */
+  --win-subtle: rgba(74, 222, 128, 0.15);
+  --loss-subtle: rgba(248, 113, 113, 0.15);
+  --draw-subtle: rgba(251, 191, 36, 0.15);
 }
 
 /* ============================================================
@@ -228,6 +264,9 @@
   --win:          var(--green-600);
   --loss:         var(--red-500);
   --draw:         var(--gold-500);
+  --danger:       var(--red-500);
+  --on-win:       #fff;
+  --on-loss:      #fff;
 
   --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -256,6 +295,25 @@
   /* Ambient blurs */
   --ambient-a: rgba(252, 211, 77, 0.08);
   --ambient-b: rgba(245, 158, 11, 0.05);
+
+  /* Surface hierarchy (Nested Depth model) */
+  --surface-container-low: #f0f0ee;
+  --surface-container-high: #e8e8e6;
+  --surface-container-highest: #e0e0de;
+
+  /* Ghost border */
+  --outline-variant: rgba(0, 0, 0, 0.12);
+
+  /* On-surface */
+  --on-surface: #1c1917;
+
+  /* Ambient shadow */
+  --shadow-ambient: 0 8px 32px rgba(0, 0, 0, 0.06);
+
+  /* Subtle result backgrounds */
+  --win-subtle: rgba(22, 163, 74, 0.12);
+  --loss-subtle: rgba(239, 68, 68, 0.12);
+  --draw-subtle: rgba(245, 158, 11, 0.12);
 }
 
 /* ── System preference fallback ─────────────────────────── */
@@ -289,6 +347,9 @@
     --win:          var(--green-600);
     --loss:         var(--red-500);
     --draw:         var(--gold-500);
+    --danger:       var(--red-500);
+    --on-win:       #fff;
+    --on-loss:      #fff;
 
     --shadow-card:  0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
     --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -312,5 +373,24 @@
 
     --ambient-a: rgba(252, 211, 77, 0.08);
     --ambient-b: rgba(245, 158, 11, 0.05);
+
+    /* Surface hierarchy (Nested Depth model) */
+    --surface-container-low: #f0f0ee;
+    --surface-container-high: #e8e8e6;
+    --surface-container-highest: #e0e0de;
+
+    /* Ghost border */
+    --outline-variant: rgba(0, 0, 0, 0.12);
+
+    /* On-surface */
+    --on-surface: #1c1917;
+
+    /* Ambient shadow */
+    --shadow-ambient: 0 8px 32px rgba(0, 0, 0, 0.06);
+
+    /* Subtle result backgrounds */
+    --win-subtle: rgba(22, 163, 74, 0.12);
+    --loss-subtle: rgba(239, 68, 68, 0.12);
+    --draw-subtle: rgba(245, 158, 11, 0.12);
   }
 }

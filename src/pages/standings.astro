@@ -18,7 +18,7 @@ let data;
 let error: string | null = null;
 
 try {
-  data = await scrapeStandings(tid, lang);
+  data = await scrapeStandings(tid);
 } catch (e) {
   error = e instanceof Error ? e.message : t("error.load");
 }
@@ -29,6 +29,9 @@ const teamStandings = data?.teamStandings || [];
 const hasWomen = womenStandings.length > 0;
 const hasTeams = teamStandings.length > 0;
 const linkedTournaments = data?.info.linkedTournaments;
+const sectionTitle = data?.info.currentLabel || data?.info.name || t("site.title");
+const tournamentEyebrow = data?.info.currentLabel ? data.info.name : undefined;
+const recentPlayerCount = allStandings.length;
 
 // Build segments for the segmented control
 const segments: { value: string; label: string }[] = [];
@@ -44,7 +47,7 @@ if (hasWomen) {
 const defaultActive = hasTeams ? "teams" : "open";
 ---
 
-<MobileLayout title={data?.info.name || t("site.title")} lang={lang}>
+<MobileLayout title={sectionTitle} eyebrow={tournamentEyebrow} lang={lang}>
   {
     error && (
       <div class="error-msg">
@@ -114,8 +117,17 @@ const defaultActive = hasTeams ? "teams" : "open";
   .standings-seg-wrapper {
     display: flex;
     justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-3);
     z-index: 5;
     padding-block-end: var(--space-4);
+    min-width: 0;
+  }
+
+  .standings-seg-wrapper :global(.tournament-selector-wrapper) {
+    flex: 1 1 auto;
+    min-width: 0;
   }
 
   .standings-seg-wrapper :global(.seg-control) {
@@ -169,6 +181,9 @@ const defaultActive = hasTeams ? "teams" : "open";
     tid,
     tournamentName: data?.info.name || "",
     tournamentDate: data?.info.date || "",
+    tournamentLocation: data?.info.location || "",
+    tournamentType: data?.info.type || "",
+    tournamentPlayerCount: recentPlayerCount,
   }}
 >
   (function () {
@@ -177,10 +192,25 @@ const defaultActive = hasTeams ? "teams" : "open";
       var key = "recentTournaments";
       var stored = localStorage.getItem(key);
       var recent = stored ? JSON.parse(stored) : [];
+      var existing = recent.find(function (r) {
+        return r.id === tid;
+      });
       recent = recent.filter(function (r) {
         return r.id !== tid;
       });
-      recent.unshift({ id: tid, name: tournamentName, date: tournamentDate });
+      recent.unshift({
+        id: tid,
+        name: tournamentName || (existing && existing.name) || ("Tournament " + tid),
+        type: tournamentType || (existing && existing.type) || "",
+        date: tournamentDate || (existing && existing.date) || "",
+        location: tournamentLocation || (existing && existing.location) || "",
+        playerCount:
+          tournamentPlayerCount > 0
+            ? tournamentPlayerCount
+            : existing && typeof existing.playerCount === "number"
+              ? existing.playerCount
+              : undefined,
+      });
       recent = recent.slice(0, 5);
       localStorage.setItem(key, JSON.stringify(recent));
     } catch (e) {

@@ -1,0 +1,80 @@
+import type { APIRoute } from "astro";
+import { scrapePairings, ensurePlayerCards } from "../../lib/scraper";
+import { getRefereeResults, getPlayerNationalIds } from "../../lib/db";
+import { buildRefereeExportXml } from "../../lib/xml-export";
+import type { Pairing, TeamPairing } from "../../lib/types";
+
+export const GET: APIRoute = async ({ url }) => {
+  const tid = url.searchParams.get("tid");
+  const roundStr = url.searchParams.get("round");
+
+  if (!tid) {
+    return new Response(JSON.stringify({ error: "Missing tid" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const round = parseInt(roundStr || "1", 10);
+  if (isNaN(round) || round < 1 || round > 64) {
+    return new Response(JSON.stringify({ error: "Invalid round" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  try {
+    const data = await scrapePairings(tid, round);
+    const refereeResults = getRefereeResults(tid, round) as Array<{
+      table_number: number;
+      result: string;
+    }>;
+
+    // Build referee results lookup by table number
+    const resultsMap: Record<number, string> = {};
+    for (const r of refereeResults) {
+      resultsMap[r.table_number] = r.result;
+    }
+
+    // Collect all pairings (flat or from team boards)
+    const allPairings: Pairing[] = [];
+    const teamPairings: TeamPairing[] = data.teamPairings || [];
+
+    if (teamPairings.length > 0) {
+      for (const tm of teamPairings) {
+        for (const b of tm.boards) {
+          allPairings.push(b);
+        }
+      }
+    } else {
+      allPairings.push(...data.pairings);
+    }
+
+    // Ensure player card data is available for national ID lookup
+    await ensurePlayerCards(tid);
+
+    const nationalIds = getPlayerNationalIds(tid);
+
+    const xml = buildRefereeExportXml({
+      round,
+      teamPairings,
+      allPairings,
+      resultsMap,
+      nationalIds,
+    });
+
+    return new Response(xml, {
+      headers: {
+        "Content-Type": "application/xml; charset=utf-8",
+        "Content-Disposition": `attachment; filename="round-${round}-results.xml"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to generate export";
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+};

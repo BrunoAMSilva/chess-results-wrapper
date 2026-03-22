@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { scrapePairings, scrapeStandings } from "../../lib/scraper";
-import { getIntParam, getLangParam } from "../../lib/request-params";
+import { getIntParam } from "../../lib/request-params";
 
 function csvEscape(value: unknown): string {
   const raw = value == null ? "" : String(value);
@@ -20,7 +20,6 @@ export const GET: APIRoute = async ({ url }) => {
   const tid = url.searchParams.get("tid");
   const type = url.searchParams.get("type") || "standings";
   const format = url.searchParams.get("format") || "csv";
-  const lang = getLangParam(url.searchParams.get("lang"), 1);
   const round = getIntParam(url.searchParams.get("round"), 1, 1, 64);
 
   if (!tid) {
@@ -46,7 +45,7 @@ export const GET: APIRoute = async ({ url }) => {
 
   try {
     if (type === "standings") {
-      const data = await scrapeStandings(tid, lang);
+      const data = await scrapeStandings(tid);
       const filename = `standings-${tid}.${format}`;
 
       if (format === "json") {
@@ -102,7 +101,7 @@ export const GET: APIRoute = async ({ url }) => {
       });
     }
 
-    const data = await scrapePairings(tid, round, lang);
+    const data = await scrapePairings(tid, round);
     const filename = `pairings-${tid}-r${round}.${format}`;
 
     if (format === "json") {

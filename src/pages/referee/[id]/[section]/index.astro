@@ -1,0 +1,178 @@
+---
+import ResponsiveLayout from "../../../../layouts/ResponsiveLayout.astro";
+import RoundSelector from "../../../../components/RoundSelector.astro";
+import { scrapePairings } from "../../../../lib/scraper";
+import { getRefereeResults } from "../../../../lib/db";
+import { useTranslations } from "../../../../i18n/ui";
+import { resolvePageLang } from "../../../../lib/page-lang";
+import type { Pairing, TeamPairing } from "../../../../lib/types";
+
+const tid = Astro.params.id!;
+const section = Astro.params.section!;
+const lang = resolvePageLang(Astro.url, Astro.cookies);
+const roundParam = Astro.url.searchParams.get("round");
+const t = useTranslations(lang);
+
+let error: string | null = null;
+let totalRounds = 0;
+let activeRound = 1;
+let allPairings: Pairing[] = [];
+let teamPairings: TeamPairing[] | undefined;
+let tournamentName = "";
+let sectionTitle = "";
+
+try {
+  const initial = await scrapePairings(section, 1);
+  totalRounds = initial.info.totalRounds;
+  tournamentName = initial.info.name;
+  sectionTitle = initial.info.currentLabel || initial.info.name;
+
+  if (roundParam) {
+    activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
+  } else {
+    let foundRound = 1;
+    for (let r = totalRounds; r >= 1; r--) {
+      const data = r === 1 ? initial : await scrapePairings(section, r);
+      const pairings = data.pairings || [];
+      const hasNoResults = pairings.length > 0 && pairings.every((p) => !p.result || p.result.trim() === "");
+      if (hasNoResults) {
+        foundRound = r;
+      } else if (pairings.length > 0) {
+        break;
+      }
+    }
+    activeRound = foundRound;
+  }
+
+  const activeData = activeRound === 1 ? initial : await scrapePairings(section, activeRound);
+  allPairings = activeData.pairings || [];
+  teamPairings = activeData.teamPairings;
+} catch (e) {
+  error = e instanceof Error ? e.message : t("error.load");
+}
+
+// Build table list
+const tables: number[] = [];
+const isTeamTournament = !!(teamPairings && teamPairings.length > 0);
+if (teamPairings && teamPairings.length > 0) {
+  for (const tm of teamPairings) {
+    for (const b of tm.boards) {
+      tables.push(b.table);
+    }
+  }
+} else {
+  for (const p of allPairings) {
+    tables.push(p.table);
+  }
+}
+tables.sort((a, b) => a - b);
+
+function formatTableLabel(table: number): string {
+  if (isTeamTournament) {
+    const match = Math.floor(table / 100);
+    const board = table % 100;
+    return `${match}.${board}`;
+  }
+  return String(table);
+}
+
+const submittedTables = new Set<number>();
+const refResults = getRefereeResults(section, activeRound) as Array<{ table_number: number }>;
+for (const r of refResults) {
+  submittedTables.add(r.table_number);
+}
+
+const q = `round=${activeRound}&lang=${lang}`;
+const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1);
+const roundBaseUrl = `/referee/${tid}/${section}?lang=${lang}`;
+const pageTitle = sectionTitle || t("referee.selectTable");
+const eyebrow = tournamentName && tournamentName !== pageTitle ? tournamentName : undefined;
+---
+
+<ResponsiveLayout title={pageTitle} eyebrow={eyebrow} lang={lang} navMode="referee">
+  {error && <div class="error-msg"><p>{error}</p></div>}
+
+  <div class="referee-page">
+    <RoundSelector rounds={rounds} activeRound={activeRound} baseUrl={roundBaseUrl} label={t("referee.round")} />
+
+    <div class="table-grid">
+      {tables.map((tbl) => (
+        <a
+          class:list={["table-btn", { done: submittedTables.has(tbl) }]}
+          href={`/referee/${tid}/${section}/${tbl}?${q}`}
+        >
+          {formatTableLabel(tbl)}
+          {submittedTables.has(tbl) && <span class="done-check">✓</span>}
+        </a>
+      ))}
+    </div>
+  </div>
+</ResponsiveLayout>
+
+<style>
+  .referee-page {
+    max-width: 600px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+
+
+  .table-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-2);
+    width: 100%;
+  }
+
+  .table-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-3);
+    border: 2px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-4xl);
+    font-weight: var(--font-bold);
+    cursor: pointer;
+    transition: all var(--duration-fast) var(--ease-out);
+    aspect-ratio: 1;
+    position: relative;
+    text-decoration: none;
+  }
+
+  .table-btn:hover {
+    border-color: var(--accent-hover);
+    color: var(--accent-text);
+  }
+
+  .table-btn.done {
+    border-color: var(--success, #38a169);
+    opacity: 0.5;
+  }
+
+  .table-btn.done:hover {
+    opacity: 0.8;
+  }
+
+  .done-check {
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--success, #38a169);
+    line-height: 1;
+  }
+
+  .error-msg {
+    color: var(--danger, #e53e3e);
+    text-align: center;
+    padding: var(--space-4);
+  }
+</style>
+
+

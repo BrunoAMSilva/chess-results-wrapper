@@ -1,0 +1,419 @@
+---
+import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
+import RoundProgressCard from "../../../components/RoundProgressCard.astro";
+import { scrapePairings } from "../../../lib/scraper";
+import { getRefereeResults } from "../../../lib/db";
+import { useTranslations } from "../../../i18n/ui";
+import { resolvePageLang } from "../../../lib/page-lang";
+import type { LinkedTournament, Pairing, TeamPairing } from "../../../lib/types";
+
+const tid = Astro.params.id!;
+const lang = resolvePageLang(Astro.url, Astro.cookies);
+const roundParam = Astro.url.searchParams.get("round");
+const sectionParam = Astro.url.searchParams.get("section");
+
+const t = useTranslations(lang);
+
+let error: string | null = null;
+let totalRounds = 0;
+let activeRound = 1;
+let linkedTournaments: LinkedTournament[] | undefined;
+let currentLabel = "";
+let tournamentName = "";
+
+interface RefereeResult {
+  table_number: number;
+  result: string;
+  created_at: string;
+}
+
+interface SectionData {
+  id: string;
+  name: string;
+  tables: number[];
+  tablePlayersMap: Record<number, { white: string; black: string }>;
+  resultsMap: Record<number, RefereeResult>;
+  submittedCount: number;
+}
+
+const allSections: SectionData[] = [];
+
+try {
+  const initial = await scrapePairings(tid, 1);
+  totalRounds = initial.info.totalRounds;
+  linkedTournaments = initial.info.linkedTournaments;
+  tournamentName = initial.info.name;
+  currentLabel = initial.info.currentLabel || initial.info.name;
+
+  if (roundParam) {
+    activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
+  } else {
+    let foundRound = 1;
+    for (let r = totalRounds; r >= 1; r--) {
+      const data = r === 1 ? initial : await scrapePairings(tid, r);
+      const pairings = data.pairings || [];
+      const hasNoResults = pairings.length > 0 && pairings.every((p) => !p.result || p.result.trim() === "");
+      if (hasNoResults) {
+        foundRound = r;
+      } else if (pairings.length > 0) {
+        break;
+      }
+    }
+    activeRound = foundRound;
+  }
+
+  // Build section list
+  const sectionIds: { id: string; name: string }[] = [];
+  const hasSections = !!(linkedTournaments && linkedTournaments.length > 0);
+
+  if (hasSections) {
+    sectionIds.push({ id: tid, name: currentLabel });
+    for (const lt of linkedTournaments!) {
+      if (lt.id !== tid) {
+        sectionIds.push({ id: lt.id, name: lt.name });
+      }
+    }
+    sectionIds.sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    sectionIds.push({ id: tid, name: currentLabel });
+  }
+
+  // Determine which section to show (default to first)
+  const activeSectionId = sectionParam && sectionIds.some((s) => s.id === sectionParam)
+    ? sectionParam
+    : sectionIds[0]?.id;
+  const loadSections = sectionIds.filter((s) => s.id === activeSectionId);
+
+  for (const sec of loadSections) {
+    const data = await scrapePairings(sec.id, activeRound);
+    const pairings: Pairing[] = data.pairings || [];
+    const teamPairings: TeamPairing[] | undefined = data.teamPairings;
+
+    const tablePlayersMap: Record<number, { white: string; black: string }> = {};
+    if (teamPairings && teamPairings.length > 0) {
+      for (const tm of teamPairings) {
+        for (const b of tm.boards) {
+          tablePlayersMap[b.table] = {
+            white: b.white.name,
+            black: b.black?.name || "—",
+          };
+        }
+      }
+    } else {
+      for (const p of pairings) {
+        tablePlayersMap[p.table] = {
+          white: p.white.name,
+          black: p.black?.name || "—",
+        };
+      }
+    }
+
+    const resultsMap: Record<number, RefereeResult> = {};
+    const refResults = getRefereeResults(sec.id, activeRound) as RefereeResult[];
+    for (const r of refResults) {
+      resultsMap[r.table_number] = r;
+    }
+
+    const tables = Object.keys(tablePlayersMap).map(Number).sort((a, b) => a - b);
+    const submittedCount = tables.filter((t) => resultsMap[t]).length;
+
+    allSections.push({
+      id: sec.id,
+      name: sec.name,
+      tables,
+      tablePlayersMap,
+      resultsMap,
+      submittedCount,
+    });
+  }
+} catch (e) {
+  error = e instanceof Error ? e.message : t("error.load");
+}
+
+const hasSections = !!(linkedTournaments && linkedTournaments.length > 0);
+const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1);
+const activeSection = allSections[0]?.id || tid;
+const roundBaseUrl = `/referee/${tid}/results?lang=${lang}&section=${activeSection}`;
+
+function formatTemplate(template: string, values: Record<string, string | number>) {
+  let formatted = template;
+  for (const [key, value] of Object.entries(values)) {
+    formatted = formatted.replaceAll(`{${key}}`, String(value));
+  }
+  return formatted;
+}
+
+// Build section list for switcher
+const sectionList: { id: string; name: string }[] = [];
+if (hasSections) {
+  sectionList.push({ id: tid, name: currentLabel });
+  for (const lt of linkedTournaments!) {
+    if (lt.id !== tid) {
+      sectionList.push({ id: lt.id, name: lt.name });
+    }
+  }
+  sectionList.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+const resultsTitle = allSections[0]?.name || currentLabel || t("referee.results");
+const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentName : undefined;
+---
+
+<ResponsiveLayout title={resultsTitle} eyebrow={eyebrow} lang={lang} navMode="referee">
+  {error && (
+    <div class="error-msg">
+      <p>{error}</p>
+    </div>
+  )}
+
+  <div class="results-overview">
+    {allSections.map((sec, index) => {
+      const remainingCount = Math.max(sec.tables.length - sec.submittedCount, 0);
+      const eyebrowText = formatTemplate(t("referee.roundCompletion"), {
+        round: activeRound,
+      });
+      const progressLabel = formatTemplate(t("referee.progressStatus"), {
+        submitted: sec.submittedCount,
+        total: sec.tables.length,
+      });
+      const remainingTemplate = remainingCount === 1
+        ? t("referee.progressRemainingSingular")
+        : t("referee.progressRemainingPlural");
+      const summaryText = remainingCount === 0 && sec.tables.length > 0
+        ? t("referee.allSubmitted")
+        : formatTemplate(remainingTemplate, {
+            count: remainingCount,
+            section: sec.name,
+          });
+      const progressValueText = `${progressLabel}. ${summaryText}`;
+
+      return (
+      <div class="section-block">
+        <RoundProgressCard
+          submittedCount={sec.submittedCount}
+          totalCount={sec.tables.length}
+          eyebrowText={eyebrowText}
+          progressLabel={progressLabel}
+          summaryText={summaryText}
+          progressValueText={progressValueText}
+        >
+          {index === 0 && (
+            <Fragment slot="eyebrow-controls">
+              <select class="card-inline-select round-inline-select" id="roundSelect" aria-label={t("referee.round")}>
+                {rounds.map((round) => (
+                  <option value={round} selected={round === activeRound}>{round}</option>
+                ))}
+              </select>
+
+            </Fragment>
+          )}
+
+          {index === 0 && (
+            <Fragment slot="supporting-controls">
+              {hasSections && sectionList.length > 0 && (
+                <select class="card-inline-select section-inline-select" id="sectionSelect" aria-label={t("referee.changeSection")}>
+                  {sectionList.map((s) => (
+                    <option value={s.id} selected={s.id === activeSection}>{s.name}</option>
+                  ))}
+                </select>
+              )}
+            </Fragment>
+          )}
+        </RoundProgressCard>
+
+        {sec.submittedCount > 0 && (
+          <div class="export-section">
+            <a
+              class="export-btn"
+              href={`/api/referee-export?tid=${sec.id}&round=${activeRound}`}
+              download={`round-${activeRound}-results.xml`}
+            >
+              {t("referee.exportXml")}
+            </a>
+          </div>
+        )}
+
+        {sec.tables.length === 0 ? (
+          <p class="empty-state">{t("referee.noResultsYet")}</p>
+        ) : (
+          <div class="results-table">
+            <div class="results-header">
+              <span class="col-table">{t("referee.table")}</span>
+              <span class="col-players">{t("table.white")} – {t("table.black")}</span>
+              <span class="col-result">{t("referee.result")}</span>
+            </div>
+            {sec.tables.map((tbl) => {
+              const players = sec.tablePlayersMap[tbl];
+              const result = sec.resultsMap[tbl];
+              return (
+                <div class:list={["results-row", { submitted: !!result, pending: !result }]}>
+                  <span class="col-table">{tbl}</span>
+                  <span class="col-players">
+                    <span class="player-white">{players.white}</span>
+                    <span class="vs">–</span>
+                    <span class="player-black">{players.black}</span>
+                  </span>
+                  <span class:list={["col-result", { "has-result": !!result }]}>
+                    {result ? result.result : t("referee.pending")}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      );
+    })}
+  </div>
+</ResponsiveLayout>
+
+<script is:inline>
+  // Round select navigation
+  var roundSelect = document.getElementById("roundSelect");
+  if (roundSelect) {
+    roundSelect.addEventListener("change", function() {
+      var url = new URL(window.location.href);
+      url.searchParams.set("round", roundSelect.value);
+      window.location.href = url.toString();
+    });
+  }
+
+  // Section select navigation
+  var sectionSelect = document.getElementById("sectionSelect");
+  if (sectionSelect) {
+    sectionSelect.addEventListener("change", function() {
+      var url = new URL(window.location.href);
+      url.searchParams.set("section", sectionSelect.value);
+      window.location.href = url.toString();
+    });
+  }
+
+  // Auto-refresh every 15 seconds
+  setTimeout(function() {
+    window.location.reload();
+  }, 15000);
+</script>
+
+<style>
+  .results-overview {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: var(--space-4) 0;
+  }
+
+  .section-block {
+    margin-bottom: var(--space-6);
+  }
+
+  .section-block:last-child {
+    margin-bottom: 0;
+  }
+
+  .export-section {
+    margin-bottom: var(--space-4);
+  }
+
+  .export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border: 2px solid var(--accent-hover);
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--accent-text);
+    font-size: var(--text-sm);
+    font-weight: var(--font-semibold);
+    text-decoration: none;
+    transition: all var(--duration-fast) var(--ease-out);
+  }
+
+  .export-btn:hover {
+    background: var(--accent-hover);
+    color: var(--accent-text, #000);
+  }
+
+  .empty-state {
+    text-align: center;
+    color: var(--text-dim);
+    padding: var(--space-8) 0;
+  }
+
+  .results-table {
+    display: flex;
+    flex-direction: column;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+
+  .results-header {
+    display: grid;
+    grid-template-columns: 48px 1fr 80px;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: var(--surface);
+    border-bottom: 2px solid var(--border);
+    font-size: var(--text-xs);
+    font-weight: var(--font-bold);
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .results-row {
+    display: grid;
+    grid-template-columns: 48px 1fr 80px;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    align-items: center;
+    font-size: var(--text-sm);
+  }
+
+  .results-row:last-child {
+    border-bottom: none;
+  }
+
+  .results-row.pending {
+    opacity: 0.6;
+  }
+
+  .col-table {
+    font-weight: var(--font-bold);
+    text-align: center;
+  }
+
+  .col-players {
+    display: flex;
+    gap: var(--space-1);
+    overflow: hidden;
+  }
+
+  .player-white,
+  .player-black {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .vs {
+    color: var(--text-dim);
+    flex-shrink: 0;
+  }
+
+  .col-result {
+    text-align: center;
+    font-weight: var(--font-semibold);
+    color: var(--text-dim);
+  }
+
+  .col-result.has-result {
+    color: var(--text);
+  }
+
+  .error-msg {
+    color: var(--danger, #e53e3e);
+    text-align: center;
+    padding: var(--space-4);
+  }
+</style>

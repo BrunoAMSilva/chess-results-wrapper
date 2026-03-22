@@ -50,7 +50,7 @@ if (!playerParam) {
 } else {
   try {
     // Get standings for player metadata
-    const standingsData = await scrapeStandings(tid, lang);
+      const standingsData = await scrapeStandings(tid);
     totalRounds = standingsData.info.totalRounds;
 
     // Standings (crosstable) may omit the comma in "Last, First" names,
@@ -84,14 +84,14 @@ if (!playerParam) {
     // If standings didn't provide totalRounds, discover it from pairings round 1
     if (!totalRounds) {
       try {
-        const r1 = await scrapePairings(tid, 1, lang);
+        const r1 = await scrapePairings(tid, 1);
         totalRounds = r1.info.totalRounds;
       } catch (_) { /* best-effort */ }
     }
 
     // Fetch all rounds and find this player's games
     const roundPromises = Array.from({ length: totalRounds }, (_, i) =>
-      scrapePairings(tid, i + 1, lang).catch(() => null)
+      scrapePairings(tid, i + 1).catch(() => null)
     );
     const allRounds = await Promise.all(roundPromises);
 
@@ -232,7 +232,6 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
   .player-header {
     background: var(--surface);
     border-radius: var(--radius-xl);
-    border: 1px solid var(--border-light);
     padding: var(--space-4);
     margin-bottom: var(--space-4);
     box-shadow: var(--shadow-card);
@@ -314,7 +313,6 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
   .rounds-section {
     background: var(--surface);
     border-radius: var(--radius-xl);
-    border: 1px solid var(--border-light);
     overflow: hidden;
     box-shadow: var(--shadow-card);
     margin-bottom: var(--space-8);
@@ -325,7 +323,6 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
     grid-template-columns: 48px 1fr 48px 48px;
     align-items: center;
     padding: var(--space-2) 0;
-    border-bottom: 1px solid var(--border);
     background: rgba(255, 255, 255, 0.03);
   }
 

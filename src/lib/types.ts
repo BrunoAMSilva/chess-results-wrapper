@@ -132,6 +132,10 @@ export interface DbTournament {
   updated_at: string;
 }
 
+export interface DbTournamentSummary extends DbTournament {
+  player_count: number;
+}
+
 export interface DbPlayer {
   id?: number;
   name: string;

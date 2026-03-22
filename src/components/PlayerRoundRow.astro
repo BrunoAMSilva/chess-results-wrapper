@@ -79,7 +79,6 @@ const displayName = isBye ? t("player.bye") : reverseName(opponent);
     grid-template-columns: 48px 1fr 48px 48px;
     align-items: center;
     background: var(--surface);
-    border-bottom: 1px solid var(--border);
     min-height: 52px;
     animation: fadeInUp var(--duration-slow) ease both;
     animation-delay: var(--delay);
@@ -87,7 +86,6 @@ const displayName = isBye ? t("player.bye") : reverseName(opponent);
   }
 
   .round-row:last-child {
-    border-bottom: none;
   }
 
   .round-row.win {
@@ -141,14 +139,11 @@ const displayName = isBye ? t("player.bye") : reverseName(opponent);
   }
 
   .white-piece {
-    background: linear-gradient(135deg, var(--white-piece) 0%, #e0e0e0 100%);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    background: linear-gradient(135deg, var(--white-piece) 0%, var(--neutral-200) 100%);
   }
 
   .black-piece {
-    background: linear-gradient(135deg, var(--black-piece) 0%, #222 100%);
-    border: 1px solid #111;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, var(--black-piece) 0%, var(--neutral-800) 100%);
   }
 
   .opponent-name {
@@ -183,22 +178,22 @@ const displayName = isBye ? t("player.bye") : reverseName(opponent);
   }
 
   .result-badge.win {
-    background: rgba(74, 222, 128, 0.15);
+    background: var(--win-subtle);
     color: var(--win);
   }
 
   .result-badge.loss {
-    background: rgba(248, 113, 113, 0.15);
+    background: var(--loss-subtle);
     color: var(--loss);
   }
 
   .result-badge.draw {
-    background: rgba(251, 191, 36, 0.15);
+    background: var(--draw-subtle);
     color: var(--draw);
   }
 
   .result-badge.pending {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--surface-container-highest);
     color: var(--text-dim);
   }
 

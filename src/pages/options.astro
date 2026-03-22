@@ -7,11 +7,13 @@ import { resolvePageLang } from "../lib/page-lang";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const lang = resolvePageLang(Astro.url, Astro.cookies);
+const mode = Astro.url.searchParams.get("mode") || "";
+const navMode = mode === "referee" ? "referee" as const : "default" as const;
 
 const t = useTranslations(lang);
 ---
 
-<MobileLayout title={t('config.title')} lang={lang}>
+<MobileLayout title={t('config.title')} lang={lang} navMode={navMode}>
   <div class="options-grid">
     <div class="options-card">
       <div class="card-header">
@@ -90,7 +92,6 @@ const t = useTranslations(lang);
 
   .options-card {
     background: var(--surface);
-    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     padding: var(--space-8);
     box-shadow: var(--shadow-elevated);
@@ -161,7 +162,7 @@ const t = useTranslations(lang);
   .option-input {
     padding: var(--space-4);
     border-radius: var(--radius-md);
-    border: 1px solid var(--input-border);
+    border: 1px solid var(--outline-variant);
     background: var(--input-bg);
     color: var(--text);
     font-size: var(--text-lg);
@@ -195,7 +196,6 @@ const t = useTranslations(lang);
   .actions-row {
     display: flex;
     justify-content: flex-end;
-    border-top: 1px solid var(--border-light);
     padding-top: var(--space-6);
   }
 
@@ -238,7 +238,6 @@ const t = useTranslations(lang);
     background: var(--seg-bg);
     color: var(--text);
     text-decoration: none;
-    border: 1px solid var(--border-light);
     border-radius: var(--radius-md);
     font-weight: var(--weight-semibold);
     transition: all var(--duration-fast) var(--ease-in-out);
@@ -263,6 +262,7 @@ const t = useTranslations(lang);
         url.searchParams.set('tid', inputTid.value);
         url.searchParams.set('lang', inputLang.value);
         document.cookie = `lang=${inputLang.value};path=/;max-age=${60*60*24*365};samesite=lax`;
+        // Preserve mode param for referee context
         window.location.href = url.toString();
       });
     }

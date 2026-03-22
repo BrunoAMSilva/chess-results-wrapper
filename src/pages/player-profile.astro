@@ -41,7 +41,7 @@ if (!player) {
     const enrichTargets = history.slice(0, 5);
     await Promise.allSettled(
       enrichTargets.map((entry) =>
-        scrapeStandings(entry.tournament_id, lang),
+        scrapeStandings(entry.tournament_id),
       ),
     );
     resolvedPlayer = getPlayerById(resolvedPlayer.id!) || resolvedPlayer;
@@ -174,7 +174,6 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
 <style>
   .identity-card {
     background: var(--surface);
-    border: 1px solid var(--border-light);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-card);
     padding: var(--space-4);
@@ -248,7 +247,6 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
     gap: var(--space-1);
     padding: var(--space-3);
     border-radius: var(--radius-md);
-    border: 1px solid var(--border);
     background: var(--surface-hover);
   }
 
@@ -288,7 +286,6 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
 
   .empty-state {
     background: var(--surface);
-    border: 1px solid var(--border-light);
     border-radius: var(--radius-lg);
     padding: var(--space-4);
     color: var(--text-dim);

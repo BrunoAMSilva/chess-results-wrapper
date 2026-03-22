@@ -61,7 +61,6 @@ const delayClass = `delay-${delayStep}`;
     grid-template-columns: 1fr auto 1fr;
     align-items: stretch;
     background: var(--surface);
-    border-bottom: 1px solid var(--border);
     flex: 1;
     min-height: 0;
     animation: fadeInUp var(--duration-slow) ease both;
@@ -69,7 +68,6 @@ const delayClass = `delay-${delayStep}`;
   }
 
   .match-row:last-child {
-    border-bottom: none;
   }
 
   .match-row.bye {
@@ -143,7 +141,6 @@ const delayClass = `delay-${delayStep}`;
     overflow: hidden;
     text-overflow: ellipsis;
     color: var(--text);
-    text-shadow: var(--shadow-md);
     letter-spacing: -0.01em;
   }
 
@@ -153,11 +150,10 @@ const delayClass = `delay-${delayStep}`;
     justify-content: center;
     width: var(--size-table-divider);
     background: var(--bg);
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
   }
 
   .table-num {
+    font-family: var(--font-display);
     font-size: var(--text-display-lg);
     font-weight: 900;
     color: var(--text);

@@ -124,6 +124,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_tournament_players_player ON tournament_players(player_id);
   CREATE INDEX IF NOT EXISTS idx_players_name ON players(name);
   CREATE INDEX IF NOT EXISTS idx_players_fide ON players(fide_id) WHERE fide_id IS NOT NULL;
+
+  -- Referee-recorded results (separate from chess-results source of truth)
+  CREATE TABLE IF NOT EXISTS referee_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id TEXT NOT NULL,
+    round INTEGER NOT NULL,
+    table_number INTEGER NOT NULL,
+    result TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(tournament_id, round, table_number)
+  );
+  CREATE INDEX IF NOT EXISTS idx_referee_results_tournament_round ON referee_results(tournament_id, round);
 `);
 
 // ─── Database versioning ────────────────────────────────────────────────────
@@ -274,6 +286,7 @@ export default db;
 
 import type {
   DbTournament,
+  DbTournamentSummary,
   DbPlayer,
   LinkedTournament,
   Sex,
@@ -356,15 +369,12 @@ export function upsertPlayer(
   name: string,
   federation: string,
   sex: Sex = '',
-  club = '',
-  rating: number | null = null,
   fideId: string | null = null,
   birthYear: number | null = null,
   nationalId: string | null = null,
 ): number {
   const normalizedName = name.trim();
   const normalizedFed = federation.trim();
-  const normalizedClub = club.trim();
   const normalizedFideId = fideId?.trim() || null;
   const normalizedNationalId = nationalId?.trim() || null;
 
@@ -379,8 +389,6 @@ export function upsertPlayer(
           name = CASE WHEN ? != '' THEN ? ELSE name END,
           federation = CASE WHEN ? != '' THEN ? ELSE federation END,
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
-          club = CASE WHEN ? != '' THEN ? ELSE club END,
-          rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
           fide_id = ?,
           birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -393,10 +401,6 @@ export function upsertPlayer(
         normalizedFed,
         sex,
         sex,
-        normalizedClub,
-        normalizedClub,
-        rating,
-        rating,
         normalizedFideId,
         birthYear,
         birthYear,
@@ -417,8 +421,6 @@ export function upsertPlayer(
     db.prepare(`
       UPDATE players SET
         sex = CASE WHEN ? != '' THEN ? ELSE sex END,
-        club = CASE WHEN ? != '' THEN ? ELSE club END,
-        rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
         fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
         birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
         national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -427,10 +429,6 @@ export function upsertPlayer(
     `).run(
       sex,
       sex,
-      normalizedClub,
-      normalizedClub,
-      rating,
-      rating,
       normalizedFideId,
       normalizedFideId,
       birthYear,
@@ -455,8 +453,6 @@ export function upsertPlayer(
       db.prepare(`
         UPDATE players SET
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
-          club = CASE WHEN ? != '' THEN ? ELSE club END,
-          rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
           fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
           birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -465,10 +461,6 @@ export function upsertPlayer(
       `).run(
         sex,
         sex,
-        normalizedClub,
-        normalizedClub,
-        rating,
-        rating,
         normalizedFideId,
         normalizedFideId,
         birthYear,
@@ -490,8 +482,6 @@ export function upsertPlayer(
         UPDATE players SET
           federation = ?,
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
-          club = CASE WHEN ? != '' THEN ? ELSE club END,
-          rating = CASE WHEN ? IS NOT NULL THEN ? ELSE rating END,
           fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
           birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -501,10 +491,6 @@ export function upsertPlayer(
         normalizedFed,
         sex,
         sex,
-        normalizedClub,
-        normalizedClub,
-        rating,
-        rating,
         normalizedFideId,
         normalizedFideId,
         birthYear,
@@ -518,9 +504,9 @@ export function upsertPlayer(
   }
 
   const result = db.prepare(`
-    INSERT INTO players (name, federation, sex, club, rating, fide_id, birth_year, national_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(normalizedName, normalizedFed, sex, normalizedClub, rating, normalizedFideId, birthYear, normalizedNationalId);
+    INSERT INTO players (name, federation, sex, fide_id, birth_year, national_id)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run(normalizedName, normalizedFed, sex, normalizedFideId, birthYear, normalizedNationalId);
 
   return Number(result.lastInsertRowid);
 }
@@ -539,7 +525,7 @@ export function linkPlayerToTournament(
     INSERT INTO tournament_players (tournament_id, player_id, starting_number, rating, club, national_rating, performance_rating, rating_change)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(tournament_id, player_id) DO UPDATE SET
-      starting_number = excluded.starting_number,
+      starting_number = CASE WHEN excluded.starting_number > 0 THEN excluded.starting_number ELSE tournament_players.starting_number END,
       rating = COALESCE(excluded.rating, tournament_players.rating),
       club = CASE WHEN excluded.club != '' THEN excluded.club ELSE tournament_players.club END,
       national_rating = COALESCE(excluded.national_rating, tournament_players.national_rating),
@@ -847,8 +833,8 @@ export function upsertStanding(
 export function getStandings(tournamentId: string, type: string = 'open') {
   return db.prepare(`
     SELECT s.rank, p.name, p.federation AS fed, p.sex,
-           COALESCE(tp.rating, p.rating, 0) AS rating,
-           COALESCE(tp.club, p.club, '') AS club,
+           COALESCE(tp.rating, 0) AS rating,
+           COALESCE(tp.club, '') AS club,
            s.points, s.tie_break_1, s.tie_break_2, s.tie_break_3,
            s.tie_break_4, s.tie_break_5, s.tie_break_6,
            tp.starting_number, p.fide_id
@@ -875,8 +861,6 @@ export function persistStandings(
         s.name,
         s.fed,
         s.sex,
-        s.club,
-        s.rating ? parseInt(s.rating) || null : null,
         s.fideId || null,
       );
       linkPlayerToTournament(
@@ -905,25 +889,56 @@ export function persistPairings(
   info: TournamentInfo,
   round: number,
   pairings: Pairing[],
+  teamPairings?: TeamPairing[],
 ): void {
   const txn = db.transaction(() => {
     upsertTournament(info, tournamentId);
 
-    for (const p of pairings) {
-      const whiteId = p.white.name
-        ? upsertPlayer(p.white.name, '')
-        : null;
-      const blackId = p.black?.name
-        ? upsertPlayer(p.black.name, '')
-        : null;
+    if (teamPairings && teamPairings.length > 0) {
+      for (const tm of teamPairings) {
+        for (const b of tm.boards) {
+          const whiteId = b.white.name ? upsertPlayer(b.white.name, '') : null;
+          const blackId = b.black?.name ? upsertPlayer(b.black.name, '') : null;
+          if (whiteId) linkPlayerToTournament(tournamentId, whiteId, b.white.number);
+          if (blackId && b.black) linkPlayerToTournament(tournamentId, blackId, b.black.number);
+          upsertResult(tournamentId, round, b.table, whiteId, blackId, b.result, tm.whiteTeam, tm.blackTeam);
+        }
+      }
+    } else {
+      for (const p of pairings) {
+        const whiteId = p.white.name
+          ? upsertPlayer(p.white.name, '')
+          : null;
+        const blackId = p.black?.name
+          ? upsertPlayer(p.black.name, '')
+          : null;
 
-      if (whiteId) linkPlayerToTournament(tournamentId, whiteId, p.white.number);
-      if (blackId && p.black) linkPlayerToTournament(tournamentId, blackId, p.black.number);
+        if (whiteId) linkPlayerToTournament(tournamentId, whiteId, p.white.number);
+        if (blackId && p.black) linkPlayerToTournament(tournamentId, blackId, p.black.number);
 
-      upsertResult(tournamentId, round, p.table, whiteId, blackId, p.result);
+        upsertResult(tournamentId, round, p.table, whiteId, blackId, p.result);
+      }
     }
   });
   txn();
+}
+
+/** Look up national IDs (Ident-Number) for all players in a tournament, keyed by starting number. */
+export function getPlayerNationalIds(tournamentId: string): Record<number, string> {
+  const rows = db.prepare(`
+    SELECT tp.starting_number, p.national_id
+    FROM tournament_players tp
+    JOIN players p ON p.id = tp.player_id
+    WHERE tp.tournament_id = ? AND p.national_id IS NOT NULL AND p.national_id != ''
+  `).all(tournamentId) as Array<{ starting_number: number; national_id: string }>;
+
+  const map: Record<number, string> = {};
+  for (const r of rows) {
+    if (r.starting_number > 0) {
+      map[r.starting_number] = r.national_id;
+    }
+  }
+  return map;
 }
 
 /** Persist player card data (art=9) — enriches player + tournament_players with extended fields. */
@@ -935,8 +950,6 @@ export function persistPlayerCard(
     card.name,
     card.federation,
     '',
-    card.club,
-    card.rating,
     card.fideId || null,
     card.birthYear,
     card.nationalId || null,
@@ -955,30 +968,48 @@ export function persistPlayerCard(
 
 // ── Search ──
 
-export function searchTournaments(query: string, limit = 10): DbTournament[] {
+export function searchTournaments(query: string, limit = 10): DbTournamentSummary[] {
   return db.prepare(`
-    SELECT * FROM tournaments
-    WHERE name LIKE '%' || ? || '%'
-    ORDER BY updated_at DESC
+    SELECT t.*,
+      (
+        SELECT COUNT(*)
+        FROM tournament_players tp
+        WHERE tp.tournament_id = t.id
+      ) AS player_count
+    FROM tournaments t
+    WHERE t.name LIKE '%' || ? || '%'
+    ORDER BY datetime(t.updated_at) DESC
     LIMIT ?
-  `).all(query, limit) as DbTournament[];
+  `).all(query, limit) as DbTournamentSummary[];
 }
 
-export function listTournaments(limit = 20, offset = 0): DbTournament[] {
+export function listTournaments(limit = 20, offset = 0): DbTournamentSummary[] {
   return db.prepare(`
-    SELECT * FROM tournaments
-    ORDER BY datetime(updated_at) DESC
+    SELECT t.*,
+      (
+        SELECT COUNT(*)
+        FROM tournament_players tp
+        WHERE tp.tournament_id = t.id
+      ) AS player_count
+    FROM tournaments t
+    ORDER BY datetime(t.updated_at) DESC
     LIMIT ? OFFSET ?
-  `).all(limit, offset) as DbTournament[];
+  `).all(limit, offset) as DbTournamentSummary[];
 }
 
-export function searchTournamentsPaged(query: string, limit = 20, offset = 0): DbTournament[] {
+export function searchTournamentsPaged(query: string, limit = 20, offset = 0): DbTournamentSummary[] {
   return db.prepare(`
-    SELECT * FROM tournaments
-    WHERE name LIKE '%' || ? || '%'
-    ORDER BY datetime(updated_at) DESC
+    SELECT t.*,
+      (
+        SELECT COUNT(*)
+        FROM tournament_players tp
+        WHERE tp.tournament_id = t.id
+      ) AS player_count
+    FROM tournaments t
+    WHERE t.name LIKE '%' || ? || '%'
+    ORDER BY datetime(t.updated_at) DESC
     LIMIT ? OFFSET ?
-  `).all(query, limit, offset) as DbTournament[];
+  `).all(query, limit, offset) as DbTournamentSummary[];
 }
 
 export function countTournaments(query = ''): number {
@@ -1137,3 +1168,28 @@ export function insertOpening(
   return Number(result.lastInsertRowid);
 }
 
+// ── Referee Results ──
+
+export function upsertRefereeResult(
+  tournamentId: string,
+  round: number,
+  tableNumber: number,
+  result: string,
+): void {
+  db.prepare(`
+    INSERT INTO referee_results (tournament_id, round, table_number, result)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(tournament_id, round, table_number) DO UPDATE SET
+      result = excluded.result,
+      created_at = datetime('now')
+  `).run(tournamentId, round, tableNumber, result);
+}
+
+export function getRefereeResults(tournamentId: string, round: number) {
+  return db.prepare(`
+    SELECT table_number, result, created_at
+    FROM referee_results
+    WHERE tournament_id = ? AND round = ?
+    ORDER BY table_number
+  `).all(tournamentId, round) as Array<{ table_number: number; result: string; created_at: string }>;
+}

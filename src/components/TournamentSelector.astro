@@ -25,8 +25,18 @@ const segments = allTournaments.map((t) => ({
 }));
 ---
 
-<div class={`tournament-selector-wrapper ${Astro.props.class || ""}`}>
-  <div class="tournament-selector-scroll">
+<div class:list={["tournament-selector-wrapper", Astro.props.class]}>
+  {/* Mobile: native select */}
+  <div class="tournament-select-mobile">
+    <select class="tournament-select" data-current-path={currentPath} data-lang={lang}>
+      {allTournaments.map((t) => (
+        <option value={t.id} selected={t.id === currentId}>{t.name}</option>
+      ))}
+    </select>
+  </div>
+
+  {/* Desktop: segmented control */}
+  <div class="tournament-select-desktop">
     <SegmentedControl
       name="tournament"
       segments={segments}
@@ -39,36 +49,80 @@ const segments = allTournaments.map((t) => ({
   .tournament-selector-wrapper {
     display: flex;
     justify-content: center;
+    min-width: 0;
   }
 
-  .tournament-selector-scroll {
+  .tournament-select-mobile {
+    display: block;
     width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: var(--border-light) transparent;
   }
 
-  .tournament-selector-scroll::-webkit-scrollbar {
-    height: 6px;
+  .tournament-select {
+    width: 100%;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--text-base);
+    font-weight: var(--font-medium);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-3) center;
+    padding-right: var(--space-8);
+    cursor: pointer;
   }
 
-  .tournament-selector-scroll::-webkit-scrollbar-track {
-    background: transparent;
+  .tournament-select-desktop {
+    display: none;
   }
 
-  .tournament-selector-scroll::-webkit-scrollbar-thumb {
-    background: var(--border-light);
-    border-radius: var(--radius-full);
-  }
+  @media (min-width: 768px) {
+    .tournament-select-mobile {
+      display: none;
+    }
 
-  .tournament-selector-wrapper :global(.seg-control) {
-    width: max-content;
-    max-width: none;
-  }
+    .tournament-select-desktop {
+      display: block;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-light) transparent;
+    }
 
-  .tournament-selector-wrapper :global(.seg-item) {
-    flex: 0 0 auto;
+    .tournament-select-desktop::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .tournament-select-desktop::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .tournament-select-desktop::-webkit-scrollbar-thumb {
+      background: var(--border-light);
+      border-radius: var(--radius-full);
+    }
+
+    .tournament-select-desktop :global(.seg-control) {
+      width: max-content;
+      max-width: none;
+    }
   }
 </style>
+
+<script>
+  function initTournamentSelect() {
+    document.querySelectorAll<HTMLSelectElement>(".tournament-select").forEach((select) => {
+      select.addEventListener("change", () => {
+        const tid = select.value;
+        const path = select.dataset.currentPath || "/pairings";
+        const lang = select.dataset.lang || "1";
+        window.location.href = `${path}?tid=${tid}&lang=${lang}`;
+      });
+    });
+  }
+
+  initTournamentSelect();
+  document.addEventListener("astro:after-swap", initTournamentSelect);
+</script>

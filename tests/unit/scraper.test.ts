@@ -222,7 +222,7 @@ liveDescribe('Scraper - Live Canary Tests', { timeout: 15000 }, () => {
 
 liveDescribe('Scraper - Live Structure Validation', { timeout: 15000 }, () => {
   it('should scrape standings for an ended tournament (English)', async () => {
-    const data = await scrapeStandings(ENDED_TOURNAMENT_ID, 1);
+    const data = await scrapeStandings(ENDED_TOURNAMENT_ID);
 
     // Structure checks
     expect(data.info).toBeDefined();
@@ -247,8 +247,8 @@ liveDescribe('Scraper - Live Structure Validation', { timeout: 15000 }, () => {
     expect(ranks[0]).toBe(1);
   });
 
-  it('should scrape standings for an ended tournament (Portuguese)', async () => {
-    const data = await scrapeStandings(ENDED_TOURNAMENT_ID, 10);
+  it('should scrape standings with populated tie-break columns', async () => {
+    const data = await scrapeStandings(ENDED_TOURNAMENT_ID);
 
     expect(data.standings.length).toBeGreaterThan(10);
 
@@ -259,7 +259,7 @@ liveDescribe('Scraper - Live Structure Validation', { timeout: 15000 }, () => {
   });
 
   it('should scrape pairings for an ended tournament', async () => {
-    const data = await scrapePairings(ENDED_TOURNAMENT_ID, 1, 1);
+    const data = await scrapePairings(ENDED_TOURNAMENT_ID, 1);
 
     expect(data.info.round).toBe(1);
     expect(data.pairings.length).toBeGreaterThan(0);
@@ -281,7 +281,7 @@ liveDescribe('Scraper - Live Structure Validation', { timeout: 15000 }, () => {
     // Test with a different tournament to ensure we're not overfitting
     // Prague International Chess Festival 2026
     const pragueId = '1307079';
-    const data = await scrapeStandings(pragueId, 1);
+    const data = await scrapeStandings(pragueId);
 
     expect(data.info).toBeDefined();
     expect(typeof data.info.name).toBe('string');
