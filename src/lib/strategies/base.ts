@@ -507,10 +507,10 @@ export function parseTeamPairings(
 
 // ─── Board Pairings (art=3) ───────────────────────────────────────────────────
 
-import type { Pairing, TeamStanding, TeamPlayerEntry } from '../types';
+import type { TeamStanding } from '../types';
 
 /** Extract chess-results starting number (snr) from a player link's href. */
-function extractSnr($: cheerio.CheerioAPI, link: cheerio.Cheerio<cheerio.Element> | null): number {
+function extractSnr(link: cheerio.Cheerio<Element> | null): number {
   if (!link || link.length === 0) return 0;
   const href = link.attr('href') || '';
   const m = href.match(/[?&]snr=(\d+)/);
@@ -616,7 +616,7 @@ export function parseTeamBoardPairings(
       ? ($(cells[4]).find('a').text().trim() || $(cells[4]).text().trim() ||
          $(cells[2]).find('a').text().trim() || $(cells[2]).text().trim())
       : $(cells[2]).text().trim();
-    const homeNumber = extractSnr($, homeLink);
+    const homeNumber = extractSnr(homeLink);
 
     // Away player: cells[8] or cells[10] has name, cells[11] has rating
     const awayLink = cells.length > 10
@@ -630,7 +630,7 @@ export function parseTeamBoardPairings(
       : cells.length > 8
         ? $(cells[8]).text().trim()
         : '';
-    const awayNumber = awayLink ? extractSnr($, awayLink) : 0;
+    const awayNumber = awayLink ? extractSnr(awayLink) : 0;
 
     const result = cells.length > 12 ? $(cells[12]).text().trim() :
                    cells.length > 11 ? $(cells[11]).text().trim() : '';

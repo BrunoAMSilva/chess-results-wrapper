@@ -1,10 +1,10 @@
 ---
 import Layout from "../../layouts/TVLayout.astro";
-import PresenterPairingCard from "../../components/PresenterPairingCard.astro";
-import StandingRow from "../../components/StandingRow.astro";
-import TabsControl from "../../components/TabsControl.astro";
-import SegmentedControl from "../../components/SegmentedControl.astro";
-import PresenterQrCode from "../../components/PresenterQrCode.astro";
+import PresenterPairingCard from "../../components/presenter/PresenterPairingCard.astro";
+import StandingRow from "../../components/standings/StandingRow.astro";
+import TabsControl from "../../components/controls/TabsControl.astro";
+import SegmentedControl from "../../components/controls/SegmentedControl.astro";
+import PresenterQrCode from "../../components/presenter/PresenterQrCode.astro";
 import { scrapePairings, scrapeStandings } from "../../lib/scraper";
 import { useTranslations } from "../../i18n/ui";
 import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, PRESENTER_PAIRINGS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
