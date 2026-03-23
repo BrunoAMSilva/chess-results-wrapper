@@ -32,11 +32,11 @@ const isListbox = typeof size === "number" && size > 1;
     name={name}
     required={required}
     disabled={disabled}
-    size={size}
-    multiple={multiple}
     aria-label={ariaLabel}
     aria-describedby={ariaDescribedBy}
     class:list={["ui-select__control", { "ui-select__control--listbox": isListbox }, className]}
+    {...(typeof size === "number" ? { size } : {})}
+    {...(multiple ? { multiple: true } : {})}
   >
     <slot />
   </select>

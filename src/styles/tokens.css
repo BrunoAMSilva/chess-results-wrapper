@@ -140,7 +140,7 @@
   --medal-bronze: #CD7F32;
 
   /* ── Design system semantic aliases ──────────────────────── */
-  --primary-container: var(--gold-300);
+  --primary-container: var(--gold-400);
   --primary-fixed-dim: #fff2d6;
   --on-primary-fixed: #1a1a24;
   --secondary-fixed-dim: #e7bdb1;  /* Walnut/Black chess tone */
@@ -169,8 +169,8 @@
   --text-dim:     #9ca3b5;
   --text-muted:   #6b7280;
 
-  --accent:       var(--gold-300);
-  --accent-hover: var(--gold-400);
+  --accent:       var(--gold-400);
+  --accent-hover: var(--gold-300);
   --accent-subtle: rgba(252, 211, 77, 0.12);
   --accent-glow:  rgba(252, 211, 77, 0.15);
   --accent-text:  var(--gold-300);
@@ -253,11 +253,11 @@
   --text-dim:     #5d5042;
   --text-muted:   #786959;
 
-  --accent:       var(--gold-700);
-  --accent-hover: var(--gold-800);
+  --accent:       var(--gold-400);
+  --accent-hover: var(--gold-300);
   --accent-subtle: rgba(180, 83, 9, 0.14);
   --accent-glow:  rgba(180, 83, 9, 0.14);
-  --accent-text:  var(--gold-800);
+  --accent-text:  var(--gold-500);
 
   --on-accent:    #ffffff;
 

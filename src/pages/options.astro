@@ -26,14 +26,16 @@ const t = useTranslations(lang);
         </div>
         <p class="card-desc">{t('config.subtitle')}</p>
       </div>
-      
-      <div class="form-grid">
+
+      <form class="form-grid" id="optionsForm" method="get">
+        {mode && <input type="hidden" name="mode" value={mode} />}
+
         <FormField label={t('config.tid')} forId="inputTid">
-          <TextInput id="inputTid" value={tid} placeholder="Tournament ID" />
+          <TextInput id="inputTid" name="tid" value={tid} placeholder="Tournament ID" />
         </FormField>
 
         <FormField label={t('config.lang')} forId="inputLang">
-          <SelectInput id="inputLang">
+          <SelectInput id="inputLang" name="lang">
             {LANGUAGE_OPTIONS.map((option) => (
               <option value={String(option.value)} selected={lang === option.value}>{option.label}</option>
             ))}
@@ -43,14 +45,14 @@ const t = useTranslations(lang);
         <FormField label={t('config.appearance')}>
           <ThemeToggle />
         </FormField>
-      </div>
 
-      <div class="actions-row">
-        <ActionButton id="saveBtn" class="save-btn" pill>
-          {t('config.update')}
-          <svg slot="icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
-        </ActionButton>
-      </div>
+        <div class="actions-row">
+          <ActionButton class="save-btn" pill type="submit">
+            {t('config.update')}
+            <svg slot="icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+          </ActionButton>
+        </div>
+      </form>
     </div>
 
     <div class="options-card secondary-card">
@@ -159,19 +161,17 @@ const t = useTranslations(lang);
 
 <script>
   function initOptions() {
-    const saveBtn = document.getElementById('saveBtn');
-    const inputTid = document.getElementById('inputTid') as HTMLInputElement;
-    const inputLang = document.getElementById('inputLang') as HTMLSelectElement;
-    if (saveBtn) {
-      saveBtn.addEventListener('click', () => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('tid', inputTid.value);
-        url.searchParams.set('lang', inputLang.value);
-        document.cookie = `lang=${inputLang.value};path=/;max-age=${60*60*24*365};samesite=lax`;
-        // Preserve mode param for referee context
-        window.location.href = url.toString();
-      });
+    const form = document.getElementById('optionsForm') as HTMLFormElement | null;
+    const inputLang = document.getElementById('inputLang') as HTMLSelectElement | null;
+
+    if (!form || !inputLang || form.dataset.bound === 'true') {
+      return;
     }
+
+    form.dataset.bound = 'true';
+    form.addEventListener('submit', () => {
+        document.cookie = `lang=${inputLang.value};path=/;max-age=${60*60*24*365};samesite=lax`;
+    });
   }
 
   initOptions();

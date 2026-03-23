@@ -25,84 +25,102 @@ const discoverLessHref = `${discoverBase}`;
 <html lang={langCode}>
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#fcd34d" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-    <title>{t('home.title')}</title>
+    <title>{t("home.title")}</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <script>
-      (function() {
-        const stored = (() => { try { return localStorage.getItem('theme'); } catch { return null; } })();
-        if (stored === 'light' || stored === 'dark') {
-          document.documentElement.setAttribute('data-theme', stored);
+      (function () {
+        const stored = (() => {
+          try {
+            return localStorage.getItem("theme");
+          } catch {
+            return null;
+          }
+        })();
+        if (stored === "light" || stored === "dark") {
+          document.documentElement.setAttribute("data-theme", stored);
         }
       })();
     </script>
 
     <script src="../scripts/theme.ts"></script>
     <script>
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js');
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js");
       }
     </script>
   </head>
   <body>
     <div class="home-shell">
-      <a class="skip-link" href="#maincontent">{t('a11y.skipToMain')}</a>
+      <a class="skip-link" href="#maincontent">{t("a11y.skipToMain")}</a>
+      <header class="home-header">
+        <div class="home-icon">
+          <img src="logo.svg" alt="" width="128" height="128" />
+        </div>
+        <h1 class="home-heading">{t("home.heading")}</h1>
+        <p class="home-subtitle">{t("home.subtitle")}</p>
+      </header>
       <main id="maincontent" class="home-main" tabindex="-1">
         <div class="home-content animate-enter">
-          <div class="home-icon">
-            <img src="logo.svg" alt="" width="128" height="128" />
-          </div>
-          <h1 class="home-heading">{t('home.heading')}</h1>
-          <p class="home-subtitle">{t('home.subtitle')}</p>
-
           <TournamentSearchForm
-            label={t('nav.search')}
-            placeholder={t('home.placeholder')}
-            submitLabel={t('home.submit')}
-            hint={t('home.example')}
-            invalidMessage={t('home.invalid')}
-            loadingMessage={t('home.loading')}
-            noResultsMessage={t('home.noResults')}
+            label={t("nav.search")}
+            placeholder={t("home.placeholder")}
+            submitLabel={t("home.submit")}
+            hint={t("home.example")}
+            invalidMessage={t("home.invalid")}
+            loadingMessage={t("home.loading")}
+            noResultsMessage={t("home.noResults")}
             lang={String(lang)}
           />
 
-          <RecentTournaments recentLabel={t('home.recent')} />
+          <RecentTournaments recentLabel={t("home.recent")} />
 
           <section class="discover-section">
-            <h2 class="discover-title">{t('discover.title')}</h2>
-            {discoverRows.length > 0 ? (
-              <div class="discover-list">
-                {discoverRows.map((item) => (
-                  <TournamentCard
-                    name={item.name}
-                    href={`/standings?tid=${item.id}&lang=${lang}`}
-                    date={item.date || undefined}
-                    location={item.location || undefined}
-                    type={item.type}
-                    playerCount={item.player_count}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div class="discover-empty">{t('discover.noResults')}</div>
-            )}
+            <h2 class="discover-title">{t("discover.title")}</h2>
+            {
+              discoverRows.length > 0 ? (
+                <div class="discover-list">
+                  {discoverRows.map((item) => (
+                    <TournamentCard
+                      name={item.name}
+                      href={`/standings?tid=${item.id}&lang=${lang}`}
+                      date={item.date || undefined}
+                      location={item.location || undefined}
+                      type={item.type}
+                      playerCount={item.player_count}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div class="discover-empty">{t("discover.noResults")}</div>
+              )
+            }
 
-            {(discoverHasMore || discoverExpanded) && (
-              <div class="discover-more-row">
-                {discoverExpanded ? (
-                  <a class="discover-more-link" href={discoverLessHref}>{t('discover.viewLess')}</a>
-                ) : (
-                  <a class="discover-more-link" href={discoverMoreHref}>{t('discover.viewMore')}</a>
-                )}
-              </div>
-            )}
+            {
+              (discoverHasMore || discoverExpanded) && (
+                <div class="discover-more-row">
+                  {discoverExpanded ? (
+                    <a class="discover-more-link" href={discoverLessHref}>
+                      {t("discover.viewLess")}
+                    </a>
+                  ) : (
+                    <a class="discover-more-link" href={discoverMoreHref}>
+                      {t("discover.viewMore")}
+                    </a>
+                  )}
+                </div>
+              )
+            }
           </section>
         </div>
       </main>
@@ -121,6 +139,15 @@ const discoverLessHref = `${discoverBase}`;
     padding: var(--space-8) var(--space-4);
   }
 
+  .home-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    padding-block: var(--space-12);
+    text-align: center;
+  }
+
   .home-main {
     display: flex;
     align-items: flex-start;
@@ -134,7 +161,6 @@ const discoverLessHref = `${discoverBase}`;
     display: flex;
     flex-direction: column;
     align-items: center;
-    text-align: center;
     max-width: 520px;
     width: 100%;
     gap: var(--space-2);
@@ -151,6 +177,7 @@ const discoverLessHref = `${discoverBase}`;
     letter-spacing: var(--tracking-tight);
     line-height: var(--leading-tight);
     color: var(--text);
+    text-align: center;
   }
 
   .home-subtitle {
@@ -158,6 +185,7 @@ const discoverLessHref = `${discoverBase}`;
     color: var(--text-dim);
     line-height: var(--leading-normal);
     max-width: 460px;
+    text-align: center;
   }
 
   .discover-section {
@@ -232,4 +260,3 @@ const discoverLessHref = `${discoverBase}`;
     font-size: var(--text-sm);
   }
 </style>
-

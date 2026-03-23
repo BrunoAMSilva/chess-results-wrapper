@@ -11,6 +11,7 @@ interface Props {
   required?: boolean;
   disabled?: boolean;
   autofocus?: boolean;
+  [key: string]: unknown;
 }
 
 const {
@@ -25,6 +26,7 @@ const {
   required = false,
   disabled = false,
   autofocus = false,
+  ...inputProps
 } = Astro.props;
 ---
 
@@ -36,10 +38,11 @@ const {
   placeholder={placeholder}
   autocomplete={autocomplete}
   inputmode={inputmode}
-  required={required}
-  disabled={disabled}
-  autofocus={autofocus}
   class:list={["ui-control", className]}
+  {...(required ? { required: true } : {})}
+  {...(disabled ? { disabled: true } : {})}
+  {...(autofocus ? { autofocus: true } : {})}
+  {...inputProps}
 />
 
 <style>
