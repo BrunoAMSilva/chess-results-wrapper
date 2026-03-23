@@ -236,7 +236,7 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
 
   // Progressive enhancement: intercept submit for AJAX experience
   if (form) {
-    form.addEventListener("submit", function(e) {
+    form.addEventListener("submit", async function(e) {
       e.preventDefault();
       if (saving) return;
 
@@ -247,51 +247,52 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
       saving = true;
       if (saveBtn) saveBtn.setAttribute("aria-disabled", "true");
 
-      fetch(form.action, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          tid: fd.get("tid"),
-          round: Number(fd.get("round")),
-          table: Number(fd.get("table")),
-          result: result,
-        }),
-      })
-        .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
-        .then(function(resp) {
-          if (feedback) {
-            feedback.classList.remove("hidden", "success", "error");
-            if (resp.ok) {
-              feedback.classList.add("success");
-              feedback.textContent = savedMsg;
-              if (form) form.classList.add("form-hidden");
-              if (anotherLink) anotherLink.classList.remove("hidden");
-              feedback.focus();
-            } else {
-              feedback.classList.add("error");
-              feedback.textContent = resp.data.error || errorMsg;
-              saving = false;
-              if (saveBtn) {
-                saveBtn.removeAttribute("aria-disabled");
-                saveBtn.classList.remove("hidden");
-              }
-              feedback.focus();
-            }
-          }
-        })
-        .catch(function() {
-          if (feedback) {
-            feedback.classList.remove("hidden", "success", "error");
+      try {
+        var res = await fetch(form.action, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tid: fd.get("tid"),
+            round: Number(fd.get("round")),
+            table: Number(fd.get("table")),
+            result: result,
+          }),
+        });
+        var data = await res.json();
+        var resp = { ok: res.ok, data: data };
+
+        if (feedback) {
+          feedback.classList.remove("hidden", "success", "error");
+          if (resp.ok) {
+            feedback.classList.add("success");
+            feedback.textContent = savedMsg;
+            if (form) form.classList.add("form-hidden");
+            if (anotherLink) anotherLink.classList.remove("hidden");
+            feedback.focus();
+          } else {
             feedback.classList.add("error");
-            feedback.textContent = errorMsg;
+            feedback.textContent = resp.data.error || errorMsg;
+            saving = false;
+            if (saveBtn) {
+              saveBtn.removeAttribute("aria-disabled");
+              saveBtn.classList.remove("hidden");
+            }
             feedback.focus();
           }
-          saving = false;
-          if (saveBtn) {
-            saveBtn.removeAttribute("aria-disabled");
-            saveBtn.classList.remove("hidden");
-          }
-        });
+        }
+      } catch {
+        if (feedback) {
+          feedback.classList.remove("hidden", "success", "error");
+          feedback.classList.add("error");
+          feedback.textContent = errorMsg;
+          feedback.focus();
+        }
+        saving = false;
+        if (saveBtn) {
+          saveBtn.removeAttribute("aria-disabled");
+          saveBtn.classList.remove("hidden");
+        }
+      }
     });
   }
 })();
