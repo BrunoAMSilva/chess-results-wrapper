@@ -13,6 +13,7 @@ interface Props {
   rel?: string;
   ariaLabel?: string;
   class?: string;
+  [key: string]: unknown;
 }
 
 const {
@@ -29,6 +30,7 @@ const {
   rel,
   ariaLabel,
   class: className = "",
+  ...rest
 } = Astro.props;
 
 const Tag = href ? "a" : "button";
@@ -49,6 +51,7 @@ const hasIcon = Astro.slots.has("icon");
     className,
   ]}
   aria-label={ariaLabel}
+  {...rest}
   {...(href
     ? { href, target, rel, download }
     : { type, disabled })}

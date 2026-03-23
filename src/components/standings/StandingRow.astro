@@ -31,6 +31,9 @@ const attributes = tid
 <Tag
   {...attributes}
   class:list={["standing-row", delayClass, { "top-3": isTop3 }, rankClass]}
+  data-selected-player-entry
+  data-player-name={standing.name}
+  data-player-federation={standing.fed}
 >
   <div class="rank-col">
     <span class="rank-num">{standing.rank}</span>
@@ -86,6 +89,10 @@ const attributes = tid
     gap: 0;
     flex: 1;
     min-height: var(--size-standing-row-min-height-sm);
+    position: relative;
+    transition:
+      box-shadow var(--duration-fast) var(--ease-in-out),
+      transform var(--duration-fast) var(--ease-out);
   }
 
   .standing-row:last-child {
@@ -125,6 +132,19 @@ const attributes = tid
       rgb(from var(--medal-bronze) r g b / 0.15) 0%,
       rgb(from var(--medal-bronze) r g b / var(--hover-opacity)) 100%
     );
+  }
+
+  .standing-row.is-selected-player {
+    box-shadow:
+      inset 0 0 0 2px var(--accent),
+      inset var(--space-1) 0 0 var(--accent),
+      0 0 0 1px var(--accent-subtle);
+    z-index: 1;
+  }
+
+  .standing-row.is-selected-player .player-name,
+  .standing-row.is-selected-player .points {
+    color: var(--accent-text);
   }
 
   .rank-col {
@@ -311,4 +331,12 @@ const attributes = tid
   .delay-8 { animation-delay: 320ms; }
   .delay-9 { animation-delay: 360ms; }
   .delay-10 { animation-delay: 400ms; }
+
+  @media (forced-colors: active) {
+    .standing-row.is-selected-player {
+      outline: 2px solid Highlight;
+      outline-offset: -2px;
+      box-shadow: none;
+    }
+  }
 </style>

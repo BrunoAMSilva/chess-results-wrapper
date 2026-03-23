@@ -1,0 +1,100 @@
+---
+import ActionButton from "../controls/ActionButton.astro";
+import { useTranslations } from "../../i18n/ui";
+
+interface Props {
+  playerName: string;
+  federation?: string;
+  lang: number;
+}
+
+const { playerName, federation = "", lang } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<section
+  class="identity-actions"
+  data-selected-player-control
+  data-player-name={playerName}
+  data-player-federation={federation}
+  aria-label={t("player.identity.region")}
+>
+  <p
+    class="identity-copy"
+    data-selected-player-status
+    data-selected-label={t("player.identity.selected")}
+    data-idle-label={t("player.identity.idle")}
+  >
+    {t("player.identity.idle")}
+  </p>
+
+  <div class="identity-actions-row">
+    <ActionButton
+      variant="primary"
+      size="compact"
+      class="identity-button"
+      data-selected-player-set
+      ariaLabel={t("player.identity.set")}
+    >
+      {t("player.identity.set")}
+    </ActionButton>
+
+    <ActionButton
+      variant="secondary"
+      size="compact"
+      class="identity-button"
+      data-selected-player-clear
+      ariaLabel={t("player.identity.clear")}
+      hidden
+    >
+      {t("player.identity.clear")}
+    </ActionButton>
+  </div>
+</section>
+
+<style>
+  .identity-actions {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    background: var(--surface-container-low);
+    transition:
+      background-color var(--duration-fast) var(--ease-in-out),
+      box-shadow var(--duration-fast) var(--ease-in-out);
+  }
+
+  .identity-actions.is-selected-player-control {
+    background: linear-gradient(135deg, var(--accent-subtle), var(--surface-container-low));
+    box-shadow: inset 0 0 0 1px var(--seg-active-border);
+  }
+
+  .identity-copy {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+  }
+
+  .identity-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .identity-button[hidden] {
+    display: none;
+  }
+
+  @media (forced-colors: active) {
+    .identity-actions {
+      border: 1px solid ButtonBorder;
+      background: Canvas;
+      box-shadow: none;
+    }
+
+    .identity-actions.is-selected-player-control {
+      border-color: Highlight;
+    }
+  }
+</style>

@@ -62,7 +62,7 @@ const whitePlayerLabel = reverseName(wName);
 const blackPlayerLabel = match.black ? reverseName(bName) : (isBye ? t("match.bye") : unpairedLabel);
 ---
 
-<div class:list={["match-card", "animate-enter", delayClass]}>
+<div class:list={["match-card", "animate-enter", delayClass]} data-selected-player-card>
   <div class="board-number-column">
     <div class="board-number">{match.table}</div>
   </div>
@@ -74,6 +74,8 @@ const blackPlayerLabel = match.black ? reverseName(bName) : (isBye ? t("match.by
           href={`/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(match.white?.name || "")}&lang=${lang}`}
           class={`player-row white-player ${whiteWins ? "winner-row" : ""}`}
           aria-label={whitePlayerLabel}
+          data-selected-player-slot
+          data-player-name={match.white?.name || ""}
         >
           <div class="player-info">
             <span class="piece-icon white-piece" />
@@ -86,7 +88,11 @@ const blackPlayerLabel = match.black ? reverseName(bName) : (isBye ? t("match.by
           </div>
         </a>
       ) : (
-        <div class={`player-row white-player ${whiteWins ? "winner-row" : ""}`}>
+        <div
+          class={`player-row white-player ${whiteWins ? "winner-row" : ""}`}
+          data-selected-player-slot
+          data-player-name={match.white?.name || ""}
+        >
           <div class="player-info">
             <span class="piece-icon white-piece" />
             <div class="name-wrapper">
@@ -108,6 +114,8 @@ const blackPlayerLabel = match.black ? reverseName(bName) : (isBye ? t("match.by
           href={`/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(match.black.name)}&lang=${lang}`}
           class={`player-row black-player ${blackWins ? "winner-row" : ""}`}
           aria-label={blackPlayerLabel}
+          data-selected-player-slot
+          data-player-name={match.black.name}
         >
           <div class="player-info">
             <span class="piece-icon black-piece" />
@@ -120,7 +128,11 @@ const blackPlayerLabel = match.black ? reverseName(bName) : (isBye ? t("match.by
           </div>
         </a>
       ) : (
-        <div class={`player-row black-player ${blackWins ? "winner-row" : ""}`}>
+        <div
+          class={`player-row black-player ${blackWins ? "winner-row" : ""}`}
+          data-selected-player-slot
+          data-player-name={match.black?.name || ""}
+        >
           <div class="player-info">
             <span class="piece-icon black-piece" />
             <div class="name-wrapper">
@@ -153,6 +165,13 @@ const blackPlayerLabel = match.black ? reverseName(bName) : (isBye ? t("match.by
         transform var(--duration-normal) var(--ease-out),
         box-shadow var(--duration-normal) var(--ease-out),
         border-color var(--duration-fast) ease;
+    }
+
+    .match-card.is-selected-player-card {
+      box-shadow:
+        0 0 0 2px var(--accent),
+        var(--shadow-elevated);
+      transform: translateY(calc(var(--space-1) * -0.5));
     }
 
     .board-number-column {
@@ -209,6 +228,15 @@ const blackPlayerLabel = match.black ? reverseName(bName) : (isBye ? t("match.by
 
     .player-row:hover {
       background-color: var(--surface-container-low);
+    }
+
+    .player-row.is-selected-player-slot {
+      background: linear-gradient(90deg, var(--accent-subtle), transparent 75%);
+    }
+
+    .player-row.is-selected-player-slot .player-name,
+    .player-row.is-selected-player-slot .player-score {
+      color: var(--accent-text);
     }
 
     .score-divider {
@@ -310,5 +338,18 @@ const blackPlayerLabel = match.black ? reverseName(bName) : (isBye ? t("match.by
     .delay-8 { animation-delay: 320ms; }
     .delay-9 { animation-delay: 360ms; }
     .delay-10 { animation-delay: 400ms; }
+
+    @media (forced-colors: active) {
+      .match-card.is-selected-player-card {
+        outline: 2px solid Highlight;
+        outline-offset: 0;
+        box-shadow: none;
+      }
+
+      .player-row.is-selected-player-slot {
+        outline: 1px solid Highlight;
+        outline-offset: -1px;
+      }
+    }
   </style>
 </div>

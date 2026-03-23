@@ -22,6 +22,7 @@ const refereeTid = refereeIdMatch ? refereeIdMatch[1] : "";
 if (refereeTid) tid = refereeTid;
 const isPairings = currentPath === "/pairings" || currentPath === "/present";
 const isStandings = currentPath === "/standings";
+const isProfile = currentPath === "/player-profile";
 const isOptions = currentPath === "/options";
 const isReferee = currentPath.startsWith("/referee") || navMode === "referee";
 const isRefereeResults = /^\/referee\/[^\/]+\/results$/.test(currentPath);
@@ -47,7 +48,7 @@ if (isOptions && navMode === "referee" && tid) {
 ---
 
 <!doctype html>
-<html lang={langCode}>
+<html lang={langCode} data-app-lang={lang}>
   <head>
     <BaseHead title={documentTitle} manifest={navMode === "referee" || navMode === "none" ? "/referee-manifest.json" : "/manifest.json"} />
   </head>
@@ -97,6 +98,13 @@ if (isOptions && navMode === "referee" && tid) {
                 class:list={["desktop-nav-item", { active: isOptions }]}
                 aria-current={isOptions ? "page" : undefined}
                 >{t('nav.settings')}</a
+              >
+              <a
+                hidden
+                data-profile-nav
+                class:list={["desktop-nav-item", { active: isProfile }]}
+                aria-current={isProfile ? "page" : undefined}
+                >{t('nav.profile')}</a
               >
             </nav>
           )}
@@ -270,11 +278,39 @@ if (isOptions && navMode === "referee" && tid) {
             </svg>
             <span>{t('nav.settings')}</span>
           </a>
+          <a
+            hidden
+            data-profile-nav
+            class:list={["nav-item", { active: isProfile }]}
+            aria-current={isProfile ? "page" : undefined}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              stroke="currentColor"
+              stroke-width="2"
+              fill="none"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M20 21a8 8 0 0 0-16 0"></path>
+              <circle cx="12" cy="8" r="5"></circle>
+            </svg>
+            <span>{t('nav.profile')}</span>
+          </a>
         </nav>
       )}
     </div>
   </body>
 </html>
+
+<script>
+  import { initSelectedPlayerUi } from "../scripts/player-identity";
+
+  const pageLang = Number.parseInt(document.documentElement.dataset.appLang || "1", 10);
+  initSelectedPlayerUi(Number.isFinite(pageLang) && pageLang > 0 ? pageLang : 1);
+</script>
 
 <style is:global>
   body {

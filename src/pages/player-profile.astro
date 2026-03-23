@@ -2,6 +2,7 @@
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import EmptyState from "../components/app/EmptyState.astro";
 import MetricTile from "../components/app/MetricTile.astro";
+import PlayerIdentityActions from "../components/player/PlayerIdentityActions.astro";
 import PlayerTournamentHistoryRow from "../components/player/PlayerTournamentHistoryRow.astro";
 import { useTranslations } from "../i18n/ui";
 import { findPlayerByIdentity, getPlayerById, getPlayerResultRows, getPlayerTournamentHistory } from "../lib/db";
@@ -126,6 +127,8 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
           <dd>{latestSeen || "-"}</dd>
         </div>
       </dl>
+
+      <PlayerIdentityActions playerName={player.name} federation={player.federation} lang={lang} />
 
       <div class="summary-grid">
         <MetricTile label={t("player.profile.total")} value={history.length} tone="accent" size="large" />

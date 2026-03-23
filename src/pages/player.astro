@@ -2,6 +2,7 @@
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import EmptyState from "../components/app/EmptyState.astro";
 import MetricTile from "../components/app/MetricTile.astro";
+import PlayerIdentityActions from "../components/player/PlayerIdentityActions.astro";
 import PlayerRoundRow from "../components/player/PlayerRoundRow.astro";
 import TieBreaks from "../components/standings/TieBreaks.astro";
 import { scrapePairings, scrapeStandings } from "../lib/scraper";
@@ -179,6 +180,8 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
         <a class="profile-link" href={profileHref}>{t("player.profile.openProfile")}</a>
       </div>
 
+      <PlayerIdentityActions playerName={canonicalPlayerName} federation={playerFed} lang={lang} />
+
       {playerPoints && (
         <div class="player-stats">
           <MetricTile label={t("standings.pts")} value={playerPoints} tone="accent" />
@@ -254,6 +257,7 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
   .player-stats {
     display: flex;
     align-items: stretch;
+    flex-wrap: wrap;
     gap: var(--space-3);
   }
 
