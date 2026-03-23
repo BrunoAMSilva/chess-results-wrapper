@@ -1,8 +1,7 @@
 ---
 import ResponsiveLayout from "../../layouts/ResponsiveLayout.astro";
-import FormField from "../../components/controls/FormField.astro";
-import TextInput from "../../components/controls/TextInput.astro";
 import RecentTournaments from "../../components/tournaments/RecentTournaments.astro";
+import TournamentSearchForm from "../../components/tournaments/TournamentSearchForm.astro";
 import { useTranslations } from "../../i18n/ui";
 import { resolvePageLang } from "../../lib/page-lang";
 
@@ -12,16 +11,19 @@ const t = useTranslations(lang);
 
 <ResponsiveLayout title={t("referee.searchTournament")} lang={lang} navMode="none">
   <div class="referee-search" id="refereeSearch">
-    <FormField label={t("referee.searchTournament")} forId="searchInput" class="search-field">
-      <TextInput
-        id="searchInput"
-        type="search"
-        class="search-input"
-        placeholder={t("referee.searchPlaceholder")}
-        autofocus
-      />
-    </FormField>
-    <div class="search-results" id="searchResults" aria-live="polite"></div>
+    <TournamentSearchForm
+      label={t("referee.searchTournament")}
+      placeholder={t("referee.searchPlaceholder")}
+      loadingMessage={t("home.loading")}
+      noResultsMessage={t("referee.noResults")}
+      lang={String(lang)}
+      navigatePathTemplate="/referee/{id}"
+      searchLimit={10}
+      showSubmit={false}
+      resultLayout="stacked"
+      autofocus
+      class="referee-search-form"
+    />
     <RecentTournaments recentLabel={t("home.recent")} linkBase="/referee/{id}" />
   </div>
 </ResponsiveLayout>
@@ -36,154 +38,14 @@ const t = useTranslations(lang);
     gap: var(--space-6);
   }
 
-  :global(.search-field) {
+  :global(.referee-search-form) {
+    margin-top: 0;
     gap: var(--space-3);
   }
 
-  :global(.search-input) {
+  :global(.referee-search-form .search-input) {
     background:
       linear-gradient(140deg, color-mix(in srgb, var(--primary-fixed-dim) 6%, transparent), transparent 48%),
       var(--input-bg);
   }
-
-  .search-results {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    min-height: 0;
-  }
-
-  .search-result-item {
-    display: block;
-    padding: var(--space-4) var(--space-5);
-    border-radius: var(--radius-xl);
-    background: var(--surface-container-high);
-    color: var(--on-surface);
-    text-decoration: none;
-    transition:
-      transform var(--duration-fast) var(--ease-out),
-      background var(--duration-fast) var(--ease-out),
-      box-shadow var(--duration-fast) var(--ease-out);
-  }
-
-  .search-result-item:hover {
-    background: var(--surface-container-highest);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-ambient);
-  }
-
-  .search-result-item:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 3px;
-  }
-
-  .search-result-name {
-    font-family: var(--font-display);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-semibold);
-    line-height: var(--leading-tight);
-  }
-
-  .search-result-meta {
-    font-size: var(--text-xs);
-    color: var(--text-dim);
-    margin-top: var(--space-2);
-    letter-spacing: var(--tracking-wide);
-    text-transform: uppercase;
-  }
-
-  .search-no-results {
-    text-align: center;
-    color: var(--text-dim);
-    padding: var(--space-6);
-    border-radius: var(--radius-xl);
-    background: var(--surface-container-high);
-  }
-
-  @media (forced-colors: active) {
-    .search-result-item,
-    .search-no-results {
-      border: 1px solid ButtonBorder;
-      background: Canvas;
-      color: CanvasText;
-      box-shadow: none;
-    }
-  }
 </style>
-
-<script is:inline define:vars={{
-  searchLang: lang,
-  noResultsMsg: t("referee.noResults"),
-}}>
-(function() {
-  var searchInput = document.getElementById("searchInput");
-  var searchResults = document.getElementById("searchResults");
-  if (!searchInput || !searchResults) return;
-
-  var debounceTimer = null;
-
-  function extractTournamentId(input) {
-    if (/^\d+$/.test(input)) return input;
-    var urlMatch = input.match(/chess-results\.com\/tnr(\d+)\.aspx/i);
-    if (urlMatch) return urlMatch[1];
-    return null;
-  }
-
-  function navigateToTournament(tid) {
-    window.location.href = "/referee/" + encodeURIComponent(tid) + "?lang=" + searchLang;
-  }
-
-  searchInput.addEventListener("keydown", function(e) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      var raw = searchInput.value.trim();
-      var tid = extractTournamentId(raw);
-      if (tid) navigateToTournament(tid);
-    }
-  });
-
-  searchInput.addEventListener("input", function() {
-    clearTimeout(debounceTimer);
-    var query = searchInput.value.trim();
-    if (query.length < 2) {
-      searchResults.innerHTML = "";
-      return;
-    }
-
-    var directId = extractTournamentId(query);
-    if (directId) {
-      var href = "/referee/" + encodeURIComponent(directId) + "?lang=" + searchLang;
-      searchResults.innerHTML = '<a class="search-result-item" href="' + href + '">'
-        + '<div class="search-result-name">ID: ' + escapeHtml(directId) + '</div>'
-        + '<div class="search-result-meta">↗</div>'
-        + '</a>';
-      return;
-    }
-
-    debounceTimer = setTimeout(function() {
-      fetch("/api/search?q=" + encodeURIComponent(query) + "&limit=10")
-        .then(function(res) { return res.json(); })
-        .then(function(items) {
-          if (items.length === 0) {
-            searchResults.innerHTML = '<div class="search-no-results">' + noResultsMsg + '</div>';
-            return;
-          }
-          searchResults.innerHTML = items.map(function(item) {
-            var href = "/referee/" + encodeURIComponent(item.id) + "?lang=" + searchLang;
-            var meta = [item.date, item.location].filter(Boolean).join(" • ");
-            return '<a class="search-result-item" href="' + href + '">'
-              + '<div class="search-result-name">' + escapeHtml(item.name) + '</div>'
-              + (meta ? '<div class="search-result-meta">' + escapeHtml(meta) + '</div>' : '')
-              + '</a>';
-          }).join("");
-        });
-    }, 300);
-  });
-
-  function escapeHtml(str) {
-    var div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-  }
-})();
-</script>
