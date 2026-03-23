@@ -19,6 +19,7 @@ const discoverHasMore = discoverTotal > discoverRows.length;
 const discoverBase = `/?lang=${lang}`;
 const discoverMoreHref = `${discoverBase}&discover=all`;
 const discoverLessHref = `${discoverBase}`;
+const shouldRegisterServiceWorker = import.meta.env.PROD;
 ---
 
 <!doctype html>
@@ -38,6 +39,35 @@ const discoverLessHref = `${discoverBase}`;
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+    <script is:inline define:vars={{ shouldRegisterServiceWorker }}>
+      const devServiceWorkerResetKey = 'dev-service-worker-reset';
+
+      if ("serviceWorker" in navigator && !shouldRegisterServiceWorker) {
+        const hadController = Boolean(navigator.serviceWorker.controller);
+        const alreadyReset = sessionStorage.getItem(devServiceWorkerResetKey) === '1';
+
+        Promise.all([
+          navigator.serviceWorker.getRegistrations().then((registrations) => {
+            registrations.forEach((registration) => {
+              registration.unregister();
+            });
+          }),
+          "caches" in window
+            ? caches.keys().then((keys) => {
+                keys.forEach((key) => caches.delete(key));
+              })
+            : Promise.resolve(),
+        ]).finally(() => {
+          if (hadController && !alreadyReset) {
+            sessionStorage.setItem(devServiceWorkerResetKey, '1');
+            location.reload();
+            return;
+          }
+
+          sessionStorage.removeItem(devServiceWorkerResetKey);
+        });
+      }
+    </script>
     <script>
       (function () {
         const stored = (() => {
@@ -54,9 +84,11 @@ const discoverLessHref = `${discoverBase}`;
     </script>
 
     <script src="../scripts/theme.ts"></script>
-    <script>
+    <script is:inline define:vars={{ shouldRegisterServiceWorker }}>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js");
+        if (shouldRegisterServiceWorker) {
+          navigator.serviceWorker.register("/sw.js");
+        }
       }
     </script>
   </head>

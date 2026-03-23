@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
+import { MIN_OPENING_REHEARSAL_PLIES } from './constants';
 
 const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'chess-results.db');
 
@@ -1118,10 +1119,171 @@ export function getOpenings() {
   }));
 }
 
-export function getOpeningNames(): { name: string; eco: string }[] {
-  return db.prepare(
-    'SELECT DISTINCT name, MIN(eco) as eco FROM openings GROUP BY name ORDER BY name'
-  ).all() as { name: string; eco: string }[];
+type OpeningCatalogSummary = {
+  name: string;
+  eco: string;
+  lineCount: number;
+  rehearsalLineCount: number;
+  longestLineLength: number;
+};
+
+export type OpeningCatalogSearchResult =
+  | ({ type: 'opening' } & OpeningCatalogSummary)
+  | {
+      type: 'variation';
+      id: number;
+      name: string;
+      variation: string;
+      eco: string;
+      color: 'w' | 'b';
+      moveCount: number;
+      isBriefLine: boolean;
+    };
+
+function summarizeOpeningCatalog(rows: {
+  name: string;
+  eco: string;
+  moves: string;
+}[]) {
+  const summaries = new Map<string, OpeningCatalogSummary>();
+
+  for (const row of rows) {
+    const moves = JSON.parse(row.moves) as string[];
+    const summary = summaries.get(row.name);
+    const length = moves.length;
+
+    if (summary) {
+      summary.lineCount += 1;
+      summary.rehearsalLineCount += length >= MIN_OPENING_REHEARSAL_PLIES ? 1 : 0;
+      summary.longestLineLength = Math.max(summary.longestLineLength, length);
+      if (row.eco < summary.eco) {
+        summary.eco = row.eco;
+      }
+      continue;
+    }
+
+    summaries.set(row.name, {
+      name: row.name,
+      eco: row.eco,
+      lineCount: 1,
+      rehearsalLineCount: length >= MIN_OPENING_REHEARSAL_PLIES ? 1 : 0,
+      longestLineLength: length,
+    });
+  }
+
+  return Array.from(summaries.values()).sort((left, right) => {
+    if (right.rehearsalLineCount !== left.rehearsalLineCount) {
+      return right.rehearsalLineCount - left.rehearsalLineCount;
+    }
+    if (right.longestLineLength !== left.longestLineLength) {
+      return right.longestLineLength - left.longestLineLength;
+    }
+    return left.name.localeCompare(right.name);
+  });
+}
+
+export function getOpeningNames(): OpeningCatalogSummary[] {
+  const rows = db.prepare('SELECT name, eco, moves FROM openings').all() as {
+    name: string;
+    eco: string;
+    moves: string;
+  }[];
+
+  return summarizeOpeningCatalog(rows);
+}
+
+export function searchOpeningCatalog(query: string): OpeningCatalogSummary[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return getOpeningNames();
+  }
+
+  const rows = db.prepare('SELECT name, eco, variation, moves FROM openings').all() as {
+    name: string;
+    eco: string;
+    variation: string;
+    moves: string;
+  }[];
+
+  const matchedOpeningNames = new Set<string>();
+
+  for (const row of rows) {
+    const searchableText = `${row.name} ${row.eco} ${row.variation}`.toLowerCase();
+    if (searchableText.includes(normalizedQuery)) {
+      matchedOpeningNames.add(row.name);
+    }
+  }
+
+  return summarizeOpeningCatalog(rows).filter((summary) => matchedOpeningNames.has(summary.name));
+}
+
+export function searchOpeningCatalogResults(query: string): OpeningCatalogSearchResult[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return getOpeningNames().map((summary) => ({ type: 'opening' as const, ...summary }));
+  }
+
+  const rows = db.prepare('SELECT id, name, eco, variation, color, moves FROM openings').all() as {
+    id: number;
+    name: string;
+    eco: string;
+    variation: string;
+    color: 'w' | 'b';
+    moves: string;
+  }[];
+
+  const openingRows: { name: string; eco: string; moves: string }[] = [];
+  const openingNames = new Set<string>();
+  const variationResults: OpeningCatalogSearchResult[] = [];
+
+  for (const row of rows) {
+    const openingSearchText = `${row.name} ${row.eco}`.toLowerCase();
+    const variationSearchText = `${row.variation} ${row.eco} ${row.name}`.toLowerCase();
+    const matchesOpening = openingSearchText.includes(normalizedQuery);
+    const matchesVariation = variationSearchText.includes(normalizedQuery);
+
+    if (matchesOpening && !openingNames.has(row.name)) {
+      openingRows.push({ name: row.name, eco: row.eco, moves: row.moves });
+      openingNames.add(row.name);
+    }
+
+    if (matchesVariation) {
+      const moves = JSON.parse(row.moves) as string[];
+      variationResults.push({
+        type: 'variation',
+        id: row.id,
+        name: row.name,
+        variation: row.variation,
+        eco: row.eco,
+        color: row.color,
+        moveCount: moves.length,
+        isBriefLine: moves.length < MIN_OPENING_REHEARSAL_PLIES,
+      });
+    }
+  }
+
+  const openingResults = summarizeOpeningCatalog(openingRows).map((summary) => ({
+    type: 'opening' as const,
+    ...summary,
+  }));
+
+  variationResults.sort((left, right) => {
+    if (left.type !== 'variation' || right.type !== 'variation') {
+      return 0;
+    }
+    if (left.isBriefLine !== right.isBriefLine) {
+      return left.isBriefLine ? 1 : -1;
+    }
+    if (right.moveCount !== left.moveCount) {
+      return right.moveCount - left.moveCount;
+    }
+    if (left.name !== right.name) {
+      return left.name.localeCompare(right.name);
+    }
+    return left.variation.localeCompare(right.variation);
+  });
+
+  return [...openingResults, ...variationResults];
 }
 
 export function getOpeningsByName(name: string) {

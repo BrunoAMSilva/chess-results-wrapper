@@ -4,6 +4,7 @@ export const PRESENTER_PAIRINGS_PER_PAGE = 5;
 export const CAROUSEL_INTERVAL = 10; // seconds
 export const CACHE_TTL = 300; // seconds
 export const BASE_URL = "https://chess-results.com";
+export const MIN_OPENING_REHEARSAL_PLIES = 8;
 
 export const LANGUAGE_OPTIONS = [
 	{ value: 1, label: "English" },

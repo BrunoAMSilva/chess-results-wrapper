@@ -27,8 +27,19 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  if (request.method !== 'GET') return;
+
   // Only handle same-origin requests
   if (url.origin !== self.location.origin) return;
+
+  // Never intercept Astro/Vite dev assets or HMR endpoints.
+  if (
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/node_modules/') ||
+    url.pathname.includes('/.vite/')
+  ) {
+    return;
+  }
 
   // Network-first for pages and API calls
   if (request.mode === 'navigate' || url.pathname.startsWith('/api/')) {

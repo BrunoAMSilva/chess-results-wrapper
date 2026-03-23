@@ -2,15 +2,26 @@
 import 'cm-chessboard/assets/chessboard.css';
 import 'cm-chessboard/assets/extensions/markers/markers.css';
 import EmptyState from './app/EmptyState.astro';
+import ActionButton from './controls/ActionButton.astro';
 import FormField from './controls/FormField.astro';
 import PracticeChoiceRail from './practice/PracticeChoiceRail.astro';
 import TextInput from './controls/TextInput.astro';
 
 interface Props {
-  openingNames: { name: string; eco: string }[];
+  openingNames: {
+    name: string;
+    eco: string;
+    lineCount: number;
+    rehearsalLineCount: number;
+    longestLineLength: number;
+  }[];
 }
 
 const { openingNames } = Astro.props;
+
+function formatPlyLabel(length: number) {
+  return `${length} ${length === 1 ? 'ply' : 'plies'}`;
+}
 ---
 
 {openingNames.length === 0 ? (
@@ -20,62 +31,88 @@ const { openingNames } = Astro.props;
     <aside class="sidebar" aria-labelledby="practice-heading">
       <div class="sidebar-header">
         <h2 id="practice-heading" class="sidebar-title">Opening rehearsal</h2>
-        <p class="sidebar-copy">Search for an ECO code or opening name, choose a variation, and play the training side move by move.</p>
       </div>
 
-      <FormField label="Search opening" forId="opening-search">
+      <FormField label="Search" forId="opening-search">
         <TextInput
           id="opening-search"
           type="search"
           inputmode="search"
           autocomplete="off"
-          placeholder="Type Sicilian, Caro-Kann, or E60"
+          placeholder="Sicilian, Najdorf, or E60"
         />
       </FormField>
 
-      <PracticeChoiceRail id="opening-choice" title="Opening" helper="Filtered by name or ECO code.">
-        <div
-          id="opening-options"
-          class="choice-group"
-          role="radiogroup"
-          aria-labelledby="opening-choice-title"
-          aria-describedby="opening-choice-helper"
-        >
-          {openingNames.map((opening) => (
-            <label
-              class="choice-option"
-              data-opening-option
-              data-search={`${opening.name} ${opening.eco}`.toLowerCase()}
-            >
-              <input
-                class="choice-input"
-                type="radio"
-                name="opening-choice"
-                value={opening.name}
-                data-eco={opening.eco}
-              />
-              <span class="choice-accent" aria-hidden="true"></span>
-              <span class="choice-content">
-                <span class="choice-meta">{opening.eco}</span>
-                <span class="choice-label">{opening.name}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-      </PracticeChoiceRail>
+      <div id="opening-step">
+        <PracticeChoiceRail id="opening-choice" title="Openings" helper="Choose an opening." class="opening-rail">
+          <span slot="meta" id="opening-results" class="rail-chip">{openingNames.length} openings</span>
+          <div
+            id="opening-options"
+            class="choice-group"
+            role="radiogroup"
+            aria-labelledby="opening-choice-title"
+            aria-describedby="opening-choice-helper"
+          >
+            {openingNames.map((opening) => (
+              <label
+                class="choice-option"
+                data-opening-option
+                data-search={`${opening.name} ${opening.eco}`.toLowerCase()}
+              >
+                <input
+                  class="choice-input"
+                  type="radio"
+                  name="opening-choice"
+                  value={opening.name}
+                  data-eco={opening.eco}
+                  data-line-count={opening.lineCount}
+                  data-rehearsal-line-count={opening.rehearsalLineCount}
+                  data-longest-line-length={opening.longestLineLength}
+                />
+                <span class="choice-accent" aria-hidden="true"></span>
+                <span class="choice-content">
+                  <span class="choice-meta">{opening.eco}</span>
+                  <span class="choice-label">{opening.name}</span>
+                  <span class="choice-support">
+                    <span>{opening.rehearsalLineCount} rehearsal {opening.rehearsalLineCount === 1 ? 'line' : 'lines'}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>best {formatPlyLabel(opening.longestLineLength)}</span>
+                  </span>
+                </span>
+                <span class="choice-trailing" aria-hidden="true">›</span>
+              </label>
+            ))}
+          </div>
+        </PracticeChoiceRail>
+      </div>
 
-      <PracticeChoiceRail id="variation-choice" title="Variation and side" helper="White and Black repertoires are listed separately.">
-        <div
-          id="variation-options"
-          class:list={["choice-group", "choice-group--empty", "choice-group--compact-empty"]}
-          role="radiogroup"
-          aria-labelledby="variation-choice-title"
-          aria-describedby="variation-choice-helper"
-          aria-disabled="true"
-        >
-          <p class="choice-empty">Pick an opening first</p>
-        </div>
-      </PracticeChoiceRail>
+      <div id="variation-step" hidden>
+        <PracticeChoiceRail id="variation-choice" title="Variations" helper="Choose a saved line." class="variation-rail">
+          <div slot="meta" class="rail-meta-group">
+            <span id="variation-results" class="rail-chip" hidden>0 lines</span>
+            <ActionButton slot="meta" id="change-opening" variant="secondary" size="compact">Back</ActionButton>
+          </div>
+          <div id="variation-selection-summary" class="selection-summary" hidden>
+            <p class="selection-summary__label">Opening</p>
+            <p id="selected-opening-value" class="selection-summary__value">Choose an opening</p>
+          </div>
+          <div id="variation-empty-state" class="choice-group choice-group--empty choice-group--compact-empty" aria-live="polite">
+            <p class="choice-empty">Pick an opening first</p>
+          </div>
+          <div id="variation-browser" hidden>
+            <div
+              id="variation-options"
+              class="choice-group"
+              role="radiogroup"
+              aria-labelledby="variation-choice-title"
+              aria-describedby="variation-choice-helper"
+            ></div>
+            <div class="variation-actions">
+              <ActionButton id="toggle-variation-visibility" variant="secondary" size="compact" fullWidth disabled={true}>Show all variations</ActionButton>
+            </div>
+          </div>
+        </PracticeChoiceRail>
+      </div>
 
       <section class="status-panel" aria-labelledby="practice-status-heading">
         <h2 id="practice-status-heading" class="status-title">Session status</h2>
@@ -86,7 +123,17 @@ const { openingNames } = Astro.props;
 
     <section class="board-area" aria-labelledby="practice-board-heading">
       <div class="board-container">
-        <h2 id="practice-board-heading" class="board-title">Practice board</h2>
+        <div class="board-header">
+          <div class="board-header__copy">
+            <h2 id="practice-board-heading" class="board-title">Practice board</h2>
+            <p id="board-context" class="board-context">Choose a line to start rehearsing.</p>
+          </div>
+          <div class="board-actions" aria-label="Line navigation controls">
+            <ActionButton id="move-back" variant="secondary" size="compact" disabled={true}>Back</ActionButton>
+            <ActionButton id="move-forward" variant="secondary" size="compact" disabled={true}>Forward</ActionButton>
+            <ActionButton id="restart-line" variant="secondary" size="compact" disabled={true}>Restart</ActionButton>
+          </div>
+        </div>
         <div id="board"></div>
       </div>
     </section>
@@ -98,13 +145,36 @@ const { openingNames } = Astro.props;
   import type { Square } from 'chess.js';
   import { Chessboard, COLOR, INPUT_EVENT_TYPE, FEN } from 'cm-chessboard';
   import { Markers, MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers.js';
+  import { MIN_OPENING_REHEARSAL_PLIES } from '../lib/constants';
 
   const searchInput = document.getElementById('opening-search') as HTMLInputElement | null;
+  const openingStep = document.getElementById('opening-step') as HTMLDivElement | null;
+  const variationStep = document.getElementById('variation-step') as HTMLDivElement | null;
   const openingOptions = document.getElementById('opening-options') as HTMLDivElement | null;
   const variationOptions = document.getElementById('variation-options') as HTMLDivElement | null;
+  const variationBrowser = document.getElementById('variation-browser') as HTMLDivElement | null;
+  const variationEmptyState = document.getElementById('variation-empty-state') as HTMLDivElement | null;
   const statusMessage = document.getElementById('status-message') as HTMLElement | null;
   const progressDiv = document.getElementById('progress') as HTMLElement | null;
   const boardEl = document.getElementById('board') as HTMLElement | null;
+  const openingResults = document.getElementById('opening-results') as HTMLElement | null;
+  const variationResults = document.getElementById('variation-results') as HTMLElement | null;
+  const selectedOpeningValue = document.getElementById('selected-opening-value') as HTMLElement | null;
+  const variationSelectionSummary = document.getElementById('variation-selection-summary') as HTMLDivElement | null;
+  const toggleVariationVisibilityButton = document.getElementById('toggle-variation-visibility') as HTMLButtonElement | null;
+  const changeOpeningButton = document.getElementById('change-opening') as HTMLButtonElement | null;
+  const boardContext = document.getElementById('board-context') as HTMLElement | null;
+  const moveBackButton = document.getElementById('move-back') as HTMLButtonElement | null;
+  const moveForwardButton = document.getElementById('move-forward') as HTMLButtonElement | null;
+  const restartLineButton = document.getElementById('restart-line') as HTMLButtonElement | null;
+
+  interface OpeningSummary {
+    name: string;
+    eco: string;
+    lineCount: number;
+    rehearsalLineCount: number;
+    longestLineLength: number;
+  }
 
   interface OpeningVariation {
     id: number;
@@ -115,22 +185,503 @@ const { openingNames } = Astro.props;
     moves: string[];
   }
 
-  if (searchInput && openingOptions && variationOptions && statusMessage && progressDiv && boardEl) {
-    const searchControl = searchInput!;
-    const openingChoices = openingOptions!;
-    const variationChoices = variationOptions!;
-    const statusRegion = statusMessage!;
-    const progressRegion = progressDiv!;
-    const boardRoot = boardEl!;
+  interface CatalogSearchOpeningResult extends OpeningSummary {
+    type: 'opening';
+  }
+
+  interface CatalogSearchVariationResult {
+    type: 'variation';
+    id: number;
+    name: string;
+    variation: string;
+    eco: string;
+    color: 'w' | 'b';
+    moveCount: number;
+    isBriefLine: boolean;
+  }
+
+  type CatalogSearchResult = CatalogSearchOpeningResult | CatalogSearchVariationResult;
+
+  function formatPlyLabel(length: number) {
+    return `${length} ${length === 1 ? 'ply' : 'plies'}`;
+  }
+
+  function compareVariations(left: OpeningVariation, right: OpeningVariation) {
+    const leftIsRehearsal = left.moves.length >= MIN_OPENING_REHEARSAL_PLIES;
+    const rightIsRehearsal = right.moves.length >= MIN_OPENING_REHEARSAL_PLIES;
+
+    if (leftIsRehearsal !== rightIsRehearsal) {
+      return leftIsRehearsal ? -1 : 1;
+    }
+
+    if (right.moves.length !== left.moves.length) {
+      return right.moves.length - left.moves.length;
+    }
+
+    if (left.color !== right.color) {
+      return left.color.localeCompare(right.color);
+    }
+
+    return left.variation.localeCompare(right.variation);
+  }
+
+  if (
+    searchInput &&
+    openingStep &&
+    variationStep &&
+    openingOptions &&
+    variationOptions &&
+    variationBrowser &&
+    variationEmptyState &&
+    statusMessage &&
+    progressDiv &&
+    boardEl &&
+    openingResults &&
+    variationResults &&
+    selectedOpeningValue &&
+    variationSelectionSummary &&
+    toggleVariationVisibilityButton &&
+    changeOpeningButton &&
+    boardContext &&
+    moveBackButton &&
+    moveForwardButton &&
+    restartLineButton
+  ) {
+    const searchControl = searchInput;
+    const openingStepSection = openingStep;
+    const variationStepSection = variationStep;
+    const openingChoices = openingOptions;
+    const variationChoices = variationOptions;
+    const variationPanel = variationBrowser;
+    const variationEmpty = variationEmptyState;
+    const statusRegion = statusMessage;
+    const progressRegion = progressDiv;
+    const boardRoot = boardEl;
+    const openingResultsNote = openingResults;
+    const variationResultsNote = variationResults;
+    const openingSummaryValue = selectedOpeningValue;
+    const variationSummary = variationSelectionSummary;
+    const variationVisibilityButton = toggleVariationVisibilityButton;
+    const changeOpeningControl = changeOpeningButton;
+    const boardContextLabel = boardContext;
+    const moveBackControl = moveBackButton;
+    const moveForwardControl = moveForwardButton;
+    const restartLineControl = restartLineButton;
     let currentOpening: OpeningVariation | null = null;
+    let selectedOpening: OpeningSummary | null = null;
+    let currentVariations: OpeningVariation[] = [];
+    let variationListExpanded = false;
     let currentMoveIndex = 0;
     let game = new Chess();
     let board: Chessboard | null = null;
+    let pendingOpponentMove: number | null = null;
+    let pendingStatusReset: number | null = null;
     const cachedVariations = new Map<string, OpeningVariation[]>();
+    const cachedCatalogSearches = new Map<string, CatalogSearchResult[]>();
+    const initialOpeningMarkup = openingChoices.innerHTML;
+    const openingSummaries = new Map<string, OpeningSummary>();
+    let catalogSearchRequestId = 0;
+
+    for (const input of Array.from(openingChoices.querySelectorAll<HTMLInputElement>('input[name="opening-choice"]'))) {
+      openingSummaries.set(input.value, {
+        name: input.value,
+        eco: input.dataset.eco || '',
+        lineCount: Number(input.dataset.lineCount || '0'),
+        rehearsalLineCount: Number(input.dataset.rehearsalLineCount || '0'),
+        longestLineLength: Number(input.dataset.longestLineLength || '0'),
+      });
+    }
 
     function setStatus(message: string, tone: 'default' | 'success' | 'error' = 'default') {
       statusRegion.textContent = message;
       statusRegion.dataset.tone = tone;
+    }
+
+    function setSummaryValue(element: HTMLElement, value: string, isEmpty: boolean) {
+      element.textContent = value;
+      element.dataset.empty = isEmpty ? 'true' : 'false';
+    }
+
+    function setActionButtonLabel(button: HTMLButtonElement, label: string) {
+      const labelElement = button.querySelector<HTMLElement>('.ui-action__label');
+      if (labelElement) {
+        labelElement.textContent = label;
+        return;
+      }
+
+      button.textContent = label;
+    }
+
+    function escapeHtml(value: string) {
+      return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    function restoreOpeningList() {
+      openingChoices.innerHTML = initialOpeningMarkup;
+      openingChoices.classList.remove('choice-group--empty');
+      openingChoices.removeAttribute('aria-disabled');
+      delete openingChoices.dataset.mode;
+    }
+
+    function updateSearchContext() {
+      if (selectedOpening) {
+        searchControl.placeholder = `Filter ${selectedOpening.name}, ECO, or variation name`;
+        return;
+      }
+
+      searchControl.placeholder = 'Sicilian, Najdorf, or E60';
+    }
+
+    function updateOpeningResultsCount() {
+      const visibleCount = Array.from(openingChoices.querySelectorAll<HTMLElement>('[data-opening-option]')).filter((option) => !option.hidden).length;
+      const query = searchControl.value.trim();
+      openingResultsNote.textContent = query ? `${visibleCount} match${visibleCount === 1 ? '' : 'es'}` : `${visibleCount} opening${visibleCount === 1 ? '' : 's'}`;
+    }
+
+    function getVisibleVariationCount(totalCount: number) {
+      if (variationListExpanded) return totalCount;
+      return Math.min(totalCount, 6);
+    }
+
+    function updateVariationResultsCount(count: number, totalCount: number) {
+      if (!selectedOpening) {
+        delete variationResultsNote.dataset.state;
+        variationResultsNote.hidden = true;
+        variationResultsNote.textContent = '0 lines';
+        return;
+      }
+
+      if (totalCount === 0) {
+        delete variationResultsNote.dataset.state;
+        variationResultsNote.hidden = false;
+        variationResultsNote.textContent = 'No lines';
+        return;
+      }
+
+      const searchLabel = searchControl.value.trim();
+      const visibleCount = getVisibleVariationCount(count);
+      delete variationResultsNote.dataset.state;
+      variationResultsNote.hidden = false;
+      if (searchLabel) {
+        variationResultsNote.textContent = `${count} match${count === 1 ? '' : 'es'}`;
+        return;
+      }
+
+      variationResultsNote.textContent = variationListExpanded || count <= visibleCount
+        ? `${count} line${count === 1 ? '' : 's'}`
+        : `${visibleCount} of ${count}`;
+    }
+
+    function updateBoardContext() {
+      if (!currentOpening) {
+        boardContextLabel.textContent = 'Choose a line to start rehearsing.';
+        return;
+      }
+
+      const remaining = currentOpening.moves.length - currentMoveIndex;
+      boardContextLabel.textContent = `${currentOpening.name} · ${currentOpening.variation} · ${remaining} ${remaining === 1 ? 'ply' : 'plies'} remaining`;
+    }
+
+    function updateMoveControls() {
+      const hasOpening = Boolean(currentOpening);
+      moveBackControl.disabled = !hasOpening || currentMoveIndex === 0;
+      moveForwardControl.disabled = !hasOpening || currentMoveIndex >= (currentOpening?.moves.length ?? 0);
+      restartLineControl.disabled = !hasOpening || currentMoveIndex === 0;
+    }
+
+    function syncMoveInputState() {
+      board?.disableMoveInput();
+      if (currentOpening && currentMoveIndex < currentOpening.moves.length) {
+        board?.enableMoveInput(inputHandler, currentOpening.color === 'w' ? COLOR.white : COLOR.black);
+      }
+      updateMoveControls();
+    }
+
+    function updateOpeningSelectionSummary(opening: OpeningSummary | null) {
+      selectedOpening = opening;
+      variationSummary.hidden = !opening;
+
+      if (!opening) {
+        setSummaryValue(openingSummaryValue, 'Choose an opening', true);
+        updateSearchContext();
+        return;
+      }
+
+      setSummaryValue(
+        openingSummaryValue,
+        `${opening.name} · ${opening.eco} · ${opening.rehearsalLineCount} deep ${opening.rehearsalLineCount === 1 ? 'line' : 'lines'}`,
+        false,
+      );
+      updateSearchContext();
+    }
+
+    function applyVariationFilter(variations: OpeningVariation[]) {
+      const query = searchControl.value.trim().toLowerCase();
+      return variations.filter((variation) => {
+        if (query.length === 0) return true;
+        const searchableText = `${variation.name} ${variation.variation} ${variation.eco} ${variation.color === 'w' ? 'white' : 'black'}`.toLowerCase();
+        return searchableText.includes(query);
+      });
+    }
+
+    function showOpeningStep() {
+      openingStepSection.hidden = false;
+      variationStepSection.hidden = true;
+      updateSearchContext();
+    }
+
+    function showVariationStep() {
+      openingStepSection.hidden = true;
+      variationStepSection.hidden = false;
+      updateSearchContext();
+    }
+
+    function clearOpeningChoiceSelection() {
+      for (const input of Array.from(openingChoices.querySelectorAll<HTMLInputElement>('input[name="opening-choice"]'))) {
+        input.checked = false;
+      }
+    }
+
+    function applyOpeningCatalogVisibility(visibleOpeningNames: Set<string> | null) {
+      if (openingChoices.dataset.mode === 'search-results') {
+        restoreOpeningList();
+      }
+
+      for (const option of Array.from(openingChoices.querySelectorAll<HTMLElement>('[data-opening-option]'))) {
+        const input = option.querySelector<HTMLInputElement>('input[name="opening-choice"]');
+        const openingName = input?.value ?? '';
+        option.hidden = visibleOpeningNames ? !visibleOpeningNames.has(openingName) : false;
+      }
+
+      delete openingResultsNote.dataset.state;
+      updateOpeningResultsCount();
+    }
+
+    function renderCatalogSearchResults(results: CatalogSearchResult[]) {
+      openingChoices.dataset.mode = 'search-results';
+
+      if (results.length === 0) {
+        renderEmptyChoices(openingChoices, 'No openings or variations match this search');
+        openingResultsNote.textContent = '0 matches';
+        return;
+      }
+
+      openingChoices.innerHTML = results
+        .map((result) => {
+          if (result.type === 'opening') {
+            return `
+              <label class="choice-option choice-option--opening-result" data-search-result>
+                <input
+                  class="choice-input"
+                  type="radio"
+                  name="catalog-choice"
+                  value="${escapeHtml(result.name)}"
+                  data-result-kind="opening"
+                  data-opening-name="${escapeHtml(result.name)}"
+                />
+                <span class="choice-content">
+                  <span class="choice-meta">${escapeHtml(result.eco)}</span>
+                  <span class="choice-label">${escapeHtml(result.name)}</span>
+                  <span class="choice-support">
+                    <span>${result.rehearsalLineCount} rehearsal ${result.rehearsalLineCount === 1 ? 'line' : 'lines'}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>best ${formatPlyLabel(result.longestLineLength)}</span>
+                  </span>
+                </span>
+                <span class="choice-trailing" aria-hidden="true">›</span>
+              </label>`;
+          }
+
+          const sideLabel = result.color === 'w' ? 'White' : 'Black';
+          const badges = [`<span>${formatPlyLabel(result.moveCount)}</span>`];
+          if (result.isBriefLine) {
+            badges.push('<span aria-hidden="true">·</span><span>Brief line</span>');
+          }
+
+          return `
+            <label class="choice-option choice-option--variation-result" data-search-result>
+              <input
+                class="choice-input"
+                type="radio"
+                name="catalog-choice"
+                value="${result.id}"
+                data-result-kind="variation"
+                data-opening-name="${escapeHtml(result.name)}"
+              />
+              <span class="choice-content">
+                <span class="choice-meta">${escapeHtml(result.eco)} · ${sideLabel}</span>
+                <span class="choice-label">${escapeHtml(result.variation)}</span>
+                <span class="choice-context">${escapeHtml(result.name)}</span>
+                <span class="choice-support">${badges.join('')}</span>
+              </span>
+              <span class="choice-trailing" aria-hidden="true">›</span>
+            </label>`;
+        })
+        .join('');
+
+      openingChoices.classList.remove('choice-group--empty');
+      openingChoices.removeAttribute('aria-disabled');
+      openingResultsNote.textContent = `${results.length} match${results.length === 1 ? '' : 'es'}`;
+    }
+
+    async function loadOpeningVariations(name: string) {
+      const summary = openingSummaries.get(name) ?? {
+        name,
+        eco: '',
+        lineCount: 0,
+        rehearsalLineCount: 0,
+        longestLineLength: 0,
+      };
+
+      variationListExpanded = false;
+      updateOpeningSelectionSummary(summary);
+      clearPracticeState();
+      showVariationStep();
+      variationPanel.hidden = true;
+      setVariationPlaceholder(null);
+      variationResultsNote.hidden = false;
+      variationResultsNote.dataset.state = 'loading';
+      variationResultsNote.textContent = 'Loading';
+      setStatus(`Loading variations for ${name}.`);
+
+      let variations = cachedVariations.get(name);
+      try {
+        if (!variations) {
+          const response = await fetch(`/api/openings?name=${encodeURIComponent(name)}`);
+          if (!response.ok) throw new Error('Unable to load variations.');
+          variations = await response.json() as OpeningVariation[];
+          cachedVariations.set(name, variations);
+        }
+      } catch {
+        variationPanel.hidden = true;
+        setVariationPlaceholder('Unable to load variations');
+        delete variationResultsNote.dataset.state;
+        variationResultsNote.hidden = false;
+        variationResultsNote.textContent = 'Unavailable';
+        setStatus('Unable to load variations. Try another opening or retry in a moment.', 'error');
+        return null;
+      }
+
+      const resolvedVariations = variations ?? [];
+      renderVariationChoices(resolvedVariations);
+
+      if (resolvedVariations.length === 0) {
+        setStatus('No saved variations are available for this opening yet.', 'error');
+        return resolvedVariations;
+      }
+
+      setStatus(`Choose a variation for ${name}.`);
+      return resolvedVariations;
+    }
+
+    async function activateVariation(opening: OpeningVariation) {
+      currentOpening = opening;
+      currentMoveIndex = 0;
+      game = new Chess();
+
+      resetBoardInteraction();
+      board?.setOrientation(opening.color === 'w' ? COLOR.white : COLOR.black);
+      board?.setPosition(game.fen(), true);
+      syncMoveInputState();
+      updateStatus();
+
+      if (opening.moves.length < MIN_OPENING_REHEARSAL_PLIES) {
+        setStatus(`${opening.name}: ${opening.variation} is a brief line. Use it for orientation, then move to a deeper sequence for rehearsal.`);
+      }
+
+      if (opening.color === 'b' && opening.moves.length > 0) {
+        queueOpponentMove();
+      }
+    }
+
+    async function activateVariationById(id: number, variations?: OpeningVariation[] | null) {
+      let opening: OpeningVariation | null = null;
+
+      if (variations) {
+        opening = variations.find((variation) => variation.id === id) || null;
+      }
+
+      if (!opening) {
+        for (const cached of cachedVariations.values()) {
+          opening = cached.find((variation) => variation.id === id) || null;
+          if (opening) break;
+        }
+      }
+
+      if (!opening) {
+        const response = await fetch(`/api/openings?id=${id}`);
+        if (!response.ok) {
+          setStatus('Unable to load that variation. Please try again.', 'error');
+          return;
+        }
+        opening = await response.json() as OpeningVariation;
+      }
+
+      await activateVariation(opening);
+    }
+
+    async function syncCatalogSearch() {
+      if (selectedOpening) {
+        variationListExpanded = false;
+        renderVariationChoices(currentVariations);
+        return;
+      }
+
+      const query = searchControl.value.trim();
+      if (!query) {
+        applyOpeningCatalogVisibility(null);
+        return;
+      }
+
+      const normalizedQuery = query.toLowerCase();
+      const requestId = ++catalogSearchRequestId;
+      openingResultsNote.dataset.state = 'loading';
+      openingResultsNote.textContent = 'Searching';
+
+      let searchResults = cachedCatalogSearches.get(normalizedQuery);
+
+      if (!searchResults) {
+        try {
+          const response = await fetch(`/api/openings?query=${encodeURIComponent(query)}`);
+          if (!response.ok) {
+            throw new Error('Unable to search openings.');
+          }
+
+          searchResults = await response.json() as CatalogSearchResult[];
+          cachedCatalogSearches.set(normalizedQuery, searchResults);
+        } catch {
+          if (requestId !== catalogSearchRequestId) {
+            return;
+          }
+
+          delete openingResultsNote.dataset.state;
+          openingResultsNote.textContent = 'Unavailable';
+          setStatus('Unable to search the opening catalog. Try again in a moment.', 'error');
+          return;
+        }
+      }
+
+      if (requestId !== catalogSearchRequestId) {
+        return;
+      }
+
+      renderCatalogSearchResults(searchResults);
+    }
+
+    function setVariationPlaceholder(message: string | null) {
+      if (!message) {
+        variationEmpty.hidden = true;
+        variationEmpty.innerHTML = '';
+        return;
+      }
+
+      variationEmpty.hidden = false;
+      variationEmpty.innerHTML = `<p class="choice-empty">${message}</p>`;
     }
 
     function renderEmptyChoices(container: HTMLDivElement, message: string) {
@@ -139,29 +690,50 @@ const { openingNames } = Astro.props;
       container.setAttribute('aria-disabled', 'true');
     }
 
-    function clearChoiceSelection(container: ParentNode, selector: string) {
-      for (const input of Array.from(container.querySelectorAll<HTMLInputElement>(selector))) {
-        input.checked = false;
-      }
-    }
-
     function renderVariationChoices(variations: OpeningVariation[]) {
-      if (variations.length === 0) {
-        renderEmptyChoices(variationChoices, 'No variations available');
+      currentVariations = [...variations].sort(compareVariations);
+
+      const filteredVariations = applyVariationFilter(currentVariations);
+      const visibleCount = getVisibleVariationCount(filteredVariations.length);
+      const visibleVariations = filteredVariations.slice(0, visibleCount);
+
+      if (currentVariations.length === 0) {
+        variationPanel.hidden = true;
+        setVariationPlaceholder('No variations available');
+        updateVariationResultsCount(0, 0);
+        updateVariationVisibilityControl(0, 0);
         return;
       }
 
-      variationChoices.innerHTML = variations
+      if (filteredVariations.length === 0) {
+        variationPanel.hidden = false;
+        setVariationPlaceholder(null);
+        renderEmptyChoices(variationChoices, 'No variations match this search');
+        updateVariationResultsCount(0, currentVariations.length);
+        updateVariationVisibilityControl(0, filteredVariations.length);
+        return;
+      }
+
+      variationChoices.innerHTML = visibleVariations
         .map((variation) => {
           const side = variation.color === 'w' ? 'White' : 'Black';
-          const toneClass = variation.color === 'w' ? 'choice-option--white' : 'choice-option--black';
+          const toneClass = variation.color === 'w' ? 'variation-option--white' : 'variation-option--black';
+          const isBriefLine = variation.moves.length < MIN_OPENING_REHEARSAL_PLIES;
+          const briefClass = isBriefLine ? 'variation-option--brief' : '';
+          const badges = [`<span class="choice-badge">${formatPlyLabel(variation.moves.length)}</span>`];
+
+          if (isBriefLine) {
+            badges.push('<span class="choice-badge choice-badge--muted">Brief line</span>');
+          }
+
           return `
-            <label class="choice-option ${toneClass}">
+            <label class="variation-option ${toneClass} ${briefClass}">
               <input class="choice-input" type="radio" name="variation-choice" value="${variation.id}" />
-              <span class="choice-accent" aria-hidden="true"></span>
-              <span class="choice-content">
-                <span class="choice-meta">${side} · ${variation.eco}</span>
-                <span class="choice-label">${variation.variation}</span>
+              <span class="variation-option__rail" aria-hidden="true"></span>
+              <span class="variation-option__body">
+                <span class="variation-option__eyebrow">${side} · ${variation.eco}</span>
+                <span class="variation-option__title">${variation.variation}</span>
+                <span class="variation-option__support">${badges.join('')}</span>
               </span>
             </label>`;
         })
@@ -169,6 +741,35 @@ const { openingNames } = Astro.props;
 
       variationChoices.classList.remove('choice-group--empty');
       variationChoices.removeAttribute('aria-disabled');
+      variationPanel.hidden = false;
+      setVariationPlaceholder(null);
+      updateVariationResultsCount(filteredVariations.length, currentVariations.length);
+      updateVariationVisibilityControl(visibleCount, filteredVariations.length);
+    }
+
+    function updateVariationVisibilityControl(visibleCount: number, totalCount: number) {
+      const hasMore = totalCount > visibleCount;
+      variationVisibilityButton.hidden = totalCount === 0;
+      variationVisibilityButton.disabled = totalCount === 0;
+      variationVisibilityButton.setAttribute('aria-expanded', variationListExpanded ? 'true' : 'false');
+
+      if (!hasMore && variationListExpanded) {
+        setActionButtonLabel(variationVisibilityButton, 'Show fewer variations');
+        variationVisibilityButton.disabled = false;
+        return;
+      }
+
+      if (!hasMore) {
+        setActionButtonLabel(variationVisibilityButton, 'All variations shown');
+        variationVisibilityButton.disabled = true;
+        return;
+      }
+
+      setActionButtonLabel(
+        variationVisibilityButton,
+        variationListExpanded ? 'Show fewer variations' : `Show all ${totalCount} variations`,
+      );
+      variationVisibilityButton.disabled = false;
     }
 
     function initBoard() {
@@ -186,104 +787,93 @@ const { openingNames } = Astro.props;
       }
     }
 
+    function cancelPendingTimers() {
+      if (pendingOpponentMove !== null) {
+        window.clearTimeout(pendingOpponentMove);
+        pendingOpponentMove = null;
+      }
+
+      if (pendingStatusReset !== null) {
+        window.clearTimeout(pendingStatusReset);
+        pendingStatusReset = null;
+      }
+    }
+
+    function resetBoardInteraction() {
+      cancelPendingTimers();
+      board?.disableMoveInput();
+      board?.removeMarkers();
+      updateMoveControls();
+    }
+
+    function queueOpponentMove() {
+      cancelPendingTimers();
+      pendingOpponentMove = window.setTimeout(() => {
+        pendingOpponentMove = null;
+        playOpponentMove();
+      }, 500);
+    }
+
     function clearPracticeState() {
       currentOpening = null;
       currentMoveIndex = 0;
       game = new Chess();
-      board?.disableMoveInput();
-      board?.removeMarkers();
+      resetBoardInteraction();
       board?.setOrientation(COLOR.white);
       board?.setPosition(game.fen(), true);
       progressRegion.innerHTML = '';
+      updateBoardContext();
+      updateMoveControls();
     }
 
-    initBoard();
-    renderEmptyChoices(variationChoices, 'Pick an opening first');
+    function updateStatus() {
+      if (!currentOpening) return;
 
-    searchControl.addEventListener('input', () => {
-      const query = searchControl.value.toLowerCase();
-      for (const option of Array.from(openingChoices.querySelectorAll<HTMLElement>('[data-opening-option]'))) {
-        const searchValue = option.dataset.search || '';
-        option.hidden = !searchValue.includes(query);
+      const activeOpening = currentOpening;
+      const movePairs: { white: string; black: string }[] = [];
+      for (let index = 0; index < activeOpening.moves.length; index += 2) {
+        movePairs.push({
+          white: activeOpening.moves[index],
+          black: activeOpening.moves[index + 1] || '…',
+        });
       }
-      clearPracticeState();
-      clearChoiceSelection(openingChoices, 'input[name="opening-choice"]');
-      clearChoiceSelection(variationChoices, 'input[name="variation-choice"]');
-      renderEmptyChoices(variationChoices, 'Pick an opening first');
-      setStatus('Select an opening to begin.');
-    });
 
-    openingChoices.addEventListener('change', async (event) => {
-      const target = event.target as HTMLInputElement | null;
-      if (!target || target.name !== 'opening-choice') return;
+      progressRegion.innerHTML = movePairs
+        .map((pair, idx) => {
+          const whiteDone = idx * 2 < currentMoveIndex ? 'done' : '';
+          const blackDone = idx * 2 + 1 < currentMoveIndex ? 'done' : '';
+          const whiteActive = idx * 2 === currentMoveIndex ? 'active' : '';
+          const blackActive = idx * 2 + 1 === currentMoveIndex ? 'active' : '';
+          return `
+            <span class="move-pair">
+              <span class="move-no">${idx + 1}.</span>
+              <span class="move ${whiteActive} ${whiteDone}">${pair.white}</span>
+              <span class="move ${blackActive} ${blackDone}">${pair.black}</span>
+            </span>`;
+        })
+        .join('');
 
-      const name = target.value;
-      clearPracticeState();
-      renderEmptyChoices(variationChoices, 'Loading variations...');
-      setStatus(`Loading variations for ${name}.`);
+      setStatus(`${activeOpening.name}: ${activeOpening.variation}`);
+      updateBoardContext();
+      updateMoveControls();
+    }
 
-      let variations = cachedVariations.get(name);
-      try {
-        if (!variations) {
-          const response = await fetch(`/api/openings?name=${encodeURIComponent(name)}`);
-          if (!response.ok) throw new Error('Unable to load variations.');
-          variations = await response.json() as OpeningVariation[];
-          cachedVariations.set(name, variations);
-        }
-      } catch {
-        renderEmptyChoices(variationChoices, 'Unable to load variations');
-        setStatus('Unable to load variations. Try another opening or retry in a moment.', 'error');
+    function playOpponentMove() {
+      if (!currentOpening || currentMoveIndex >= currentOpening.moves.length) {
         return;
       }
 
-      const resolvedVariations = variations ?? [];
-      renderVariationChoices(resolvedVariations);
-
-      if (resolvedVariations.length === 0) {
-        setStatus('No saved variations are available for this opening yet.', 'error');
-        return;
-      }
-
-      setStatus(`Choose a variation for ${name}.`);
-    });
-
-    variationChoices.addEventListener('change', async (event) => {
-      const target = event.target as HTMLInputElement | null;
-      if (!target || target.name !== 'variation-choice') return;
-
-      const id = Number(target.value);
-      if (!id) return;
-
-      let opening: OpeningVariation | null = null;
-      for (const variations of cachedVariations.values()) {
-        opening = variations.find((variation) => variation.id === id) || null;
-        if (opening) break;
-      }
-
-      if (!opening) {
-        const response = await fetch(`/api/openings?id=${id}`);
-        if (!response.ok) {
-          setStatus('Unable to load that variation. Please try again.', 'error');
-          return;
-        }
-        opening = await response.json() as OpeningVariation;
-      }
-
-      currentOpening = opening;
-      currentMoveIndex = 0;
-      game = new Chess();
-
-      board?.setOrientation(opening.color === 'w' ? COLOR.white : COLOR.black);
+      const san = currentOpening.moves[currentMoveIndex];
+      game.move(san);
+      currentMoveIndex++;
       board?.setPosition(game.fen(), true);
-      board?.removeMarkers();
-      board?.enableMoveInput(inputHandler, opening.color === 'w' ? COLOR.white : COLOR.black);
-
+      syncMoveInputState();
       updateStatus();
 
-      if (opening.color === 'b' && opening.moves.length > 0) {
-        setTimeout(() => playOpponentMove(), 500);
+      if (currentMoveIndex >= currentOpening.moves.length) {
+        setStatus('Opening completed. Practice line finished.', 'success');
       }
-    });
+    }
 
     function inputHandler(event: { type: string; square?: string; squareFrom?: string; squareTo?: string }) {
       if (!currentOpening) return false;
@@ -317,78 +907,155 @@ const { openingNames } = Astro.props;
         const expectedGame = new Chess(game.fen());
         const expectedMove = expectedGame.move(expectedSan);
 
-        if (
-          expectedMove &&
-          expectedMove.from === event.squareFrom &&
-          expectedMove.to === event.squareTo
-        ) {
+        if (expectedMove && expectedMove.from === event.squareFrom && expectedMove.to === event.squareTo) {
           game.move(expectedSan);
           currentMoveIndex++;
           board?.setPosition(game.fen(), true);
+          syncMoveInputState();
           updateStatus();
 
           if (currentMoveIndex < currentOpening.moves.length) {
-            setTimeout(() => playOpponentMove(), 500);
+            queueOpponentMove();
           } else {
             setStatus('Opening completed. Practice line finished.', 'success');
-            board?.disableMoveInput();
           }
           return true;
         }
 
         setStatus(`Incorrect move. Try again. Hint: ${expectedSan}.`, 'error');
-        setTimeout(() => updateStatus(), 2500);
+        if (pendingStatusReset !== null) {
+          window.clearTimeout(pendingStatusReset);
+        }
+        pendingStatusReset = window.setTimeout(() => {
+          pendingStatusReset = null;
+          updateStatus();
+        }, 2500);
         return false;
       }
 
       return true;
     }
 
-    function playOpponentMove() {
-      if (!currentOpening || currentMoveIndex >= currentOpening.moves.length) {
+    initBoard();
+    updateOpeningSelectionSummary(null);
+    variationSummary.hidden = true;
+    variationVisibilityButton.hidden = true;
+    setVariationPlaceholder('Pick an opening first');
+    showOpeningStep();
+    applyOpeningCatalogVisibility(null);
+    updateBoardContext();
+    updateMoveControls();
+
+    searchControl.addEventListener('input', () => {
+      void syncCatalogSearch();
+    });
+
+    variationVisibilityButton.addEventListener('click', () => {
+      if (variationVisibilityButton.disabled) return;
+      variationListExpanded = !variationListExpanded;
+      renderVariationChoices(currentVariations);
+    });
+
+    changeOpeningControl.addEventListener('click', () => {
+      clearPracticeState();
+      currentVariations = [];
+      variationListExpanded = false;
+      variationChoices.innerHTML = '';
+      variationPanel.hidden = true;
+      setVariationPlaceholder('Pick an opening first');
+      updateOpeningSelectionSummary(null);
+      clearOpeningChoiceSelection();
+      showOpeningStep();
+      void syncCatalogSearch();
+      setStatus('Choose a different opening to continue.');
+    });
+
+    openingChoices.addEventListener('change', async (event) => {
+      const target = event.target as HTMLInputElement | null;
+      if (!target) return;
+
+      const resultKind = target.dataset.resultKind;
+      if (target.name !== 'opening-choice' && target.name !== 'catalog-choice') return;
+
+      if (resultKind === 'variation') {
+        const openingName = target.dataset.openingName || '';
+        const variationId = Number(target.value);
+        if (!openingName || !variationId) return;
+
+        const variations = await loadOpeningVariations(openingName);
+        if (!variations) return;
+
+        const selectedVariationInput = variationChoices.querySelector<HTMLInputElement>(`input[name="variation-choice"][value="${variationId}"]`);
+        if (selectedVariationInput) {
+          selectedVariationInput.checked = true;
+        }
+        await activateVariationById(variationId, variations);
         return;
       }
 
-      const san = currentOpening.moves[currentMoveIndex];
-      game.move(san);
-      currentMoveIndex++;
+      const name = target.dataset.openingName || target.value;
+      await loadOpeningVariations(name);
+    });
+
+    variationChoices.addEventListener('change', async (event) => {
+      const target = event.target as HTMLInputElement | null;
+      if (!target || target.name !== 'variation-choice') return;
+
+      const id = Number(target.value);
+      if (!id) return;
+
+      await activateVariationById(id);
+    });
+
+    moveBackControl.addEventListener('click', () => {
+      if (!currentOpening || currentMoveIndex === 0) return;
+
+      cancelPendingTimers();
+      game.undo();
+      currentMoveIndex--;
+      board?.removeMarkers();
       board?.setPosition(game.fen(), true);
+      syncMoveInputState();
+      updateStatus();
+      setStatus(`Moved back to ply ${currentMoveIndex}.`);
+    });
+
+    moveForwardControl.addEventListener('click', () => {
+      if (!currentOpening || currentMoveIndex >= currentOpening.moves.length) return;
+
+      cancelPendingTimers();
+      game.move(currentOpening.moves[currentMoveIndex]);
+      currentMoveIndex++;
+      board?.removeMarkers();
+      board?.setPosition(game.fen(), true);
+      syncMoveInputState();
       updateStatus();
 
       if (currentMoveIndex >= currentOpening.moves.length) {
         setStatus('Opening completed. Practice line finished.', 'success');
-        board?.disableMoveInput();
+      } else {
+        setStatus(`Moved forward to ply ${currentMoveIndex}.`);
       }
-    }
+    });
 
-    function updateStatus() {
+    restartLineControl.addEventListener('click', () => {
       if (!currentOpening) return;
 
-      const movePairs: { white: string; black: string }[] = [];
-      for (let index = 0; index < currentOpening.moves.length; index += 2) {
-        movePairs.push({
-          white: currentOpening.moves[index],
-          black: currentOpening.moves[index + 1] || '…',
-        });
+      const activeOpening = currentOpening;
+      cancelPendingTimers();
+      game = new Chess();
+      currentMoveIndex = 0;
+      board?.removeMarkers();
+      board?.setOrientation(activeOpening.color === 'w' ? COLOR.white : COLOR.black);
+      board?.setPosition(game.fen(), true);
+      syncMoveInputState();
+      updateStatus();
+      setStatus(`Restarted ${activeOpening.name}: ${activeOpening.variation}.`);
+
+      if (activeOpening.color === 'b' && activeOpening.moves.length > 0) {
+        queueOpponentMove();
       }
-
-      progressRegion.innerHTML = movePairs
-        .map((pair, idx) => {
-          const whiteDone = idx * 2 < currentMoveIndex ? 'done' : '';
-          const blackDone = idx * 2 + 1 < currentMoveIndex ? 'done' : '';
-          const whiteActive = idx * 2 === currentMoveIndex ? 'active' : '';
-          const blackActive = idx * 2 + 1 === currentMoveIndex ? 'active' : '';
-          return `
-            <span class="move-pair">
-              <span class="move-no">${idx + 1}.</span>
-              <span class="move ${whiteActive} ${whiteDone}">${pair.white}</span>
-              <span class="move ${blackActive} ${blackDone}">${pair.black}</span>
-            </span>`;
-        })
-        .join('');
-
-      setStatus(`${currentOpening.name}: ${currentOpening.variation}`);
-    }
+    });
   }
 </script>
 
@@ -422,7 +1089,78 @@ const { openingNames } = Astro.props;
   .sidebar-header {
     display: flex;
     flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .selection-overview {
+    display: flex;
+    flex-direction: column;
     gap: var(--space-3);
+  }
+
+  .selection-overview__title {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wide);
+    line-height: var(--leading-tight);
+    text-transform: uppercase;
+  }
+
+  .selection-overview__grid {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .selection-note {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+  }
+
+  .selection-note[data-state='loading'] {
+    color: var(--accent-text);
+  }
+
+  .rail-meta-group {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .selection-summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--surface-container-highest) 72%, transparent);
+  }
+
+  .selection-summary__label {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-wider);
+    line-height: var(--leading-tight);
+    text-transform: uppercase;
+  }
+
+  .selection-summary__value {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-normal);
+    overflow-wrap: anywhere;
+  }
+
+  .opening-rail[hidden],
+  .variation-rail[hidden] {
+    display: none;
   }
 
   .sidebar-title,
@@ -447,11 +1185,19 @@ const { openingNames } = Astro.props;
   .choice-group {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    max-block-size: 19rem;
-    min-block-size: 12rem;
+    gap: var(--space-1);
+    max-block-size: min(30rem, 58vh);
+    min-block-size: 10rem;
     overflow-y: auto;
-    padding-inline-end: var(--space-1);
+    padding: var(--space-1);
+    padding-block-end: var(--space-3);
+    border-radius: var(--radius-xl);
+    background: color-mix(in srgb, var(--surface-container-highest) 70%, transparent);
+  }
+
+  #opening-browser[hidden],
+  #variation-browser[hidden] {
+    display: none;
   }
 
   .choice-group--empty {
@@ -463,50 +1209,56 @@ const { openingNames } = Astro.props;
     max-block-size: none;
   }
 
-  .choice-empty {
+  .choice-empty,
+  :global(.choice-empty) {
     margin: 0;
-    padding: var(--space-5);
-    border-radius: var(--radius-lg);
-    background: var(--surface-container-low);
+    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+    background: var(--surface-container-high);
     color: var(--text-dim);
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
     text-align: center;
   }
 
-  .choice-option {
+  .choice-option,
+  :global(.choice-option) {
     position: relative;
     display: grid;
-    grid-template-columns: var(--space-1) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--space-3);
-    align-items: stretch;
-    padding: var(--space-2);
-    border-radius: var(--radius-lg);
-    background: var(--surface-container-low);
-    box-shadow: var(--shadow-sm);
+    align-items: start;
+    min-block-size: 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: calc(var(--radius-xl) - var(--space-1));
+    background: color-mix(in srgb, var(--surface-container-low) 92%, transparent);
+    overflow: hidden;
     cursor: pointer;
     transition:
       transform var(--duration-fast) var(--ease-out),
       background-color var(--duration-fast) var(--ease-in-out),
-      box-shadow var(--duration-fast) var(--ease-in-out);
+      color var(--duration-fast) var(--ease-in-out);
   }
 
-  .choice-option:hover {
+  .choice-option:hover,
+  :global(.choice-option:hover) {
     transform: translateY(calc(var(--space-1) * -0.25));
     background: var(--surface-container-highest);
   }
 
-  .choice-option:has(.choice-input:checked) {
-    background: linear-gradient(180deg, color-mix(in srgb, var(--surface-container-high) 88%, var(--primary-fixed-dim)), color-mix(in srgb, var(--surface-container-low) 80%, var(--primary-container)));
-    box-shadow: var(--shadow-card);
+  .choice-option:has(.choice-input:checked),
+  :global(.choice-option:has(.choice-input:checked)) {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface-container-high) 82%, var(--primary-fixed-dim)), color-mix(in srgb, var(--surface-container-low) 76%, var(--primary-container)));
   }
 
-  .choice-option:has(.choice-input:focus-visible) {
+  .choice-option:has(.choice-input:focus-visible),
+  :global(.choice-option:has(.choice-input:focus-visible)) {
     outline: 2px solid var(--input-focus);
     outline-offset: 2px;
   }
 
-  .choice-input {
+  .choice-input,
+  :global(.choice-input) {
     position: absolute;
     inset: 0;
     opacity: 0;
@@ -514,34 +1266,32 @@ const { openingNames } = Astro.props;
     cursor: pointer;
   }
 
-  .choice-accent {
-    border-radius: var(--radius-full);
-    background: color-mix(in srgb, var(--primary-container) 55%, transparent);
+  .choice-accent,
+  :global(.choice-accent) {
+    display: none;
   }
 
-  .choice-option--white .choice-accent {
+  .choice-option--white .choice-accent,
+  :global(.choice-option--white .choice-accent) {
     background: color-mix(in srgb, var(--tertiary-fixed-dim) 75%, transparent);
   }
 
-  .choice-option--black .choice-accent {
+  .choice-option--black .choice-accent,
+  :global(.choice-option--black .choice-accent) {
     background: color-mix(in srgb, var(--secondary-fixed-dim) 75%, transparent);
   }
 
-  .choice-content {
+  .choice-content,
+  :global(.choice-content) {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
     min-width: 0;
-    padding: var(--space-3);
-    border-radius: calc(var(--radius-lg) - var(--space-1));
-    background: color-mix(in srgb, var(--surface-container-high) 92%, transparent);
+    padding-block-end: var(--space-1);
   }
 
-  .choice-option:has(.choice-input:checked) .choice-content {
-    background: color-mix(in srgb, var(--surface-container-highest) 68%, transparent);
-  }
-
-  .choice-meta {
+  .choice-meta,
+  :global(.choice-meta) {
     color: var(--accent-text);
     font-size: var(--text-2xs);
     font-weight: var(--weight-bold);
@@ -550,11 +1300,169 @@ const { openingNames } = Astro.props;
     text-transform: uppercase;
   }
 
-  .choice-label {
+  .choice-label,
+  :global(.choice-label) {
     color: var(--text);
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     font-weight: var(--weight-semibold);
     line-height: var(--leading-normal);
+    overflow-wrap: anywhere;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .choice-support,
+  :global(.choice-support) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+    overflow-wrap: anywhere;
+  }
+
+  .choice-context,
+  :global(.choice-context) {
+    color: var(--text-dim);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    line-height: var(--leading-normal);
+    overflow-wrap: anywhere;
+  }
+
+  .choice-trailing,
+  :global(.choice-trailing) {
+    color: var(--text-dim);
+    font-size: var(--text-xl);
+    line-height: 1;
+    align-self: center;
+    transform: translateY(-1px);
+  }
+
+  .choice-option--brief .choice-content,
+  :global(.choice-option--brief .choice-content) {
+    background: color-mix(in srgb, var(--surface-container-high) 82%, transparent);
+  }
+
+  .choice-badge,
+  .rail-chip,
+  :global(.choice-badge) {
+    display: inline-flex;
+    align-items: center;
+    min-height: 1.75rem;
+    padding-inline: var(--space-2);
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--surface-container-highest) 75%, transparent);
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+  }
+
+  .choice-badge--muted,
+  :global(.choice-badge--muted) {
+    background: color-mix(in srgb, var(--surface-container-low) 86%, transparent);
+    color: var(--text-dim);
+  }
+
+  .variation-actions {
+    margin-block-start: var(--space-3);
+  }
+
+  .variation-option,
+  :global(.variation-option) {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+    align-items: start;
+    min-block-size: 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: calc(var(--radius-xl) - var(--space-1));
+    background: color-mix(in srgb, var(--surface-container-low) 92%, transparent);
+    overflow: hidden;
+    cursor: pointer;
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-in-out),
+      color var(--duration-fast) var(--ease-in-out);
+  }
+
+  .variation-option:hover,
+  :global(.variation-option:hover) {
+    transform: translateY(calc(var(--space-1) * -0.25));
+    background: color-mix(in srgb, var(--surface-container-highest) 64%, var(--surface-container-low));
+  }
+
+  .variation-option:has(.choice-input:checked),
+  :global(.variation-option:has(.choice-input:checked)) {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface-container-high) 84%, var(--primary-fixed-dim)), color-mix(in srgb, var(--surface-container-low) 74%, var(--primary-container)));
+  }
+
+  .variation-option:has(.choice-input:focus-visible),
+  :global(.variation-option:has(.choice-input:focus-visible)) {
+    outline: 2px solid var(--input-focus);
+    outline-offset: 2px;
+  }
+
+  .variation-option__rail,
+  :global(.variation-option__rail) {
+    display: none;
+  }
+
+  .variation-option--white .variation-option__rail,
+  :global(.variation-option--white .variation-option__rail) {
+    background: color-mix(in srgb, var(--tertiary-fixed-dim) 75%, transparent);
+  }
+
+  .variation-option--black .variation-option__rail,
+  :global(.variation-option--black .variation-option__rail) {
+    background: color-mix(in srgb, var(--secondary-fixed-dim) 75%, transparent);
+  }
+
+  .variation-option__body,
+  :global(.variation-option__body) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+    padding-block-end: var(--space-1);
+  }
+
+  .variation-option--brief .variation-option__body,
+  :global(.variation-option--brief .variation-option__body) {
+    background: color-mix(in srgb, var(--surface-container-high) 78%, transparent);
+  }
+
+  .variation-option__eyebrow,
+  :global(.variation-option__eyebrow) {
+    color: var(--accent-text);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-wider);
+    line-height: var(--leading-tight);
+    text-transform: uppercase;
+  }
+
+  .variation-option__title,
+  :global(.variation-option__title) {
+    color: var(--text);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .variation-option__support,
+  :global(.variation-option__support) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
     overflow-wrap: anywhere;
   }
 
@@ -636,13 +1544,53 @@ const { openingNames } = Astro.props;
     box-shadow: var(--shadow-card);
   }
 
-  .board-title {
+  .board-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
     margin-block-end: var(--space-4);
+  }
+
+  .board-header__copy {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .board-title {
+    margin: 0;
+  }
+
+  .board-context {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+  }
+
+  .board-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
 
   @media (min-width: 56rem) {
     .board-container {
       max-width: none;
+    }
+
+    .selection-overview__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .board-header {
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+
+    .board-actions {
+      justify-content: flex-end;
     }
   }
 
@@ -687,8 +1635,15 @@ const { openingNames } = Astro.props;
     }
 
     .choice-empty,
+    :global(.choice-empty),
     .choice-option,
-    .choice-content {
+    :global(.choice-option),
+    .variation-option,
+    :global(.variation-option),
+    .choice-content,
+    :global(.choice-content),
+    .variation-option__body,
+    :global(.variation-option__body) {
       background: Canvas;
       border: 1px solid ButtonBorder;
       box-shadow: none;
@@ -696,12 +1651,27 @@ const { openingNames } = Astro.props;
 
     .sidebar-copy,
     .progress,
-    .progress :global(.move-no) {
+    .progress :global(.move-no),
+    .selection-note,
+    .board-context,
+    .selection-summary__label,
+    .selection-summary__value {
       color: CanvasText;
     }
 
     .choice-meta,
-    .choice-label {
+    :global(.choice-meta),
+    .choice-label,
+    :global(.choice-label),
+    .choice-support,
+    :global(.choice-support),
+    .choice-badge,
+    :global(.choice-badge),
+    .variation-option__eyebrow,
+    :global(.variation-option__eyebrow),
+    .variation-option__title,
+    :global(.variation-option__title),
+    .rail-chip {
       color: CanvasText;
     }
 
@@ -710,7 +1680,29 @@ const { openingNames } = Astro.props;
       color: CanvasText;
     }
 
+    .choice-badge,
+    .rail-chip {
+      background: Canvas;
+      border: 1px solid ButtonBorder;
+    }
+
+    .filter-pill {
+      background: ButtonFace;
+      color: ButtonText;
+      border: 1px solid ButtonBorder;
+    }
+
+    .filter-pill.active {
+      background: Highlight;
+      color: HighlightText;
+    }
+
     .choice-accent {
+      background: Highlight;
+    }
+
+    .variation-option__rail,
+    :global(.variation-option__rail) {
       background: Highlight;
     }
 

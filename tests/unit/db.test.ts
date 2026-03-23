@@ -20,13 +20,19 @@ import db, {
   getPlayerTournamentHistory,
   getPlayerResultRows,
   getPairingsFromDb,
+  insertOpening,
+  getOpeningNames,
+  searchOpeningCatalog,
+  searchOpeningCatalogResults,
 } from '../../src/lib/db';
+import { MIN_OPENING_REHEARSAL_PLIES } from '../../src/lib/constants';
 import { TournamentType } from '../../src/lib/types';
 import type { TournamentInfo, Standing, Pairing } from '../../src/lib/types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function clearAllTables(): void {
+  db.exec('DELETE FROM openings');
   db.exec('DELETE FROM results');
   db.exec('DELETE FROM standings');
   db.exec('DELETE FROM tournament_players');
@@ -348,6 +354,68 @@ describe('Database - Players', () => {
   it('should return undefined for non-existent player', () => {
     expect(findPlayerByIdentity('Nobody')).toBeUndefined();
     expect(getPlayerById(99999)).toBeUndefined();
+  });
+});
+
+describe('Database - Openings', () => {
+  beforeEach(clearAllTables);
+
+  it('should summarize and prioritize openings with deeper rehearsal lines', () => {
+    insertOpening('Italian Game', 'Main Line', 'C50', 'w', ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5', 'c3', 'Nf6']);
+    insertOpening('Italian Game', 'Short Trap', 'C50', 'b', ['e4', 'e5', 'Nf3']);
+    insertOpening('Vienna Game', 'Quick Line', 'C25', 'w', ['e4', 'e5', 'Nc3', 'Nf6']);
+
+    const openings = getOpeningNames();
+
+    expect(openings).toHaveLength(2);
+    expect(openings[0]).toMatchObject({
+      name: 'Italian Game',
+      eco: 'C50',
+      lineCount: 2,
+      rehearsalLineCount: 1,
+      longestLineLength: MIN_OPENING_REHEARSAL_PLIES,
+    });
+    expect(openings[1]).toMatchObject({
+      name: 'Vienna Game',
+      lineCount: 1,
+      rehearsalLineCount: 0,
+      longestLineLength: 4,
+    });
+  });
+
+  it('should search openings by opening, eco, and variation names', () => {
+    insertOpening('Italian Game', 'Main Line', 'C50', 'w', ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5', 'c3', 'Nf6']);
+    insertOpening('Sicilian Defense', 'Najdorf Variation', 'B90', 'b', ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6']);
+    insertOpening('Queen\'s Gambit Declined', 'Exchange Variation', 'D35', 'w', ['d4', 'd5', 'c4', 'e6', 'Nc3', 'Nf6']);
+
+    expect(searchOpeningCatalog('italian').map((opening) => opening.name)).toEqual(['Italian Game']);
+    expect(searchOpeningCatalog('b90').map((opening) => opening.name)).toEqual(['Sicilian Defense']);
+    expect(searchOpeningCatalog('najdorf').map((opening) => opening.name)).toEqual(['Sicilian Defense']);
+    expect(searchOpeningCatalog('exchange').map((opening) => opening.name)).toEqual(["Queen's Gambit Declined"]);
+  });
+
+  it('should return mixed opening and variation search results', () => {
+    insertOpening('Sicilian Defense', 'Najdorf Variation', 'B90', 'b', ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6']);
+    insertOpening('Sicilian Defense', 'Dragon Variation', 'B70', 'b', ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4']);
+
+    const results = searchOpeningCatalogResults('najdorf');
+
+    expect(results).toEqual([
+      expect.objectContaining({
+        type: 'variation',
+        name: 'Sicilian Defense',
+        variation: 'Najdorf Variation',
+        eco: 'B90',
+        color: 'b',
+      }),
+    ]);
+
+    const openingResults = searchOpeningCatalogResults('sicilian');
+    expect(openingResults[0]).toMatchObject({
+      type: 'opening',
+      name: 'Sicilian Defense',
+    });
+    expect(openingResults.some((result) => result.type === 'variation')).toBe(true);
   });
 });
 

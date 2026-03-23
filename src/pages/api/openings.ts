@@ -1,10 +1,11 @@
 import type { APIRoute } from 'astro';
-import { getOpenings, getOpeningById, getOpeningsByName } from '../../lib/db';
+import { getOpenings, getOpeningById, getOpeningsByName, searchOpeningCatalogResults } from '../../lib/db';
 
 export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
   const idStr = url.searchParams.get('id');
   const name = url.searchParams.get('name');
+  const query = url.searchParams.get('query');
 
   if (idStr) {
     const id = parseInt(idStr, 10);
@@ -22,6 +23,13 @@ export const GET: APIRoute = async ({ request }) => {
 
   if (name) {
     const openings = getOpeningsByName(name);
+    return new Response(JSON.stringify(openings), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
+  if (query !== null) {
+    const openings = searchOpeningCatalogResults(query);
     return new Response(JSON.stringify(openings), {
       headers: { 'Content-Type': 'application/json' },
     });

@@ -15,11 +15,19 @@ const {
 
 const titleId = `${id}-title`;
 const helperId = `${id}-helper`;
+const hasMeta = Astro.slots.has('meta');
 ---
 
 <section class:list={["practice-rail", className]} aria-labelledby={titleId}>
   <div class="practice-rail__header">
-    <h2 id={titleId} class="practice-rail__title">{title}</h2>
+    <div class="practice-rail__heading-row">
+      <h2 id={titleId} class="practice-rail__title">{title}</h2>
+      {hasMeta && (
+        <div class="practice-rail__meta">
+          <slot name="meta" />
+        </div>
+      )}
+    </div>
     {helper && <p id={helperId} class="practice-rail__helper">{helper}</p>}
   </div>
   <div class="practice-rail__body">
@@ -41,6 +49,13 @@ const helperId = `${id}-helper`;
     gap: var(--space-1);
   }
 
+  .practice-rail__heading-row {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: space-between;
+  }
+
   .practice-rail__title {
     margin: 0;
     color: var(--text-dim);
@@ -49,6 +64,14 @@ const helperId = `${id}-helper`;
     letter-spacing: var(--tracking-wide);
     line-height: var(--leading-tight);
     text-transform: uppercase;
+  }
+
+  .practice-rail__meta {
+    display: inline-flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-1);
+    min-width: 0;
   }
 
   .practice-rail__helper {
@@ -65,6 +88,10 @@ const helperId = `${id}-helper`;
   @media (forced-colors: active) {
     .practice-rail__title,
     .practice-rail__helper {
+      color: CanvasText;
+    }
+
+    .practice-rail__meta {
       color: CanvasText;
     }
   }
