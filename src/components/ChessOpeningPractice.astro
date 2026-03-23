@@ -44,7 +44,7 @@ function formatPlyLabel(length: number) {
       </FormField>
 
       <div id="opening-step">
-        <PracticeChoiceRail id="opening-choice" title="Openings" helper="Choose an opening." class="opening-rail">
+        <PracticeChoiceRail id="opening-choice" title="Openings" class="opening-rail">
           <span slot="meta" id="opening-results" class="rail-chip">{openingNames.length} openings</span>
           <div
             id="opening-options"
@@ -87,7 +87,7 @@ function formatPlyLabel(length: number) {
       </div>
 
       <div id="variation-step" hidden>
-        <PracticeChoiceRail id="variation-choice" title="Variations" helper="Choose a saved line." class="variation-rail">
+        <PracticeChoiceRail id="variation-choice" title="Variations" class="variation-rail">
           <div slot="meta" class="rail-meta-group">
             <span id="variation-results" class="rail-chip" hidden>0 lines</span>
             <ActionButton slot="meta" id="change-opening" variant="secondary" size="compact">Back</ActionButton>
@@ -114,11 +114,10 @@ function formatPlyLabel(length: number) {
         </PracticeChoiceRail>
       </div>
 
-      <section class="status-panel" aria-labelledby="practice-status-heading">
-        <h2 id="practice-status-heading" class="status-title">Session status</h2>
-        <p id="status-message" class="status-message" role="status" aria-live="polite">Select an opening to begin.</p>
-        <div id="progress" class="progress" aria-live="polite" aria-label="Opening progress"></div>
-      </section>
+      <div class="status-panel" role="status" aria-live="polite" aria-label="Session status">
+        <p id="status-message" class="status-message">Select an opening to begin.</p>
+        <div id="progress" class="progress" aria-label="Opening progress"></div>
+      </div>
     </aside>
 
     <section class="board-area" aria-labelledby="practice-board-heading">
@@ -126,7 +125,7 @@ function formatPlyLabel(length: number) {
         <div class="board-header">
           <div class="board-header__copy">
             <h2 id="practice-board-heading" class="board-title">Practice board</h2>
-            <p id="board-context" class="board-context">Choose a line to start rehearsing.</p>
+            <p id="board-context" class="board-context">Select a line to begin.</p>
           </div>
           <div class="board-actions" aria-label="Line navigation controls">
             <ActionButton id="move-back" variant="secondary" size="compact" disabled={true}>Back</ActionButton>
@@ -379,7 +378,7 @@ function formatPlyLabel(length: number) {
 
     function updateBoardContext() {
       if (!currentOpening) {
-        boardContextLabel.textContent = 'Choose a line to start rehearsing.';
+        boardContextLabel.textContent = 'Select a line to begin.';
         return;
       }
 
@@ -1228,11 +1227,10 @@ function formatPlyLabel(length: number) {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--space-3);
     align-items: start;
-    min-block-size: 0;
+    flex-shrink: 0;
     padding: var(--space-3) var(--space-4);
     border-radius: calc(var(--radius-xl) - var(--space-1));
     background: color-mix(in srgb, var(--surface-container-low) 92%, transparent);
-    overflow: hidden;
     cursor: pointer;
     transition:
       transform var(--duration-fast) var(--ease-out),
@@ -1380,11 +1378,10 @@ function formatPlyLabel(length: number) {
     grid-template-columns: minmax(0, 1fr);
     gap: var(--space-3);
     align-items: start;
-    min-block-size: 0;
+    flex-shrink: 0;
     padding: var(--space-3) var(--space-4);
     border-radius: calc(var(--radius-xl) - var(--space-1));
     background: color-mix(in srgb, var(--surface-container-low) 92%, transparent);
-    overflow: hidden;
     cursor: pointer;
     transition:
       transform var(--duration-fast) var(--ease-out),
@@ -1473,10 +1470,6 @@ function formatPlyLabel(length: number) {
     padding: var(--space-4);
     border-radius: var(--radius-lg);
     background: var(--surface-container-highest);
-  }
-
-  .status-title {
-    font-size: var(--text-lg);
   }
 
   .status-message {
