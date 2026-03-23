@@ -1,8 +1,12 @@
 ---
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import ThemeToggle from "../components/app/ThemeToggle.astro";
+import ActionButton from "../components/controls/ActionButton.astro";
+import FormField from "../components/controls/FormField.astro";
+import SelectInput from "../components/controls/SelectInput.astro";
+import TextInput from "../components/controls/TextInput.astro";
 import { useTranslations } from "../i18n/ui";
-import { DEFAULT_TOURNAMENT } from "../lib/constants";
+import { DEFAULT_TOURNAMENT, LANGUAGE_OPTIONS } from "../lib/constants";
 import { resolvePageLang } from "../lib/page-lang";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
@@ -24,35 +28,28 @@ const t = useTranslations(lang);
       </div>
       
       <div class="form-grid">
-        <div class="option-group">
-          <label class="option-label" for="inputTid">{t('config.tid')}</label>
-          <input type="text" id="inputTid" value={tid} class="option-input" placeholder="Tournament ID" />
-        </div>
+        <FormField label={t('config.tid')} forId="inputTid">
+          <TextInput id="inputTid" value={tid} placeholder="Tournament ID" />
+        </FormField>
 
-        <div class="option-group">
-          <label class="option-label" for="inputLang">{t('config.lang')}</label>
-          <div class="select-wrapper">
-            <select id="inputLang" class="option-input">
-              <option value="1" selected={lang === 1}>English</option>
-              <option value="10" selected={lang === 10}>Português</option>
-              <option value="2" selected={lang === 2}>Español</option>
-              <option value="0" selected={lang === 0}>Deutsch</option>
-              <option value="20" selected={lang === 20}>Français</option>
-            </select>
-          </div>
-        </div>
+        <FormField label={t('config.lang')} forId="inputLang">
+          <SelectInput id="inputLang">
+            {LANGUAGE_OPTIONS.map((option) => (
+              <option value={String(option.value)} selected={lang === option.value}>{option.label}</option>
+            ))}
+          </SelectInput>
+        </FormField>
 
-        <div class="option-group">
-          <label class="option-label">{t('config.appearance')}</label>
+        <FormField label={t('config.appearance')}>
           <ThemeToggle />
-        </div>
+        </FormField>
       </div>
 
       <div class="actions-row">
-        <button id="saveBtn" class="save-btn">
-          <span>{t('config.update')}</span>
-          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
-        </button>
+        <ActionButton id="saveBtn" class="save-btn" pill>
+          {t('config.update')}
+          <svg slot="icon" viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5l7 7-7 7"></path></svg>
+        </ActionButton>
       </div>
     </div>
 
@@ -67,10 +64,10 @@ const t = useTranslations(lang);
         </div>
       </div>
       <p class="help-text">{t('presenter.help')}</p>
-      <a href={`/present?tid=${tid}&lang=${lang}`} class="presenter-btn">
-        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      <ActionButton href={`/present?tid=${tid}&lang=${lang}`} class="presenter-btn" variant="secondary">
         {t('presenter.launch')}
-      </a>
+        <svg slot="icon" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      </ActionButton>
     </div>
   </div>
 </MobileLayout>
@@ -145,80 +142,10 @@ const t = useTranslations(lang);
     margin-bottom: var(--space-8);
   }
 
-  .option-group {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  .option-label {
-    font-size: var(--text-sm);
-    color: var(--text-dim);
-    font-weight: var(--weight-semibold);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
-  }
-
-  .option-input {
-    padding: var(--space-4);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--outline-variant);
-    background: var(--input-bg);
-    color: var(--text);
-    font-size: var(--text-lg);
-    transition: all var(--duration-fast) var(--ease-in-out);
-    width: 100%;
-    appearance: none;
-    font-family: inherit;
-  }
-  
-  .select-wrapper {
-    position: relative;
-  }
-  
-  .select-wrapper::after {
-    content: "▼";
-    position: absolute;
-    right: 1.2rem;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    pointer-events: none;
-  }
-
-  .option-input:focus {
-    outline: none;
-    border-color: var(--input-focus);
-    box-shadow: 0 0 0 3px var(--input-focus-ring);
-  }
-
   .actions-row {
     display: flex;
     justify-content: flex-end;
     padding-top: var(--space-6);
-  }
-
-  .save-btn {
-    padding: 0.9rem 1.8rem;
-    background: var(--accent);
-    color: var(--on-accent);
-    border: none;
-    border-radius: var(--radius-full);
-    font-weight: var(--weight-semibold);
-    font-size: var(--text-base);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    transition: all var(--duration-fast) var(--ease-in-out);
-    box-shadow: 0 4px 15px var(--accent-glow);
-  }
-  
-  .save-btn:hover {
-    transform: translateY(-2px);
-    background: var(--accent-hover);
-    box-shadow: 0 6px 20px var(--accent-glow);
   }
 
   .help-text {
@@ -227,27 +154,6 @@ const t = useTranslations(lang);
     line-height: 1.6;
     margin-bottom: var(--space-8);
     font-size: var(--text-base);
-  }
-
-  .presenter-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    background: var(--seg-bg);
-    color: var(--text);
-    text-decoration: none;
-    border-radius: var(--radius-md);
-    font-weight: var(--weight-semibold);
-    transition: all var(--duration-fast) var(--ease-in-out);
-  }
-
-  .presenter-btn:hover {
-    background: var(--accent-subtle);
-    border-color: var(--accent-text);
-    color: var(--accent-text);
-    transform: translateY(-2px);
   }
 </style>
 

@@ -1,0 +1,77 @@
+---
+interface Props {
+  id: string;
+  label: string;
+  name?: string;
+  checked?: boolean;
+  disabled?: boolean;
+  class?: string;
+}
+
+const {
+  id,
+  label,
+  name = id,
+  checked = false,
+  disabled = false,
+  class: className = "",
+} = Astro.props;
+---
+
+<label class:list={["ui-checkbox", className]} for={id}>
+  <input
+    id={id}
+    name={name}
+    type="checkbox"
+    checked={checked}
+    disabled={disabled}
+    class="ui-checkbox__input"
+  />
+  <span class="ui-checkbox__label">{label}</span>
+</label>
+
+<style>
+  .ui-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-block-size: var(--space-10);
+    color: var(--text);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    line-height: var(--leading-tight);
+  }
+
+  .ui-checkbox__input {
+    inline-size: var(--space-4);
+    block-size: var(--space-4);
+    margin: 0;
+    accent-color: var(--accent);
+  }
+
+  .ui-checkbox__input:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+  }
+
+  .ui-checkbox__label {
+    color: var(--text);
+  }
+
+  .ui-checkbox:has(.ui-checkbox__input:disabled) {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  @media (forced-colors: active) {
+    .ui-checkbox {
+      color: CanvasText;
+    }
+
+    .ui-checkbox__input:focus-visible {
+      outline: 2px solid Highlight;
+      box-shadow: none;
+    }
+  }
+</style>

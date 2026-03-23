@@ -71,6 +71,9 @@ git config core.hooksPath .githooks  # enables pre-commit test hook
 | `npm run preview` | Preview production build |
 | `npm run test:unit` | Run offline unit tests (pre-commit hook) |
 | `npm run test:live` | Run tests including live chess-results.com checks |
+| `npm run test:browser` | Run the Playwright browser suite |
+| `npm run test:browser:screenshots` | Capture reference screenshots into `.artifacts/page-screenshots/<label>` |
+| `npm run compare:browser:screenshots -- <baseline> <candidate>` | Build a side-by-side HTML comparison report |
 | `npm run test:watch` | Watch mode for development |
 
 ### Testing
@@ -79,6 +82,29 @@ git config core.hooksPath .githooks  # enables pre-commit test hook
 - **Pre-commit hook:** `.githooks/pre-commit` runs `npm run test:unit` — never bypass with `--no-verify`
 - **CI:** GitHub Actions runs `npm run test:unit` before every deployment
 - **Test suites:** 100+ tests covering DB operations, HTML parsing, persistence roundtrips, and utilities
+
+### Visual Regression Workflow
+
+Capture a baseline screenshot set:
+
+```sh
+SCREENSHOT_RUN_LABEL=baseline npm run test:browser:screenshots
+```
+
+Capture a candidate screenshot set after your changes:
+
+```sh
+SCREENSHOT_RUN_LABEL=candidate npm run test:browser:screenshots
+```
+
+Generate a side-by-side HTML report:
+
+```sh
+npm run compare:browser:screenshots -- baseline candidate
+```
+
+This writes screenshots and reports into `.artifacts/page-screenshots/`, which is gitignored.
+The comparison report is saved under `.artifacts/page-screenshots/comparisons/` and marks each page as identical, changed, or missing.
 
 ### Bulk Seed (Federation + Year)
 

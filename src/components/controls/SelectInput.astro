@@ -1,0 +1,124 @@
+---
+interface Props {
+  id: string;
+  name?: string;
+  class?: string;
+  required?: boolean;
+  disabled?: boolean;
+  size?: number;
+  multiple?: boolean;
+  ariaLabel?: string;
+  ariaDescribedBy?: string;
+}
+
+const {
+  id,
+  name = id,
+  class: className = "",
+  required = false,
+  disabled = false,
+  size,
+  multiple = false,
+  ariaLabel,
+  ariaDescribedBy,
+} = Astro.props;
+
+const isListbox = typeof size === "number" && size > 1;
+---
+
+<div class:list={["ui-select", { "ui-select--listbox": isListbox }]}>
+  <select
+    id={id}
+    name={name}
+    required={required}
+    disabled={disabled}
+    size={size}
+    multiple={multiple}
+    aria-label={ariaLabel}
+    aria-describedby={ariaDescribedBy}
+    class:list={["ui-select__control", { "ui-select__control--listbox": isListbox }, className]}
+  >
+    <slot />
+  </select>
+</div>
+
+<style>
+  .ui-select {
+    position: relative;
+  }
+
+  .ui-select::after {
+    content: "";
+    position: absolute;
+    inset-inline-end: var(--space-4);
+    inset-block-start: 50%;
+    width: var(--space-2);
+    height: var(--space-2);
+    border-inline-end: 2px solid var(--text-dim);
+    border-block-end: 2px solid var(--text-dim);
+    pointer-events: none;
+    transform: translateY(-60%) rotate(45deg);
+  }
+
+  .ui-select--listbox::after {
+    content: none;
+  }
+
+  .ui-select__control {
+    width: 100%;
+    min-width: 0;
+    min-block-size: var(--space-12);
+    padding-block: var(--space-3);
+    padding-inline: var(--space-4) var(--space-8);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-md);
+    background: var(--input-bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--text-lg);
+    line-height: var(--leading-tight);
+    appearance: none;
+    transition:
+      border-color var(--duration-fast) var(--ease-in-out),
+      box-shadow var(--duration-fast) var(--ease-in-out),
+      background-color var(--duration-fast) var(--ease-in-out);
+  }
+
+  .ui-select__control--listbox {
+    min-block-size: auto;
+    padding-inline: var(--space-4);
+    appearance: auto;
+    box-shadow: var(--shadow-card);
+    overflow-y: auto;
+  }
+
+  .ui-select__control:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+  }
+
+  .ui-select__control:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  @media (forced-colors: active) {
+    .ui-select::after {
+      border-inline-end-color: CanvasText;
+      border-block-end-color: CanvasText;
+    }
+
+    .ui-select__control {
+      border-color: ButtonBorder;
+      background: Field;
+      color: FieldText;
+    }
+
+    .ui-select__control:focus-visible {
+      outline: 2px solid Highlight;
+      box-shadow: none;
+    }
+  }
+</style>

@@ -24,6 +24,7 @@ pnpm-debug.log*
 
 # debug artifacts (screenshots, scripts, etc.)
 debug/
+.artifacts/page-screenshots/
 
 # test results & playwright
 test-results/

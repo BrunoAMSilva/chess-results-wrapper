@@ -1,5 +1,6 @@
 ---
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
+import EmptyState from "../components/app/EmptyState.astro";
 import StandingRow from "../components/standings/StandingRow.astro";
 import TeamStandingRow from "../components/standings/TeamStandingRow.astro";
 import SegmentedControl from "../components/controls/SegmentedControl.astro";
@@ -95,9 +96,7 @@ const defaultActive = hasTeams ? "teams" : "open";
             <StandingRow standing={standing} index={i} lang={lang} tid={tid} />
           ))
         : !error && (
-            <div class="empty-state">
-              <p>{t('empty.standings')}</p>
-            </div>
+            <EmptyState message={t('empty.standings')} compact />
           )
     }
   </div>
@@ -147,11 +146,6 @@ const defaultActive = hasTeams ? "teams" : "open";
     display: none;
   }
 
-  .empty-state {
-    text-align: center;
-    padding: var(--space-8);
-    color: var(--text-dim);
-  }
 </style>
 
 <script>

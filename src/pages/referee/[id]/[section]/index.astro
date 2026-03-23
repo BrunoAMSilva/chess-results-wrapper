@@ -1,6 +1,7 @@
 ---
 import ResponsiveLayout from "../../../../layouts/ResponsiveLayout.astro";
 import RoundSelector from "../../../../components/controls/RoundSelector.astro";
+import RefereeSelectionTile from "../../../../components/referee/RefereeSelectionTile.astro";
 import { scrapePairings } from "../../../../lib/scraper";
 import { getRefereeResults } from "../../../../lib/db";
 import { useTranslations } from "../../../../i18n/ui";
@@ -97,13 +98,14 @@ const eyebrow = tournamentName && tournamentName !== pageTitle ? tournamentName 
 
     <div class="table-grid">
       {tables.map((tbl) => (
-        <a
-          class:list={["table-btn", { done: submittedTables.has(tbl) }]}
+        <RefereeSelectionTile
           href={`/referee/${tid}/${section}/${tbl}?${q}`}
-        >
-          {formatTableLabel(tbl)}
-          {submittedTables.has(tbl) && <span class="done-check">✓</span>}
-        </a>
+          variant="table"
+          label={formatTableLabel(tbl)}
+          eyebrow={t("referee.table")}
+          done={submittedTables.has(tbl)}
+          doneLabel={t("referee.saved")}
+        />
       ))}
     </div>
   </div>
@@ -123,55 +125,26 @@ const eyebrow = tournamentName && tournamentName !== pageTitle ? tournamentName 
   .table-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-2);
+    gap: var(--space-3);
     width: 100%;
   }
 
-  .table-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-3);
-    border: 2px solid var(--border);
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-    color: var(--text);
-    font-size: var(--text-4xl);
-    font-weight: var(--font-bold);
-    cursor: pointer;
-    transition: all var(--duration-fast) var(--ease-out);
-    aspect-ratio: 1;
-    position: relative;
-    text-decoration: none;
-  }
-
-  .table-btn:hover {
-    border-color: var(--accent-hover);
-    color: var(--accent-text);
-  }
-
-  .table-btn.done {
-    border-color: var(--success, #38a169);
-    opacity: 0.5;
-  }
-
-  .table-btn.done:hover {
-    opacity: 0.8;
-  }
-
-  .done-check {
-    position: absolute;
-    top: var(--space-1);
-    right: var(--space-1);
-    font-size: var(--text-xs);
-    color: var(--success, #38a169);
-    line-height: 1;
-  }
-
   .error-msg {
-    color: var(--danger, #e53e3e);
+    color: var(--danger);
     text-align: center;
     padding: var(--space-4);
+  }
+
+  @media (max-width: 720px) {
+    .table-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (max-width: 460px) {
+    .table-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
   }
 </style>
 

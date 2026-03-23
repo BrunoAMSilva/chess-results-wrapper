@@ -1,0 +1,87 @@
+---
+interface Props {
+  message?: string;
+  variant?: "plain" | "surface";
+  compact?: boolean;
+  class?: string;
+}
+
+const {
+  message,
+  variant = "plain",
+  compact = false,
+  class: className = "",
+} = Astro.props;
+
+const hasIcon = Astro.slots.has("icon");
+---
+
+<div class:list={["empty-state", `empty-state--${variant}`, { "empty-state--compact": compact }, className]}>
+  {hasIcon && (
+    <span class="empty-state__icon" aria-hidden="true">
+      <slot name="icon" />
+    </span>
+  )}
+  {message ? <p class="empty-state__message">{message}</p> : <slot />}
+</div>
+
+<style>
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-4);
+    color: var(--text-dim);
+    text-align: center;
+    padding: var(--space-8) var(--space-4);
+  }
+
+  .empty-state--surface {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+  }
+
+  .empty-state--compact {
+    padding-block: var(--space-6);
+    padding-inline: var(--space-2);
+  }
+
+  .empty-state__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: 3rem;
+    block-size: 3rem;
+    opacity: 0.45;
+  }
+
+  .empty-state__icon :global(svg) {
+    inline-size: 100%;
+    block-size: 100%;
+  }
+
+  .empty-state__message,
+  .empty-state :global(p) {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: var(--text-lg);
+    line-height: var(--leading-normal);
+  }
+
+  .empty-state--compact .empty-state__message,
+  .empty-state--compact :global(p) {
+    font-size: var(--text-base);
+  }
+
+  @media (forced-colors: active) {
+    .empty-state {
+      color: CanvasText;
+    }
+
+    .empty-state--surface {
+      border: 1px solid ButtonBorder;
+      background: Canvas;
+    }
+  }
+</style>

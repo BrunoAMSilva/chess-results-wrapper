@@ -1,5 +1,7 @@
 ---
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
+import EmptyState from "../components/app/EmptyState.astro";
+import MetricTile from "../components/app/MetricTile.astro";
 import PlayerTournamentHistoryRow from "../components/player/PlayerTournamentHistoryRow.astro";
 import { useTranslations } from "../i18n/ui";
 import { findPlayerByIdentity, getPlayerById, getPlayerResultRows, getPlayerTournamentHistory } from "../lib/db";
@@ -126,22 +128,10 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
       </dl>
 
       <div class="summary-grid">
-        <div class="summary-item">
-          <span class="summary-value">{history.length}</span>
-          <span class="summary-label">{t("player.profile.total")}</span>
-        </div>
-        <div class="summary-item">
-          <span class="summary-value">{averageRank}</span>
-          <span class="summary-label">{t("player.profile.avgRank")}</span>
-        </div>
-        <div class="summary-item">
-          <span class="summary-value">{bestRank}</span>
-          <span class="summary-label">{t("player.profile.bestRank")}</span>
-        </div>
-        <div class="summary-item">
-          <span class="summary-value">{totalWins}-{totalDraws}-{totalLosses}</span>
-          <span class="summary-label">{t("player.profile.record")}</span>
-        </div>
+        <MetricTile label={t("player.profile.total")} value={history.length} tone="accent" size="large" />
+        <MetricTile label={t("player.profile.avgRank")} value={averageRank} tone="accent" size="large" />
+        <MetricTile label={t("player.profile.bestRank")} value={bestRank} tone="accent" size="large" />
+        <MetricTile label={t("player.profile.record")} value={`${totalWins}-${totalDraws}-${totalLosses}`} tone="accent" size="large" />
       </div>
     </section>
   )}
@@ -163,9 +153,7 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
           ))}
         </div>
       ) : (
-        <div class="empty-state">
-          <p>{t("player.profile.noHistory")}</p>
-        </div>
+        <EmptyState message={t("player.profile.noHistory")} variant="surface" compact />
       )}
     </section>
   )}
@@ -239,31 +227,6 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
     gap: var(--space-2);
   }
 
-  .summary-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--space-1);
-    padding: var(--space-3);
-    border-radius: var(--radius-md);
-    background: var(--surface-hover);
-  }
-
-  .summary-value {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-bold);
-    color: var(--accent-text);
-    line-height: var(--leading-none);
-  }
-
-  .summary-label {
-    font-size: var(--text-xs);
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
-  }
-
   .history-section {
     display: flex;
     flex-direction: column;
@@ -282,14 +245,6 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-  }
-
-  .empty-state {
-    background: var(--surface);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    color: var(--text-dim);
-    text-align: center;
   }
 
   @media (max-width: 480px) {

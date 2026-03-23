@@ -1,5 +1,7 @@
 ---
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
+import EmptyState from "../components/app/EmptyState.astro";
+import MetricTile from "../components/app/MetricTile.astro";
 import PlayerRoundRow from "../components/player/PlayerRoundRow.astro";
 import TieBreaks from "../components/standings/TieBreaks.astro";
 import { scrapePairings, scrapeStandings } from "../lib/scraper";
@@ -179,14 +181,8 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
 
       {playerPoints && (
         <div class="player-stats">
-          <div class="stat-block primary">
-            <span class="stat-value">{playerPoints}</span>
-            <span class="stat-label">{t("standings.pts")}</span>
-          </div>
-          <div class="stat-block">
-            <span class="stat-value">#{playerRank}</span>
-            <span class="stat-label">{t("standings.rank")}</span>
-          </div>
+          <MetricTile label={t("standings.pts")} value={playerPoints} tone="accent" />
+          <MetricTile label={t("standings.rank")} value={`#${playerRank}`} />
           <div class="tb-stats">
             <TieBreaks values={[tieBreak1, tieBreak2, tieBreak3, tieBreak4, tieBreak5, tieBreak6]} />
           </div>
@@ -219,9 +215,7 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
             />
           ))
         ) : (
-          <div class="empty-state">
-            <p>{t("player.empty")}</p>
-          </div>
+          <EmptyState message={t("player.empty")} variant="surface" compact />
         )}
       </div>
     </div>
@@ -272,39 +266,6 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
     font-weight: var(--weight-semibold);
   }
 
-  .stat-block {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-2) var(--space-3);
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: var(--radius-md);
-  }
-
-  .stat-block.primary {
-    background: var(--accent-subtle);
-  }
-
-  .stat-value {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-extrabold);
-    color: var(--text);
-    line-height: var(--leading-none);
-  }
-
-  .stat-block.primary .stat-value {
-    color: var(--accent-text);
-  }
-
-  .stat-label {
-    font-size: var(--text-xs);
-    color: var(--text-dim);
-    font-weight: var(--weight-semibold);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
-  }
-
   .tb-stats {
     display: flex;
     margin-left: auto;
@@ -345,9 +306,4 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
     flex-direction: column;
   }
 
-  .empty-state {
-    text-align: center;
-    color: var(--text-dim);
-    padding: var(--space-8);
-  }
 </style>

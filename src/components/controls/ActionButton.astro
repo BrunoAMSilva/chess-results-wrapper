@@ -1,0 +1,182 @@
+---
+interface Props {
+  id?: string;
+  href?: string;
+  download?: string | boolean;
+  type?: "button" | "submit" | "reset";
+  variant?: "primary" | "secondary";
+  size?: "compact" | "default" | "large";
+  pill?: boolean;
+  fullWidth?: boolean;
+  disabled?: boolean;
+  target?: string;
+  rel?: string;
+  ariaLabel?: string;
+  class?: string;
+}
+
+const {
+  id,
+  href,
+  download,
+  type = "button",
+  variant = "primary",
+  size = "default",
+  pill = false,
+  fullWidth = false,
+  disabled = false,
+  target,
+  rel,
+  ariaLabel,
+  class: className = "",
+} = Astro.props;
+
+const Tag = href ? "a" : "button";
+const hasIcon = Astro.slots.has("icon");
+---
+
+<Tag
+  id={id}
+  class:list={[
+    "ui-action",
+    `ui-action--${variant}`,
+    `ui-action--${size}`,
+    {
+      "ui-action--pill": pill,
+      "ui-action--full": fullWidth,
+      "ui-action--with-icon": hasIcon,
+    },
+    className,
+  ]}
+  aria-label={ariaLabel}
+  {...(href
+    ? { href, target, rel, download }
+    : { type, disabled })}
+>
+  <span class="ui-action__label">
+    <slot />
+  </span>
+  {hasIcon && (
+    <span class="ui-action__icon" aria-hidden="true">
+      <slot name="icon" />
+    </span>
+  )}
+</Tag>
+
+<style>
+  .ui-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-3);
+    min-block-size: var(--space-12);
+    padding-block: var(--space-3);
+    padding-inline: var(--space-5);
+    border: none;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-card);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-tight);
+    text-align: center;
+    text-decoration: none;
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-in-out),
+      color var(--duration-fast) var(--ease-in-out),
+      box-shadow var(--duration-fast) var(--ease-in-out);
+  }
+
+  .ui-action--primary {
+    background: linear-gradient(180deg, var(--primary-fixed-dim) 0%, var(--primary-container) 100%);
+    color: var(--on-primary-fixed);
+  }
+
+  .ui-action--secondary {
+    background: var(--seg-bg);
+    color: var(--text);
+  }
+
+  .ui-action--compact {
+    min-block-size: calc(var(--space-10) + var(--space-1));
+    padding-block: var(--space-2);
+    padding-inline: var(--space-4);
+    border-radius: var(--radius-sm);
+    font-size: var(--text-sm);
+  }
+
+  .ui-action--large {
+    min-block-size: calc(var(--space-12) + var(--space-2));
+    padding-block: var(--space-4);
+    padding-inline: var(--space-6);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+  }
+
+  .ui-action--pill {
+    border-radius: var(--radius-full);
+  }
+
+  .ui-action--full {
+    width: 100%;
+  }
+
+  .ui-action:hover {
+    transform: translateY(calc(var(--space-1) * -0.5));
+  }
+
+  .ui-action--primary:hover {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .ui-action--secondary:hover {
+    background: var(--accent-subtle);
+    color: var(--accent-text);
+  }
+
+  .ui-action:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+  }
+
+  .ui-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+    transform: none;
+  }
+
+  .ui-action__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ui-action {
+      transition: none;
+    }
+
+    .ui-action:hover {
+      transform: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .ui-action {
+      border: 2px solid ButtonBorder;
+      background: ButtonFace;
+      color: ButtonText;
+      box-shadow: none;
+    }
+
+    .ui-action:focus-visible {
+      outline: 2px solid Highlight;
+      box-shadow: none;
+    }
+  }
+</style>

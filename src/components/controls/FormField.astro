@@ -1,0 +1,48 @@
+---
+interface Props {
+  label: string;
+  forId?: string;
+  class?: string;
+}
+
+const { label, forId, class: className = "" } = Astro.props;
+---
+
+<div class:list={["ui-field", className]}>
+  {forId ? (
+    <label class="ui-field__label" for={forId}>{label}</label>
+  ) : (
+    <span class="ui-field__label">{label}</span>
+  )}
+  <div class="ui-field__control">
+    <slot />
+  </div>
+</div>
+
+<style>
+  .ui-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .ui-field__label {
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wide);
+    line-height: var(--leading-tight);
+    text-transform: uppercase;
+  }
+
+  .ui-field__control {
+    min-width: 0;
+  }
+
+  @media (forced-colors: active) {
+    .ui-field__label {
+      color: CanvasText;
+    }
+  }
+</style>

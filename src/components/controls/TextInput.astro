@@ -1,0 +1,93 @@
+---
+interface Props {
+  id: string;
+  name?: string;
+  type?: "text" | "url" | "email" | "number" | "search";
+  value?: string | number;
+  placeholder?: string;
+  autocomplete?: string;
+  class?: string;
+  inputmode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal" | "search";
+  required?: boolean;
+  disabled?: boolean;
+  autofocus?: boolean;
+}
+
+const {
+  id,
+  name = id,
+  type = "text",
+  value,
+  placeholder,
+  autocomplete,
+  class: className = "",
+  inputmode,
+  required = false,
+  disabled = false,
+  autofocus = false,
+} = Astro.props;
+---
+
+<input
+  id={id}
+  name={name}
+  type={type}
+  value={value}
+  placeholder={placeholder}
+  autocomplete={autocomplete}
+  inputmode={inputmode}
+  required={required}
+  disabled={disabled}
+  autofocus={autofocus}
+  class:list={["ui-control", className]}
+/>
+
+<style>
+  .ui-control {
+    width: 100%;
+    min-width: 0;
+    min-block-size: var(--space-12);
+    padding-block: var(--space-3);
+    padding-inline: var(--space-4);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--radius-md);
+    background: var(--input-bg);
+    color: var(--text);
+    font-family: inherit;
+    font-size: var(--text-lg);
+    line-height: var(--leading-tight);
+    transition:
+      border-color var(--duration-fast) var(--ease-in-out),
+      box-shadow var(--duration-fast) var(--ease-in-out),
+      background-color var(--duration-fast) var(--ease-in-out);
+  }
+
+  .ui-control::placeholder {
+    color: var(--text-dim);
+  }
+
+  .ui-control:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    border-color: var(--input-focus);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+  }
+
+  .ui-control:disabled {
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  @media (forced-colors: active) {
+    .ui-control {
+      border-color: ButtonBorder;
+      background: Field;
+      color: FieldText;
+    }
+
+    .ui-control:focus-visible {
+      outline: 2px solid Highlight;
+      box-shadow: none;
+    }
+  }
+</style>

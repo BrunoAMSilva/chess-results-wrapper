@@ -1,5 +1,6 @@
 ---
 import ResponsiveLayout from "../layouts/ResponsiveLayout.astro";
+import EmptyState from "../components/app/EmptyState.astro";
 import ResponsiveMatchCard from "../components/pairings/ResponsiveMatchCard.astro";
 import TeamMatchGroup from "../components/pairings/TeamMatchGroup.astro";
 import RoundSelector from "../components/controls/RoundSelector.astro";
@@ -80,9 +81,7 @@ const recentPlayerCount = !isTeamView
     ) : allPairings.length > 0 ? (
       allPairings.map((pairing) => <ResponsiveMatchCard match={pairing} tid={tid} lang={lang} />)
     ) : (
-      <div class="empty-state">
-        <p>{t('empty.pairings')}</p>
-      </div>
+      <EmptyState message={t('empty.pairings')} compact />
     )}
   </div>
 </ResponsiveLayout>
@@ -127,11 +126,6 @@ const recentPlayerCount = !isTeamView
     .pairings-list {
       grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
     }
-  }
-  .empty-state {
-    text-align: center;
-    color: var(--text-dim);
-    margin-top: var(--space-8);
   }
 </style>
 

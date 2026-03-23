@@ -2,12 +2,19 @@
 import Layout from "../../layouts/TVLayout.astro";
 import PresenterPairingCard from "../../components/presenter/PresenterPairingCard.astro";
 import StandingRow from "../../components/standings/StandingRow.astro";
+import ErrorCard from "../../components/app/ErrorCard.astro";
+import EmptyState from "../../components/app/EmptyState.astro";
+import MetricTile from "../../components/app/MetricTile.astro";
+import CheckboxField from "../../components/controls/CheckboxField.astro";
+import FormField from "../../components/controls/FormField.astro";
+import SelectInput from "../../components/controls/SelectInput.astro";
 import TabsControl from "../../components/controls/TabsControl.astro";
-import SegmentedControl from "../../components/controls/SegmentedControl.astro";
-import PresenterQrCode from "../../components/presenter/PresenterQrCode.astro";
+import TextInput from "../../components/controls/TextInput.astro";
+import PresenterConfigPanel from "../../components/presenter/PresenterConfigPanel.astro";
+import PresenterSidebar from "../../components/presenter/PresenterSidebar.astro";
 import { scrapePairings, scrapeStandings } from "../../lib/scraper";
 import { useTranslations } from "../../i18n/ui";
-import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, PRESENTER_PAIRINGS_PER_PAGE, CAROUSEL_INTERVAL } from "../../lib/constants";
+import { DEFAULT_TOURNAMENT, PRESENTER_PAIRINGS_PER_PAGE, CAROUSEL_INTERVAL, LANGUAGE_OPTIONS } from "../../lib/constants";
 import { paginateArray } from "../../lib/utils";
 import { getIntParam } from "../../lib/request-params";
 import { resolvePageLang } from "../../lib/page-lang";
@@ -34,6 +41,10 @@ if (sponsorAlt && sponsorAlt !== "Sponsor") presenterExtras.set("sponsorAlt", sp
 if (hideNonPaired) presenterExtras.set("hideNonPaired", "1");
 const presenterExtraQuery = presenterExtras.toString();
 const presenterExtraSuffix = presenterExtraQuery ? `&${presenterExtraQuery}` : "";
+
+const configHiddenFields: Array<{ name: string; value: string }> = [];
+if (Astro.url.searchParams.get("rows")) configHiddenFields.push({ name: "rows", value: String(rowsPerPage) });
+if (sponsorAlt && sponsorAlt !== "Sponsor") configHiddenFields.push({ name: "sponsorAlt", value: sponsorAlt });
 
 const t = useTranslations(lang);
 
@@ -121,20 +132,13 @@ const autoRefresh = isTournamentLive(data?.info.date);
         {data && (
           <div class="toolbar-stats">
             <span class="stat-pill">
-              <span class="stat-group">
-                <span class="stat-value">{activePairings.length}</span>
-                <span class="stat-label">{t('header.matches')}</span>
-              </span>
+              <MetricTile class="stat-group" label={t('header.matches')} variant="plain" value={activePairings.length} />
               <span class="stat-divider"></span>
-              <span class="stat-group">
-                <span class="stat-value">{totalPlayers}</span>
-                <span class="stat-label">{t('header.players')}</span>
-              </span>
+              <MetricTile class="stat-group" label={t('header.players')} variant="plain" value={totalPlayers} />
               <span class="stat-divider"></span>
-              <span class="stat-group">
-                <span class="stat-label">{t('header.round')}</span>
-                <span class="stat-value">{round} <span class="round-total">/ {data.info.totalRounds}</span></span>
-              </span>
+              <MetricTile class="stat-group" label={t('header.round')} variant="plain">
+                <Fragment slot="value">{round} <span class="round-total">/ {data.info.totalRounds}</span></Fragment>
+              </MetricTile>
             </span>
             
             <div class="round-nav">
@@ -162,12 +166,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
       </div>
     </header>
 
-    {error && (
-      <div class="error-card">
-        <p>{error}</p>
-        <p class="error-hint">{t('error.hint')}</p>
-      </div>
-    )}
+    {error && <ErrorCard hint={t('error.hint')}><p>{error}</p></ErrorCard>}
 
     <div class="present-grid">
       <div class="main-column">
@@ -254,13 +253,12 @@ const autoRefresh = isTournamentLive(data?.info.date);
     )}
 
     {data && visiblePairings.length === 0 && playerList.length === 0 && (
-      <div class="empty-state">
-        <svg class="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <EmptyState message={t('empty.pairings')}>
+        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <circle cx="12" cy="12" r="10"/>
           <path d="M12 8v4M12 16h.01"/>
         </svg>
-        <p>{t('empty.pairings')}</p>
-      </div>
+      </EmptyState>
     )}
 
     {data && visiblePairings.length > 0 && (
@@ -299,97 +297,52 @@ const autoRefresh = isTournamentLive(data?.info.date);
     )}
       </div>
 
-      <aside class="side-column">
-        {sponsorImage && (
-          <section class="sponsor-card" aria-label={t('sponsor.title')}>
-            <h2 class="sponsor-title">{t('sponsor.title')}</h2>
-            <img class="sponsor-image" src={sponsorImage} alt={sponsorAlt} loading="eager" />
-          </section>
-        )}
-
-        <PresenterQrCode
-          targetPath={`/pairings?tid=${tid}&lang=${lang}`}
-          label={t('scan.label')}
-          hint={t('scan.hint')}
-          size="large"
-        />
-      </aside>
+      <PresenterSidebar
+        sponsorImage={sponsorImage}
+        sponsorAlt={sponsorAlt}
+        sponsorTitle={t('sponsor.title')}
+        qrTargetPath={`/pairings?tid=${tid}&lang=${lang}`}
+        qrLabel={t('scan.label')}
+        qrHint={t('scan.hint')}
+      />
     </div>
   </div>
 
-  <div class="config-panel" id="configPanel">
-    <button class="config-toggle" id="configToggle" aria-label={t('config.title')}>
-      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-      </svg>
-    </button>
-    <div class="config-body" id="configBody">
-      <div class="view-switch-panel">
-        <SegmentedControl
-          name="view-switch"
-          segments={[
-            { value: "pairings", label: t('nav.pairings') },
-            { value: "standings", label: t('nav.standings'), href: `/present/standings?tid=${tid}&lang=${lang}${sponsorSwitchSuffix}` },
-          ]}
-          active="pairings"
-        />
-      </div>
-      <label class="config-label">
-        {t('config.tid')}
-        <input type="text" id="inputTid" value={tid} class="config-input" />
-      </label>
-      <label class="config-label">
-        {t('config.lang')}
-        <select id="inputLang" class="config-input">
-          <option value="1" selected={lang === 1}>English</option>
-          <option value="10" selected={lang === 10}>Português</option>
-          <option value="2" selected={lang === 2}>Español</option>
-          <option value="0" selected={lang === 0}>Deutsch</option>
-          <option value="20" selected={lang === 20}>Français</option>
-        </select>
-      </label>
-      <label class="config-label">
-        {t('config.round')}
-        <select id="inputRound" class="config-input">
+  <PresenterConfigPanel
+    idPrefix="present-pairings"
+    title={t('config.title')}
+    action="/present"
+    submitLabel={t('config.update')}
+    segments={[
+      { value: "pairings", label: t('nav.pairings') },
+      { value: "standings", label: t('nav.standings'), href: `/present/standings?tid=${tid}&lang=${lang}${sponsorSwitchSuffix}` },
+    ]}
+    activeSegment="pairings"
+    hiddenFields={configHiddenFields}
+  >
+      <FormField label={t('config.tid')} forId="inputTid">
+        <TextInput id="inputTid" name="tid" value={tid} />
+      </FormField>
+      <FormField label={t('config.lang')} forId="inputLang">
+        <SelectInput id="inputLang" name="lang">
+          {LANGUAGE_OPTIONS.map((option) => (
+            <option value={String(option.value)} selected={lang === option.value}>{option.label}</option>
+          ))}
+        </SelectInput>
+      </FormField>
+      <FormField label={t('config.round')} forId="inputRound">
+        <SelectInput id="inputRound" name="round">
           {rounds.map((r) => (
             <option value={r} selected={r === round}>{r}</option>
           ))}
-        </select>
-      </label>
-      <label class="config-label">
-        {t('config.sponsorImage')}
-        <input type="url" id="inputSponsor" value={sponsorImage} class="config-input" placeholder="https://..." />
-      </label>
-      <label class="config-checkbox">
-        <input type="checkbox" id="inputHideNonPaired" checked={hideNonPaired} />
-        <span>{t('config.hideNonPaired')}</span>
-      </label>
-      <button id="configGo" class="config-btn">{t('config.update')}</button>
-    </div>
-  </div>
+        </SelectInput>
+      </FormField>
+      <FormField label={t('config.sponsorImage')} forId="inputSponsor">
+        <TextInput id="inputSponsor" name="sponsor" type="url" value={sponsorImage} placeholder="https://..." />
+      </FormField>
+      <CheckboxField id="inputHideNonPaired" name="hideNonPaired" label={t('config.hideNonPaired')} checked={hideNonPaired} />
+  </PresenterConfigPanel>
 </Layout>
-
-<script>
-  // Config panel
-  const toggle = document.getElementById("configToggle")!;
-  const body = document.getElementById("configBody")!;
-  const goBtn = document.getElementById("configGo")!;
-
-  toggle.addEventListener("click", () => body.classList.toggle("open"));
-
-  goBtn.addEventListener("click", () => {
-    const tid = (document.getElementById("inputTid") as HTMLInputElement).value.trim();
-    const lang = (document.getElementById("inputLang") as HTMLSelectElement).value;
-    const round = (document.getElementById("inputRound") as HTMLSelectElement).value;
-    const sponsor = (document.getElementById("inputSponsor") as HTMLInputElement).value.trim();
-    const hideNonPaired = (document.getElementById("inputHideNonPaired") as HTMLInputElement).checked;
-    if (!tid) return;
-    const params = new URLSearchParams({ tid, lang, round });
-    if (sponsor) params.set("sponsor", sponsor);
-    if (hideNonPaired) params.set("hideNonPaired", "1");
-    window.location.href = `/present?${params.toString()}`;
-  });
-</script>
 
 <script>
   import "../../scripts/carousel";
@@ -408,13 +361,6 @@ const autoRefresh = isTournamentLive(data?.info.date);
     min-height: 0;
     display: flex;
     flex-direction: column;
-  }
-
-  .side-column {
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
   }
 
   .header-right-group {
@@ -470,7 +416,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
     border: none;
   }
 
-  .stat-group {
+  :global(.stat-group) {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -481,28 +427,13 @@ const autoRefresh = isTournamentLive(data?.info.date);
     padding-right: var(--space-6);
   }
 
-  .stat-group:last-of-type {
+  :global(.stat-group:last-of-type) {
     border-right: none;
     padding-right: 0;
   }
 
   .stat-divider {
     display: none;
-  }
-
-  .stat-label {
-    font-size: var(--text-xs);
-    font-weight: var(--weight-bold);
-    text-transform: uppercase;
-    color: var(--text-dim);
-    letter-spacing: var(--tracking-wide);
-  }
-
-  .stat-value {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-extrabold);
-    color: var(--text);
-    line-height: var(--leading-none);
   }
 
   .round-total {
@@ -543,37 +474,6 @@ const autoRefresh = isTournamentLive(data?.info.date);
     padding: var(--space-2);
   }
 
-  .sponsor-card {
-    border-radius: var(--radius-lg);
-    background: var(--surface);
-    padding: var(--space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    min-height: 0;
-    flex: 1;
-  }
-
-  .sponsor-title {
-    margin: 0;
-    font-size: var(--text-base);
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
-  }
-
-  .sponsor-image {
-    flex: 1;
-    width: 100%;
-    min-height: 0;
-    height: 100%;
-    max-height: none;
-    object-fit: contain;
-    border-radius: var(--radius-md);
-    background: var(--neutral-50);
-    padding: var(--space-3);
-  }
-
   .sponsor-placeholder {
     flex: 1;
     min-height: 0;
@@ -592,16 +492,4 @@ const autoRefresh = isTournamentLive(data?.info.date);
     display: none !important;
   }
 
-  .config-checkbox {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    color: var(--text);
-    font-size: var(--text-sm);
-    margin-top: var(--space-1);
-  }
-
-  .config-checkbox input {
-    accent-color: var(--accent-text);
-  }
 </style>

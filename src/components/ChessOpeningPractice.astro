@@ -1,6 +1,10 @@
 ---
 import 'cm-chessboard/assets/chessboard.css';
 import 'cm-chessboard/assets/extensions/markers/markers.css';
+import EmptyState from './app/EmptyState.astro';
+import FormField from './controls/FormField.astro';
+import PracticeChoiceRail from './practice/PracticeChoiceRail.astro';
+import TextInput from './controls/TextInput.astro';
 
 interface Props {
   openingNames: { name: string; eco: string }[];
@@ -9,416 +13,710 @@ interface Props {
 const { openingNames } = Astro.props;
 ---
 
-<div class="practice-layout">
-  <aside class="sidebar">
-    <div class="field">
-      <label for="opening-search">Search Opening</label>
-      <input
-        type="text"
-        id="opening-search"
-        placeholder="Type to filter (e.g. Sicilian, E60...)"
-        autocomplete="off"
-      />
-    </div>
+{openingNames.length === 0 ? (
+  <EmptyState message="No openings are available yet. Seed or import openings to start a practice session." />
+) : (
+  <section class="practice-layout" aria-labelledby="practice-heading">
+    <aside class="sidebar" aria-labelledby="practice-heading">
+      <div class="sidebar-header">
+        <h2 id="practice-heading" class="sidebar-title">Opening rehearsal</h2>
+        <p class="sidebar-copy">Search for an ECO code or opening name, choose a variation, and play the training side move by move.</p>
+      </div>
 
-    <div class="field">
-      <label for="opening-select">Opening</label>
-      <select id="opening-select" size="12">
-        {openingNames.map((o) => (
-          <option value={o.name} data-eco={o.eco}>
-            [{o.eco}] {o.name}
-          </option>
-        ))}
-      </select>
-    </div>
+      <FormField label="Search opening" forId="opening-search">
+        <TextInput
+          id="opening-search"
+          type="search"
+          inputmode="search"
+          autocomplete="off"
+          placeholder="Type Sicilian, Caro-Kann, or E60"
+        />
+      </FormField>
 
-    <div class="field">
-      <label for="variation-select">Variation & Side</label>
-      <select id="variation-select" size="8">
-        <option value="" disabled selected>Pick an opening first</option>
-      </select>
-    </div>
+      <PracticeChoiceRail id="opening-choice" title="Opening" helper="Filtered by name or ECO code.">
+        <div
+          id="opening-options"
+          class="choice-group"
+          role="radiogroup"
+          aria-labelledby="opening-choice-title"
+          aria-describedby="opening-choice-helper"
+        >
+          {openingNames.map((opening) => (
+            <label
+              class="choice-option"
+              data-opening-option
+              data-search={`${opening.name} ${opening.eco}`.toLowerCase()}
+            >
+              <input
+                class="choice-input"
+                type="radio"
+                name="opening-choice"
+                value={opening.name}
+                data-eco={opening.eco}
+              />
+              <span class="choice-accent" aria-hidden="true"></span>
+              <span class="choice-content">
+                <span class="choice-meta">{opening.eco}</span>
+                <span class="choice-label">{opening.name}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      </PracticeChoiceRail>
 
-    <div class="status-panel">
-      <p id="status-message">Select an opening to begin.</p>
-      <div id="progress" class="progress"></div>
-    </div>
-  </aside>
+      <PracticeChoiceRail id="variation-choice" title="Variation and side" helper="White and Black repertoires are listed separately.">
+        <div
+          id="variation-options"
+          class:list={["choice-group", "choice-group--empty", "choice-group--compact-empty"]}
+          role="radiogroup"
+          aria-labelledby="variation-choice-title"
+          aria-describedby="variation-choice-helper"
+          aria-disabled="true"
+        >
+          <p class="choice-empty">Pick an opening first</p>
+        </div>
+      </PracticeChoiceRail>
 
-  <div class="board-area">
-    <div class="board-container">
-      <div id="board"></div>
-    </div>
-  </div>
-</div>
+      <section class="status-panel" aria-labelledby="practice-status-heading">
+        <h2 id="practice-status-heading" class="status-title">Session status</h2>
+        <p id="status-message" class="status-message" role="status" aria-live="polite">Select an opening to begin.</p>
+        <div id="progress" class="progress" aria-live="polite" aria-label="Opening progress"></div>
+      </section>
+    </aside>
 
-<script
-  id="opening-names-data"
-  type="application/json"
-  set:html={JSON.stringify(openingNames)}
-/>
+    <section class="board-area" aria-labelledby="practice-board-heading">
+      <div class="board-container">
+        <h2 id="practice-board-heading" class="board-title">Practice board</h2>
+        <div id="board"></div>
+      </div>
+    </section>
+  </section>
+)}
 
 <script>
   import { Chess } from 'chess.js';
+  import type { Square } from 'chess.js';
   import { Chessboard, COLOR, INPUT_EVENT_TYPE, FEN } from 'cm-chessboard';
   import { Markers, MARKER_TYPE } from 'cm-chessboard/src/extensions/markers/Markers.js';
 
-  const allNames: { name: string; eco: string }[] = JSON.parse(
-    document.getElementById('opening-names-data')?.textContent || '[]'
-  );
+  const searchInput = document.getElementById('opening-search') as HTMLInputElement | null;
+  const openingOptions = document.getElementById('opening-options') as HTMLDivElement | null;
+  const variationOptions = document.getElementById('variation-options') as HTMLDivElement | null;
+  const statusMessage = document.getElementById('status-message') as HTMLElement | null;
+  const progressDiv = document.getElementById('progress') as HTMLElement | null;
+  const boardEl = document.getElementById('board') as HTMLElement | null;
 
-  const searchInput = document.getElementById('opening-search') as HTMLInputElement;
-  const openingSelect = document.getElementById('opening-select') as HTMLSelectElement;
-  const variationSelect = document.getElementById('variation-select') as HTMLSelectElement;
-  const statusMessage = document.getElementById('status-message') as HTMLElement;
-  const progressDiv = document.getElementById('progress') as HTMLElement;
-  const boardEl = document.getElementById('board') as HTMLElement;
-
-  let currentOpening: any = null;
-  let currentMoveIndex = 0;
-  let game = new Chess();
-  let board: any = null;
-  let cachedVariations: Map<string, any[]> = new Map();
-
-  // ── Board init ──────────────────────────────────────────────────────────
-  function initBoard() {
-    if (boardEl && !board) {
-      board = new Chessboard(boardEl, {
-        position: FEN.start,
-        assetsUrl: 'https://unpkg.com/cm-chessboard@8.11.5/assets/',
-        orientation: COLOR.white,
-        responsive: true,
-        style: {
-          animationDuration: 300,
-        },
-        extensions: [{ class: Markers }],
-      });
-    }
+  interface OpeningVariation {
+    id: number;
+    name: string;
+    variation: string;
+    eco: string;
+    color: 'w' | 'b';
+    moves: string[];
   }
 
-  initBoard();
+  if (searchInput && openingOptions && variationOptions && statusMessage && progressDiv && boardEl) {
+    const searchControl = searchInput!;
+    const openingChoices = openingOptions!;
+    const variationChoices = variationOptions!;
+    const statusRegion = statusMessage!;
+    const progressRegion = progressDiv!;
+    const boardRoot = boardEl!;
+    let currentOpening: OpeningVariation | null = null;
+    let currentMoveIndex = 0;
+    let game = new Chess();
+    let board: Chessboard | null = null;
+    const cachedVariations = new Map<string, OpeningVariation[]>();
 
-  // ── Search / Filter ──────────────────────────────────────────────────────
-  searchInput.addEventListener('input', () => {
-    const lc = searchInput.value.toLowerCase();
-    for (const opt of Array.from(openingSelect.options)) {
-      const show =
-        opt.value.toLowerCase().includes(lc) ||
-        (opt.dataset.eco || '').toLowerCase().includes(lc);
-      opt.hidden = !show;
-    }
-    variationSelect.innerHTML =
-      '<option value="" disabled selected>Pick an opening first</option>';
-  });
-
-  // ── Opening selected → fetch variations ─────────────────────────────────
-  openingSelect.addEventListener('change', async () => {
-    const name = openingSelect.value;
-    variationSelect.innerHTML =
-      '<option value="" disabled selected>Loading...</option>';
-
-    let variations = cachedVariations.get(name);
-    if (!variations) {
-      const res = await fetch(`/api/openings?name=${encodeURIComponent(name)}`);
-      variations = await res.json();
-      cachedVariations.set(name, variations!);
+    function setStatus(message: string, tone: 'default' | 'success' | 'error' = 'default') {
+      statusRegion.textContent = message;
+      statusRegion.dataset.tone = tone;
     }
 
-    variationSelect.innerHTML = '';
-    for (const entry of variations!) {
-      const side = entry.color === 'w' ? 'White' : 'Black';
-      const label = `${entry.variation} (${side}) [${entry.eco}]`;
-      const opt = document.createElement('option');
-      opt.value = String(entry.id);
-      opt.textContent = label;
-      variationSelect.appendChild(opt);
+    function renderEmptyChoices(container: HTMLDivElement, message: string) {
+      container.innerHTML = `<p class="choice-empty">${message}</p>`;
+      container.classList.add('choice-group--empty');
+      container.setAttribute('aria-disabled', 'true');
     }
-  });
 
-  // ── Variation selected → start practice ────────────────────────────────
-  variationSelect.addEventListener('change', async () => {
-    const id = Number(variationSelect.value);
-    if (!id) return;
-
-    // Look up in cache first
-    let opening: any = null;
-    for (const v of cachedVariations.values()) {
-      opening = v.find((o: any) => o.id === id);
-      if (opening) break;
-    }
-    if (!opening) {
-      const res = await fetch(`/api/openings?id=${id}`);
-      opening = await res.json();
-    }
-    if (!opening) return;
-
-    currentOpening = opening;
-    currentMoveIndex = 0;
-    game = new Chess();
-
-    board.setOrientation(opening.color === 'w' ? COLOR.white : COLOR.black);
-    board.setPosition(game.fen(), true);
-    board.removeMarkers();
-    board.enableMoveInput(
-      inputHandler,
-      opening.color === 'w' ? COLOR.white : COLOR.black
-    );
-
-    updateStatus();
-
-    if (opening.color === 'b' && opening.moves.length > 0) {
-      setTimeout(() => playOpponentMove(), 500);
-    }
-  });
-
-  // ── Input handler ─────────────────────────────────────────────────────
-  function inputHandler(event: any) {
-    if (event.type === INPUT_EVENT_TYPE.moveInputStarted) {
-      const moves = game.moves({ square: event.square, verbose: true });
-      board.removeMarkers();
-      for (const m of moves) {
-        board.addMarker(MARKER_TYPE.dot, m.to);
+    function clearChoiceSelection(container: ParentNode, selector: string) {
+      for (const input of Array.from(container.querySelectorAll<HTMLInputElement>(selector))) {
+        input.checked = false;
       }
-      board.addMarker(MARKER_TYPE.framePrimary, event.square);
-      return moves.length > 0;
-    } else if (event.type === INPUT_EVENT_TYPE.validateMoveInput) {
-      const { squareFrom, squareTo } = event;
-      board.removeMarkers();
+    }
 
-      let moveObj;
-      try {
-        moveObj = game.move({
-          from: squareFrom,
-          to: squareTo,
-          promotion: 'q',
+    function renderVariationChoices(variations: OpeningVariation[]) {
+      if (variations.length === 0) {
+        renderEmptyChoices(variationChoices, 'No variations available');
+        return;
+      }
+
+      variationChoices.innerHTML = variations
+        .map((variation) => {
+          const side = variation.color === 'w' ? 'White' : 'Black';
+          const toneClass = variation.color === 'w' ? 'choice-option--white' : 'choice-option--black';
+          return `
+            <label class="choice-option ${toneClass}">
+              <input class="choice-input" type="radio" name="variation-choice" value="${variation.id}" />
+              <span class="choice-accent" aria-hidden="true"></span>
+              <span class="choice-content">
+                <span class="choice-meta">${side} · ${variation.eco}</span>
+                <span class="choice-label">${variation.variation}</span>
+              </span>
+            </label>`;
+        })
+        .join('');
+
+      variationChoices.classList.remove('choice-group--empty');
+      variationChoices.removeAttribute('aria-disabled');
+    }
+
+    function initBoard() {
+      if (!board) {
+        board = new Chessboard(boardRoot, {
+          position: FEN.start,
+          assetsUrl: 'https://unpkg.com/cm-chessboard@8.11.5/assets/',
+          orientation: COLOR.white,
+          responsive: true,
+          style: {
+            animationDuration: 300,
+          },
+          extensions: [{ class: Markers }],
         });
+      }
+    }
+
+    function clearPracticeState() {
+      currentOpening = null;
+      currentMoveIndex = 0;
+      game = new Chess();
+      board?.disableMoveInput();
+      board?.removeMarkers();
+      board?.setOrientation(COLOR.white);
+      board?.setPosition(game.fen(), true);
+      progressRegion.innerHTML = '';
+    }
+
+    initBoard();
+    renderEmptyChoices(variationChoices, 'Pick an opening first');
+
+    searchControl.addEventListener('input', () => {
+      const query = searchControl.value.toLowerCase();
+      for (const option of Array.from(openingChoices.querySelectorAll<HTMLElement>('[data-opening-option]'))) {
+        const searchValue = option.dataset.search || '';
+        option.hidden = !searchValue.includes(query);
+      }
+      clearPracticeState();
+      clearChoiceSelection(openingChoices, 'input[name="opening-choice"]');
+      clearChoiceSelection(variationChoices, 'input[name="variation-choice"]');
+      renderEmptyChoices(variationChoices, 'Pick an opening first');
+      setStatus('Select an opening to begin.');
+    });
+
+    openingChoices.addEventListener('change', async (event) => {
+      const target = event.target as HTMLInputElement | null;
+      if (!target || target.name !== 'opening-choice') return;
+
+      const name = target.value;
+      clearPracticeState();
+      renderEmptyChoices(variationChoices, 'Loading variations...');
+      setStatus(`Loading variations for ${name}.`);
+
+      let variations = cachedVariations.get(name);
+      try {
+        if (!variations) {
+          const response = await fetch(`/api/openings?name=${encodeURIComponent(name)}`);
+          if (!response.ok) throw new Error('Unable to load variations.');
+          variations = await response.json() as OpeningVariation[];
+          cachedVariations.set(name, variations);
+        }
       } catch {
-        return false;
+        renderEmptyChoices(variationChoices, 'Unable to load variations');
+        setStatus('Unable to load variations. Try another opening or retry in a moment.', 'error');
+        return;
       }
 
-      const expectedSan = currentOpening.moves[currentMoveIndex];
-      game.undo();
+      const resolvedVariations = variations ?? [];
+      renderVariationChoices(resolvedVariations);
 
-      const dummy = new Chess(game.fen());
-      const expectedMoveObj = dummy.move(expectedSan);
+      if (resolvedVariations.length === 0) {
+        setStatus('No saved variations are available for this opening yet.', 'error');
+        return;
+      }
 
-      if (
-        expectedMoveObj &&
-        expectedMoveObj.from === squareFrom &&
-        expectedMoveObj.to === squareTo
-      ) {
-        game.move(expectedSan);
-        currentMoveIndex++;
-        board.setPosition(game.fen(), true);
-        updateStatus();
+      setStatus(`Choose a variation for ${name}.`);
+    });
 
-        if (currentMoveIndex < currentOpening.moves.length) {
-          setTimeout(() => playOpponentMove(), 500);
-        } else {
-          statusMessage.textContent = 'Opening completed! Well done.';
-          board.disableMoveInput();
+    variationChoices.addEventListener('change', async (event) => {
+      const target = event.target as HTMLInputElement | null;
+      if (!target || target.name !== 'variation-choice') return;
+
+      const id = Number(target.value);
+      if (!id) return;
+
+      let opening: OpeningVariation | null = null;
+      for (const variations of cachedVariations.values()) {
+        opening = variations.find((variation) => variation.id === id) || null;
+        if (opening) break;
+      }
+
+      if (!opening) {
+        const response = await fetch(`/api/openings?id=${id}`);
+        if (!response.ok) {
+          setStatus('Unable to load that variation. Please try again.', 'error');
+          return;
         }
-        return true;
-      } else {
-        statusMessage.textContent = `Incorrect. Try again. (Hint: ${expectedSan})`;
-        statusMessage.style.color = 'var(--error-color, #e53e3e)';
+        opening = await response.json() as OpeningVariation;
+      }
+
+      currentOpening = opening;
+      currentMoveIndex = 0;
+      game = new Chess();
+
+      board?.setOrientation(opening.color === 'w' ? COLOR.white : COLOR.black);
+      board?.setPosition(game.fen(), true);
+      board?.removeMarkers();
+      board?.enableMoveInput(inputHandler, opening.color === 'w' ? COLOR.white : COLOR.black);
+
+      updateStatus();
+
+      if (opening.color === 'b' && opening.moves.length > 0) {
+        setTimeout(() => playOpponentMove(), 500);
+      }
+    });
+
+    function inputHandler(event: { type: string; square?: string; squareFrom?: string; squareTo?: string }) {
+      if (!currentOpening) return false;
+
+      if (event.type === INPUT_EVENT_TYPE.moveInputStarted && event.square) {
+        const moves = game.moves({ square: event.square as Square, verbose: true as const });
+        board?.removeMarkers();
+        for (const move of moves) {
+          board?.addMarker(MARKER_TYPE.dot, move.to as Square);
+        }
+        board?.addMarker(MARKER_TYPE.framePrimary, event.square as Square);
+        return moves.length > 0;
+      }
+
+      if (event.type === INPUT_EVENT_TYPE.validateMoveInput && event.squareFrom && event.squareTo) {
+        board?.removeMarkers();
+
+        try {
+          game.move({
+            from: event.squareFrom,
+            to: event.squareTo,
+            promotion: 'q',
+          });
+        } catch {
+          return false;
+        }
+
+        const expectedSan = currentOpening.moves[currentMoveIndex];
+        game.undo();
+
+        const expectedGame = new Chess(game.fen());
+        const expectedMove = expectedGame.move(expectedSan);
+
+        if (
+          expectedMove &&
+          expectedMove.from === event.squareFrom &&
+          expectedMove.to === event.squareTo
+        ) {
+          game.move(expectedSan);
+          currentMoveIndex++;
+          board?.setPosition(game.fen(), true);
+          updateStatus();
+
+          if (currentMoveIndex < currentOpening.moves.length) {
+            setTimeout(() => playOpponentMove(), 500);
+          } else {
+            setStatus('Opening completed. Practice line finished.', 'success');
+            board?.disableMoveInput();
+          }
+          return true;
+        }
+
+        setStatus(`Incorrect move. Try again. Hint: ${expectedSan}.`, 'error');
         setTimeout(() => updateStatus(), 2500);
         return false;
       }
-    }
-    return true;
-  }
 
-  // ── Opponent auto-play ────────────────────────────────────────────────
-  function playOpponentMove() {
-    if (!currentOpening || currentMoveIndex >= currentOpening.moves.length)
-      return;
-
-    const san = currentOpening.moves[currentMoveIndex];
-    game.move(san);
-    currentMoveIndex++;
-    board.setPosition(game.fen(), true);
-    updateStatus();
-
-    if (currentMoveIndex >= currentOpening.moves.length) {
-      statusMessage.textContent = 'Opening completed! Well done.';
-      board.disableMoveInput();
-    }
-  }
-
-  // ── Status display ────────────────────────────────────────────────────
-  function updateStatus() {
-    if (!currentOpening) return;
-    statusMessage.style.color = 'inherit';
-
-    const movePairs: { white: string; black: string }[] = [];
-    for (let i = 0; i < currentOpening.moves.length; i += 2) {
-      movePairs.push({
-        white: currentOpening.moves[i],
-        black: currentOpening.moves[i + 1] || '…',
-      });
+      return true;
     }
 
-    statusMessage.textContent = `${currentOpening.name}: ${currentOpening.variation}`;
+    function playOpponentMove() {
+      if (!currentOpening || currentMoveIndex >= currentOpening.moves.length) {
+        return;
+      }
 
-    progressDiv.innerHTML = movePairs
-      .map((pair, idx) => {
-        const wDone = idx * 2 < currentMoveIndex ? 'done' : '';
-        const bDone = idx * 2 + 1 < currentMoveIndex ? 'done' : '';
-        const wActive = idx * 2 === currentMoveIndex ? 'active' : '';
-        const bActive = idx * 2 + 1 === currentMoveIndex ? 'active' : '';
-        return `
-          <span class="move-pair">
-            <span class="move-no">${idx + 1}.</span>
-            <span class="move ${wActive} ${wDone}">${pair.white}</span>
-            <span class="move ${bActive} ${bDone}">${pair.black}</span>
-          </span>`;
-      })
-      .join('');
+      const san = currentOpening.moves[currentMoveIndex];
+      game.move(san);
+      currentMoveIndex++;
+      board?.setPosition(game.fen(), true);
+      updateStatus();
+
+      if (currentMoveIndex >= currentOpening.moves.length) {
+        setStatus('Opening completed. Practice line finished.', 'success');
+        board?.disableMoveInput();
+      }
+    }
+
+    function updateStatus() {
+      if (!currentOpening) return;
+
+      const movePairs: { white: string; black: string }[] = [];
+      for (let index = 0; index < currentOpening.moves.length; index += 2) {
+        movePairs.push({
+          white: currentOpening.moves[index],
+          black: currentOpening.moves[index + 1] || '…',
+        });
+      }
+
+      progressRegion.innerHTML = movePairs
+        .map((pair, idx) => {
+          const whiteDone = idx * 2 < currentMoveIndex ? 'done' : '';
+          const blackDone = idx * 2 + 1 < currentMoveIndex ? 'done' : '';
+          const whiteActive = idx * 2 === currentMoveIndex ? 'active' : '';
+          const blackActive = idx * 2 + 1 === currentMoveIndex ? 'active' : '';
+          return `
+            <span class="move-pair">
+              <span class="move-no">${idx + 1}.</span>
+              <span class="move ${whiteActive} ${whiteDone}">${pair.white}</span>
+              <span class="move ${blackActive} ${blackDone}">${pair.black}</span>
+            </span>`;
+        })
+        .join('');
+
+      setStatus(`${currentOpening.name}: ${currentOpening.variation}`);
+    }
   }
 </script>
 
 <style>
   .practice-layout {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-lg, 1.5rem);
-    max-width: 1400px;
+    display: grid;
+    gap: var(--space-6);
+    max-width: 88rem;
     margin: 0 auto;
-    padding: var(--space-md, 1rem);
+    padding: var(--space-4);
   }
 
-  @media (min-width: 900px) {
+  @media (min-width: 56rem) {
     .practice-layout {
-      flex-direction: row;
+      grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
       align-items: flex-start;
     }
   }
 
-  /* ── Sidebar ───────────────────────────────────────────────────────── */
   .sidebar {
     display: flex;
     flex-direction: column;
-    gap: var(--space-md, 1rem);
-    min-width: 280px;
-    max-width: 360px;
-    flex-shrink: 0;
+    gap: var(--space-5);
+    min-width: 0;
+    padding: var(--space-5);
+    border-radius: var(--radius-xl);
+    background: linear-gradient(180deg, var(--surface-container-high) 0%, var(--surface-container-low) 100%);
+    box-shadow: var(--shadow-card);
   }
 
-  .field {
+  .sidebar-header {
     display: flex;
     flex-direction: column;
-    gap: var(--space-xs, 0.25rem);
+    gap: var(--space-3);
   }
 
-  .field label {
-    font-weight: 600;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-muted, #777);
+  .sidebar-title,
+  .status-title,
+  .board-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
+    color: var(--text);
   }
 
-  input[type='text'] {
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--radius-sm, 4px);
-    border: 1px solid var(--border-color, #ccc);
-    background: var(--bg-color, #fff);
-    color: var(--text-color, #333);
-    font-size: 0.95rem;
+  .sidebar-copy {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: var(--text-base);
+    line-height: var(--leading-relaxed);
+    text-wrap: balance;
   }
 
-  select {
-    padding: 0.35rem 0.5rem;
-    border-radius: var(--radius-sm, 4px);
-    border: 1px solid var(--border-color, #ccc);
-    background: var(--bg-color, #fff);
-    color: var(--text-color, #333);
-    font-size: 0.9rem;
+  .choice-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    max-block-size: 19rem;
+    min-block-size: 12rem;
     overflow-y: auto;
+    padding-inline-end: var(--space-1);
+  }
+
+  .choice-group--empty {
+    justify-content: center;
+  }
+
+  .choice-group--compact-empty {
+    min-block-size: auto;
+    max-block-size: none;
+  }
+
+  .choice-empty {
+    margin: 0;
+    padding: var(--space-5);
+    border-radius: var(--radius-lg);
+    background: var(--surface-container-low);
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+    text-align: center;
+  }
+
+  .choice-option {
+    position: relative;
+    display: grid;
+    grid-template-columns: var(--space-1) minmax(0, 1fr);
+    gap: var(--space-3);
+    align-items: stretch;
+    padding: var(--space-2);
+    border-radius: var(--radius-lg);
+    background: var(--surface-container-low);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      background-color var(--duration-fast) var(--ease-in-out),
+      box-shadow var(--duration-fast) var(--ease-in-out);
+  }
+
+  .choice-option:hover {
+    transform: translateY(calc(var(--space-1) * -0.25));
+    background: var(--surface-container-highest);
+  }
+
+  .choice-option:has(.choice-input:checked) {
+    background: linear-gradient(180deg, color-mix(in srgb, var(--surface-container-high) 88%, var(--primary-fixed-dim)), color-mix(in srgb, var(--surface-container-low) 80%, var(--primary-container)));
+    box-shadow: var(--shadow-card);
+  }
+
+  .choice-option:has(.choice-input:focus-visible) {
+    outline: 2px solid var(--input-focus);
+    outline-offset: 2px;
+  }
+
+  .choice-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .choice-accent {
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--primary-container) 55%, transparent);
+  }
+
+  .choice-option--white .choice-accent {
+    background: color-mix(in srgb, var(--tertiary-fixed-dim) 75%, transparent);
+  }
+
+  .choice-option--black .choice-accent {
+    background: color-mix(in srgb, var(--secondary-fixed-dim) 75%, transparent);
+  }
+
+  .choice-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    min-width: 0;
+    padding: var(--space-3);
+    border-radius: calc(var(--radius-lg) - var(--space-1));
+    background: color-mix(in srgb, var(--surface-container-high) 92%, transparent);
+  }
+
+  .choice-option:has(.choice-input:checked) .choice-content {
+    background: color-mix(in srgb, var(--surface-container-highest) 68%, transparent);
+  }
+
+  .choice-meta {
+    color: var(--accent-text);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-wider);
+    line-height: var(--leading-tight);
+    text-transform: uppercase;
+  }
+
+  .choice-label {
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-normal);
+    overflow-wrap: anywhere;
   }
 
   .status-panel {
-    background: var(--panel-bg, #f5f5f5);
-    padding: var(--space-md, 1rem);
-    border-radius: var(--radius-md, 8px);
-    border: 1px solid var(--border-color, #eaeaea);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    background: var(--surface-container-highest);
   }
 
-  #status-message {
-    font-weight: bold;
-    margin-bottom: var(--space-sm, 0.5rem);
+  .status-title {
+    font-size: var(--text-lg);
+  }
+
+  .status-message {
+    margin: 0;
+    color: var(--text);
+    font-size: var(--text-base);
+    font-weight: var(--weight-semibold);
+    line-height: var(--leading-relaxed);
+  }
+
+  .status-message[data-tone='success'] {
+    color: var(--on-win);
+  }
+
+  .status-message[data-tone='error'] {
+    color: var(--on-loss);
   }
 
   .progress {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.25rem 0.75rem;
-    font-size: 0.9rem;
-    font-family: monospace;
+    gap: var(--space-1) var(--space-3);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: var(--text-sm);
+    overflow-wrap: anywhere;
   }
 
   .progress :global(.move-pair) {
     display: inline-flex;
-    gap: 0.2rem;
+    gap: var(--space-1);
     white-space: nowrap;
   }
 
   .progress :global(.move-no) {
-    color: var(--text-muted, #777);
+    color: var(--text-dim);
   }
 
   .progress :global(.move.active) {
-    background: var(--accent-color, #3182ce);
-    color: #fff;
-    padding: 0 0.2rem;
-    border-radius: 3px;
+    background: var(--primary-container);
+    color: var(--on-primary-fixed);
+    padding-inline: var(--space-1);
+    border-radius: var(--radius-sm);
   }
 
   .progress :global(.move.done) {
     opacity: 0.5;
   }
 
-  /* ── Board area ────────────────────────────────────────────────────── */
   .board-area {
-    flex: 1;
     display: flex;
     justify-content: center;
     align-items: flex-start;
+    min-width: 0;
   }
 
   .board-container {
     width: 100%;
-    max-width: 640px;
+    max-width: 40rem;
+    padding: var(--space-5);
+    border-radius: var(--radius-xl);
+    background:
+      radial-gradient(circle at top right, var(--accent-glow), transparent 32%),
+      linear-gradient(180deg, var(--surface-container-high) 0%, var(--surface-container-low) 100%);
+    box-shadow: var(--shadow-card);
   }
 
-  @media (min-width: 900px) {
+  .board-title {
+    margin-block-end: var(--space-4);
+  }
+
+  @media (min-width: 56rem) {
     .board-container {
       max-width: none;
-      width: 100%;
     }
   }
 
   #board {
     width: 100%;
     aspect-ratio: 1;
+    min-width: 0;
   }
 
-  /* ── Ghost piece visible while dragging ─────────────────────────── */
   :global(.cm-chessboard .pieces-layer [visibility='hidden']) {
     visibility: visible !important;
     opacity: 0.35;
   }
 
-  /* ── Dark mode ──────────────────────────────────────────────────── */
-  :global([data-theme='dark']) .status-panel {
-    background: var(--surface-bg, #2a2a2a);
-    border-color: var(--border-color, #444);
+  @media (max-width: 40rem) {
+    .practice-layout {
+      padding: var(--space-3);
+    }
+
+    .sidebar,
+    .board-container {
+      padding: var(--space-4);
+    }
+
+    .choice-group {
+      max-block-size: 16rem;
+    }
+
+    .sidebar-title,
+    .board-title {
+      font-size: var(--text-xl);
+    }
   }
-  :global([data-theme='dark']) select,
-  :global([data-theme='dark']) input[type='text'] {
-    background: var(--surface-bg, #2a2a2a);
-    color: #fff;
-    border-color: #555;
+
+  @media (forced-colors: active) {
+    .sidebar,
+    .status-panel,
+    .board-container {
+      background: Canvas;
+      box-shadow: none;
+      border: 1px solid ButtonBorder;
+    }
+
+    .choice-empty,
+    .choice-option,
+    .choice-content {
+      background: Canvas;
+      border: 1px solid ButtonBorder;
+      box-shadow: none;
+    }
+
+    .sidebar-copy,
+    .progress,
+    .progress :global(.move-no) {
+      color: CanvasText;
+    }
+
+    .choice-meta,
+    .choice-label {
+      color: CanvasText;
+    }
+
+    .status-message[data-tone='success'],
+    .status-message[data-tone='error'] {
+      color: CanvasText;
+    }
+
+    .choice-accent {
+      background: Highlight;
+    }
+
+    .progress :global(.move.active) {
+      background: Highlight;
+      color: HighlightText;
+    }
   }
 </style>

@@ -1,0 +1,42 @@
+---
+import PresenterQrCode from "./PresenterQrCode.astro";
+import SponsorCard from "./SponsorCard.astro";
+
+interface Props {
+  sponsorImage?: string;
+  sponsorAlt?: string;
+  sponsorTitle: string;
+  qrTargetPath: string;
+  qrLabel: string;
+  qrHint: string;
+}
+
+const {
+  sponsorImage = "",
+  sponsorAlt = "Sponsor",
+  sponsorTitle,
+  qrTargetPath,
+  qrLabel,
+  qrHint,
+} = Astro.props;
+---
+
+<aside class="presenter-sidebar">
+  {sponsorImage && <SponsorCard title={sponsorTitle} image={sponsorImage} alt={sponsorAlt} />}
+
+  <PresenterQrCode
+    targetPath={qrTargetPath}
+    label={qrLabel}
+    hint={qrHint}
+    size="large"
+  />
+</aside>
+
+<style>
+  .presenter-sidebar {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+</style>

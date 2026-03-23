@@ -1,5 +1,7 @@
 ---
 import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
+import EmptyState from "../../../components/app/EmptyState.astro";
+import ActionButton from "../../../components/controls/ActionButton.astro";
 import RoundProgressCard from "../../../components/referee/RoundProgressCard.astro";
 import { scrapePairings } from "../../../lib/scraper";
 import { getRefereeResults } from "../../../lib/db";
@@ -228,13 +230,16 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
                 </select>
               )}
               {hasExport && (
-                <a
+                <ActionButton
                   class="export-btn"
                   href={`/api/referee-export?tid=${sec.id}&round=${activeRound}`}
                   download={`round-${activeRound}-results.xml`}
+                  variant="secondary"
+                  size="compact"
+                  pill
                 >
                   {t("referee.exportXml")}
-                </a>
+                </ActionButton>
               )}
             </Fragment>
           )}
@@ -242,18 +247,21 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
 
         {hasExport && index !== 0 && (
           <div class="export-section">
-            <a
+            <ActionButton
               class="export-btn"
               href={`/api/referee-export?tid=${sec.id}&round=${activeRound}`}
               download={`round-${activeRound}-results.xml`}
+              variant="secondary"
+              size="compact"
+              pill
             >
               {t("referee.exportXml")}
-            </a>
+            </ActionButton>
           </div>
         )}
 
         {sec.tables.length === 0 ? (
-          <p class="empty-state">{t("referee.noResultsYet")}</p>
+          <EmptyState message={t("referee.noResultsYet")} compact />
         ) : (
           <div class="results-table">
             <div class="results-header">
@@ -338,48 +346,11 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
   }
 
   .export-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    justify-content: center;
-    min-height: 2.5rem;
-    padding: var(--space-2) var(--space-4);
-    border: 1px solid var(--border-strong);
-    border-radius: var(--radius-full);
-    background: var(--surface);
-    color: var(--accent-text);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
     text-decoration: none;
+  }
+
+  :global(.export-btn.ui-action) {
     box-shadow: var(--shadow-sm);
-    transition:
-      border-color var(--duration-fast) var(--ease-out),
-      background-color var(--duration-fast) var(--ease-out),
-      color var(--duration-fast) var(--ease-out),
-      box-shadow var(--duration-fast) var(--ease-out),
-      transform var(--duration-fast) var(--ease-out);
-  }
-
-  .export-btn:hover {
-    border-color: var(--accent-hover);
-    background: var(--accent-subtle);
-    box-shadow: var(--shadow-md);
-  }
-
-  .export-btn:focus-visible {
-    outline: 2px solid var(--input-focus);
-    outline-offset: 2px;
-    box-shadow: 0 0 0 4px var(--input-focus-ring);
-  }
-
-  .export-btn:active {
-    transform: translateY(1px);
-  }
-
-  .empty-state {
-    text-align: center;
-    color: var(--text-dim);
-    padding: var(--space-8) 0;
   }
 
   .results-table {

@@ -1,0 +1,48 @@
+---
+interface Props {
+  hint?: string;
+  class?: string;
+}
+
+const { hint, class: className = "" } = Astro.props;
+---
+
+<div class:list={["error-card", className]} role="alert">
+  <div class="error-card__body">
+    <slot />
+  </div>
+  {hint && <p class="error-card__hint">{hint}</p>}
+</div>
+
+<style>
+  .error-card {
+    border-radius: var(--radius-lg);
+    background: var(--loss-subtle);
+    color: var(--text);
+    padding: var(--space-6);
+    text-align: center;
+  }
+
+  .error-card__body :global(p:first-child) {
+    margin: 0;
+  }
+
+  .error-card__hint {
+    margin: var(--space-2) 0 0;
+    color: var(--text-dim);
+    font-size: var(--text-base);
+    line-height: var(--leading-normal);
+  }
+
+  @media (forced-colors: active) {
+    .error-card {
+      border: 1px solid ButtonBorder;
+      background: Canvas;
+      color: CanvasText;
+    }
+
+    .error-card__hint {
+      color: CanvasText;
+    }
+  }
+</style>

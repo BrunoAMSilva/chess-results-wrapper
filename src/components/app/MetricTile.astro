@@ -1,0 +1,90 @@
+---
+interface Props {
+  label: string;
+  value?: string | number;
+  variant?: "plain" | "card";
+  tone?: "default" | "accent";
+  size?: "default" | "large";
+  class?: string;
+}
+
+const {
+  label,
+  value,
+  variant = "card",
+  tone = "default",
+  size = "default",
+  class: className = "",
+} = Astro.props;
+
+const hasValueSlot = Astro.slots.has("value");
+---
+
+<div class:list={["metric-tile", `metric-tile--${variant}`, `metric-tile--${size}`, `metric-tile--${tone}`, className]}>
+  <span class="metric-tile__value">
+    {hasValueSlot ? <slot name="value" /> : value}
+  </span>
+  <span class="metric-tile__label">{label}</span>
+</div>
+
+<style>
+  .metric-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    color: var(--text);
+  }
+
+  .metric-tile--card {
+    border-radius: var(--radius-md);
+    background: var(--surface-hover);
+    padding: var(--space-3);
+  }
+
+  .metric-tile__value {
+    font-size: var(--text-xl);
+    font-weight: var(--weight-extrabold);
+    line-height: var(--leading-none);
+    color: var(--text);
+  }
+
+  .metric-tile--large .metric-tile__value {
+    font-size: var(--text-2xl);
+  }
+
+  .metric-tile--accent.metric-tile--card {
+    background: var(--accent-subtle);
+  }
+
+  .metric-tile--accent .metric-tile__value {
+    color: var(--accent-text);
+  }
+
+  .metric-tile__label {
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wide);
+    line-height: var(--leading-tight);
+    text-align: center;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  @media (forced-colors: active) {
+    .metric-tile {
+      color: CanvasText;
+    }
+
+    .metric-tile--card {
+      border: 1px solid ButtonBorder;
+      background: Canvas;
+    }
+
+    .metric-tile__value,
+    .metric-tile__label {
+      color: CanvasText;
+    }
+  }
+</style>

@@ -1,0 +1,61 @@
+---
+interface Props {
+  title: string;
+  image: string;
+  alt: string;
+}
+
+const { title, image, alt } = Astro.props;
+---
+
+<section class="sponsor-card" aria-label={title}>
+  <h2 class="sponsor-card__title">{title}</h2>
+  <img class="sponsor-card__image" src={image} alt={alt} loading="eager" />
+</section>
+
+<style>
+  .sponsor-card {
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    padding: var(--space-4);
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .sponsor-card__title {
+    margin: 0;
+    font-size: var(--text-base);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .sponsor-card__image {
+    width: 100%;
+    min-height: 0;
+    flex: 1;
+    object-fit: contain;
+    border-radius: var(--radius-md);
+    background: var(--neutral-50);
+    padding: var(--space-3);
+  }
+
+  @media (forced-colors: active) {
+    .sponsor-card {
+      border: 1px solid ButtonBorder;
+      background: Canvas;
+    }
+
+    .sponsor-card__title {
+      color: CanvasText;
+    }
+
+    .sponsor-card__image {
+      border: 1px solid ButtonBorder;
+      background: Canvas;
+    }
+  }
+</style>

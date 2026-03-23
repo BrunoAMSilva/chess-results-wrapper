@@ -1,0 +1,71 @@
+---
+interface Props {
+  id: string;
+  title: string;
+  helper?: string;
+  class?: string;
+}
+
+const {
+  id,
+  title,
+  helper,
+  class: className = "",
+} = Astro.props;
+
+const titleId = `${id}-title`;
+const helperId = `${id}-helper`;
+---
+
+<section class:list={["practice-rail", className]} aria-labelledby={titleId}>
+  <div class="practice-rail__header">
+    <h2 id={titleId} class="practice-rail__title">{title}</h2>
+    {helper && <p id={helperId} class="practice-rail__helper">{helper}</p>}
+  </div>
+  <div class="practice-rail__body">
+    <slot />
+  </div>
+</section>
+
+<style>
+  .practice-rail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+  }
+
+  .practice-rail__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .practice-rail__title {
+    margin: 0;
+    color: var(--text-dim);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    letter-spacing: var(--tracking-wide);
+    line-height: var(--leading-tight);
+    text-transform: uppercase;
+  }
+
+  .practice-rail__helper {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--text-xs);
+    line-height: var(--leading-normal);
+  }
+
+  .practice-rail__body {
+    min-width: 0;
+  }
+
+  @media (forced-colors: active) {
+    .practice-rail__title,
+    .practice-rail__helper {
+      color: CanvasText;
+    }
+  }
+</style>
