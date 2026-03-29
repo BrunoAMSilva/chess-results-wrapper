@@ -9,22 +9,27 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
 const t = useTranslations(lang);
 ---
 
-<ResponsiveLayout title={t("referee.searchTournament")} lang={lang} navMode="none">
+<ResponsiveLayout
+  title={t("referee.searchTournament")}
+  lang={lang}
+  navMode="none"
+>
   <div class="referee-search" id="refereeSearch">
     <TournamentSearchForm
       label={t("referee.searchTournament")}
       placeholder={t("referee.searchPlaceholder")}
       loadingMessage={t("home.loading")}
       noResultsMessage={t("referee.noResults")}
+      submitLabel={t("home.submit")}
+      invalidMessage={t("home.invalid")}
       lang={String(lang)}
       navigatePathTemplate="/referee/{id}"
-      searchLimit={10}
-      showSubmit={false}
-      resultLayout="stacked"
-      autofocus
       class="referee-search-form"
     />
-    <RecentTournaments recentLabel={t("home.recent")} linkBase="/referee/{id}" />
+    <RecentTournaments
+      recentLabel={t("home.recent")}
+      linkBase="/referee/{id}"
+    />
   </div>
 </ResponsiveLayout>
 
@@ -45,7 +50,11 @@ const t = useTranslations(lang);
 
   :global(.referee-search-form .search-input) {
     background:
-      linear-gradient(140deg, color-mix(in srgb, var(--primary-fixed-dim) 6%, transparent), transparent 48%),
+      linear-gradient(
+        140deg,
+        color-mix(in srgb, var(--primary-fixed-dim) 6%, transparent),
+        transparent 48%
+      ),
       var(--input-bg);
   }
 </style>
