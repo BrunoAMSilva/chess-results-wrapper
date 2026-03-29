@@ -103,9 +103,6 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
     </form>
 
     <div class="feedback hidden" id="feedback" aria-live="assertive" tabindex="-1"></div>
-    <a class="another-link hidden" id="anotherLink" href={backUrl}>
-      {t("referee.another")}
-    </a>
   </div>
 </ResponsiveLayout>
 
@@ -167,37 +164,9 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
     width: 100%;
   }
 
-  .feedback.success {
-    background: var(--win);
-    color: var(--on-win);
-  }
-
   .feedback.error {
     background: var(--loss);
     color: var(--on-loss);
-  }
-
-  .another-link {
-    width: 100%;
-    margin-top: var(--space-4);
-    padding: var(--space-4) var(--space-6);
-    border-radius: var(--radius-lg);
-    background: var(--surface-container-high);
-    color: var(--accent-text);
-    font-size: var(--text-base);
-    font-weight: var(--weight-semibold);
-    cursor: pointer;
-    text-decoration: none;
-    text-align: center;
-  }
-
-  .another-link:hover {
-    background: var(--surface-container-highest);
-  }
-
-  .another-link:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
   }
 
   .error-msg {
@@ -208,15 +177,12 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
 </style>
 
 <script is:inline define:vars={{
-  savedMsg: t("referee.saved"),
   errorMsg: t("referee.error"),
-  savingMsg: t("referee.saving"),
 }}>
 (function() {
   var form = document.getElementById("resultForm");
   var saveBtn = document.getElementById("saveBtn");
   var feedback = document.getElementById("feedback");
-  var anotherLink = document.getElementById("anotherLink");
   var gameRadios = document.querySelectorAll('input[name="gameResult"]');
 
   var saving = false;
@@ -264,11 +230,8 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
         if (feedback) {
           feedback.classList.remove("hidden", "success", "error");
           if (resp.ok) {
-            feedback.classList.add("success");
-            feedback.textContent = savedMsg;
-            if (form) form.classList.add("form-hidden");
-            if (anotherLink) anotherLink.classList.remove("hidden");
-            feedback.focus();
+            window.location.href = form.querySelector('input[name="_redirect"]').value;
+            return;
           } else {
             feedback.classList.add("error");
             feedback.textContent = resp.data.error || errorMsg;
