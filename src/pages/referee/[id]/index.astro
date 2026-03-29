@@ -3,7 +3,7 @@ import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
 import RoundSelector from "../../../components/controls/RoundSelector.astro";
 import RefereeSelectionTile from "../../../components/referee/RefereeSelectionTile.astro";
 import { scrapePairings } from "../../../lib/scraper";
-import { getRefereeResults } from "../../../lib/db";
+import { getRefereeResults, findLatestIncompleteRound } from "../../../lib/db";
 import { useTranslations } from "../../../i18n/ui";
 import { resolvePageLang } from "../../../lib/page-lang";
 import type { LinkedTournament, Pairing, TeamPairing } from "../../../lib/types";
@@ -32,18 +32,8 @@ try {
   if (roundParam) {
     activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
   } else {
-    let foundRound = 1;
-    for (let r = totalRounds; r >= 1; r--) {
-      const data = r === 1 ? initial : await scrapePairings(tid, r);
-      const pairings = data.pairings || [];
-      const hasNoResults = pairings.length > 0 && pairings.every((p) => !p.result || p.result.trim() === "");
-      if (hasNoResults) {
-        foundRound = r;
-      } else if (pairings.length > 0) {
-        break;
-      }
-    }
-    activeRound = foundRound;
+    // Use DB query instead of looping through all rounds via scrapePairings
+    activeRound = findLatestIncompleteRound(tid, totalRounds);
   }
 
   const activeData = activeRound === 1 ? initial : await scrapePairings(tid, activeRound);

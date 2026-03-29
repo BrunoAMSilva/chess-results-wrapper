@@ -7,7 +7,7 @@ import { resolvePageLang } from "../../../../lib/page-lang";
 import type { Pairing, TeamPairing } from "../../../../lib/types";
 import Matchup from "../../../../components/referee/Matchup.astro";
 import ResultOptions from "../../../../components/referee/ResultOptions.astro";
-import { getRefereeResults } from "../../../../lib/db";
+import { getRefereeResults, getTournament } from "../../../../lib/db";
 
 const tid = Astro.params.id!;
 const section = Astro.params.section!;
@@ -24,18 +24,23 @@ let tournamentName = "";
 let sectionTitle = "";
 
 try {
-  const initial = await scrapePairings(section, 1);
-  const totalRounds = initial.info.totalRounds;
-  tournamentName = initial.info.name;
-  sectionTitle = initial.info.currentLabel || initial.info.name;
+  // Try DB first for tournament metadata to avoid scraping round 1 just for meta
+  const dbTournament = getTournament(section);
+  let totalRounds = dbTournament?.total_rounds ?? 0;
 
   if (roundParam) {
-    activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
-  } else {
-    activeRound = 1;
+    activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds || 99));
   }
 
-  const data = activeRound === 1 ? initial : await scrapePairings(section, activeRound);
+  // Only scrape the round we need (the active round for this table)
+  const data = await scrapePairings(section, activeRound);
+  if (!totalRounds) totalRounds = data.info.totalRounds;
+  if (roundParam) {
+    activeRound = Math.max(1, Math.min(activeRound, totalRounds));
+  }
+  tournamentName = data.info.name;
+  sectionTitle = data.info.currentLabel || data.info.name;
+
   const pairings: Pairing[] = data.pairings || [];
   const teamPairings: TeamPairing[] | undefined = data.teamPairings;
 

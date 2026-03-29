@@ -1355,3 +1355,28 @@ export function getRefereeResults(tournamentId: string, round: number) {
     ORDER BY table_number
   `).all(tournamentId, round) as Array<{ table_number: number; result: string; created_at: string }>;
 }
+
+/**
+ * Find the latest round where all pairings have empty results (i.e. unplayed).
+ * Searches from the highest round downward. Returns 1 if no such round exists.
+ *
+ * This replaces the O(N) sequential scrapePairings loop in referee pages
+ * with a single DB query.
+ */
+export function findLatestIncompleteRound(tournamentId: string, totalRounds: number): number {
+  // Find the highest round where ALL results are empty (the "current" round for referee)
+  // Strategy: find the highest round that has pairings but no non-empty results
+  const row = db.prepare(`
+    SELECT r.round
+    FROM results r
+    WHERE r.tournament_id = ?
+      AND r.round <= ?
+    GROUP BY r.round
+    HAVING COUNT(*) > 0
+      AND SUM(CASE WHEN r.result != '' THEN 1 ELSE 0 END) = 0
+    ORDER BY r.round DESC
+    LIMIT 1
+  `).get(tournamentId, totalRounds) as { round: number } | undefined;
+
+  return row?.round ?? 1;
+}

@@ -582,6 +582,11 @@ export async function scrapePairings(
   tournamentId: string,
   round: number,
 ): Promise<TournamentData> {
+  // Check SQLite cache first (avoids ensureTournamentData overhead for repeat visits)
+  const cacheKey = `pairings:v1:${tournamentId}:${round}`;
+  const cached = getCache<TournamentData>(cacheKey);
+  if (cached) return cached;
+
   const status = await ensureTournamentData(tournamentId);
 
   if (status !== 'live') {
@@ -592,12 +597,16 @@ export async function scrapePairings(
       const isTeam = fromDb.info.type === TournamentType.TeamSwiss ||
                      fromDb.info.type === TournamentType.TeamRoundRobin;
       if (!isTeam || (fromDb.teamPairings && fromDb.teamPairings.length > 0)) {
+        setCache(cacheKey, fromDb, CACHE_TTL);
         return fromDb;
       }
     }
   }
 
-  return scrapePairingsFromRemote(tournamentId, round);
+  const result = await scrapePairingsFromRemote(tournamentId, round);
+  // Cache live tournament data with a shorter TTL
+  setCache(cacheKey, result, status === 'live' ? 60 : CACHE_TTL);
+  return result;
 }
 
 export async function scrapeStandings(
