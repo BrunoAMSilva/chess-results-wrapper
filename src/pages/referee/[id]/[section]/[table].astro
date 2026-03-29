@@ -7,6 +7,7 @@ import { resolvePageLang } from "../../../../lib/page-lang";
 import type { Pairing, TeamPairing } from "../../../../lib/types";
 import Matchup from "../../../../components/referee/Matchup.astro";
 import ResultOptions from "../../../../components/referee/ResultOptions.astro";
+import { getRefereeResults } from "../../../../lib/db";
 
 const tid = Astro.params.id!;
 const section = Astro.params.section!;
@@ -62,6 +63,10 @@ try {
   error = e instanceof Error ? e.message : t("error.load");
 }
 
+// Look up any previously saved result for this table
+const existingResults = getRefereeResults(section, activeRound);
+const existingResult = existingResults.find(r => r.table_number === tableNum)?.result;
+
 const isTeamTournament = tableNum >= 100;
 const tableLabel = isTeamTournament
   ? `${Math.floor(tableNum / 100)}.${tableNum % 100}`
@@ -95,7 +100,7 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
       <input type="hidden" name="table" value={String(tableNum)} />
       <input type="hidden" name="_redirect" value={backUrl} />
 
-      <ResultOptions />
+      <ResultOptions value={existingResult} />
       <ActionButton class="save-btn" id="saveBtn" type="submit" size="large" fullWidth>
         <span class="save-label">{t("referee.save")} →</span>
         <span class="saving-label" aria-hidden="true">{t("referee.saving")}</span>
@@ -188,7 +193,8 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
   var saving = false;
 
   // Progressive enhancement: hide save button until a selection is made
-  if (saveBtn) saveBtn.classList.add("hidden");
+  var hasPreselection = form && form.querySelector('input[name="gameResult"]:checked');
+  if (saveBtn && !hasPreselection) saveBtn.classList.add("hidden");
 
   function showSave() {
     if (saveBtn) saveBtn.classList.remove("hidden");

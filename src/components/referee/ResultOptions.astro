@@ -4,11 +4,12 @@ import { resolvePageLang } from '../../lib/page-lang';
 
 type Props = {
   name?: string;
+  value?: string;
 };
 
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const t = useTranslations(lang);
-const { name = 'gameResult' } = Astro.props;
+const { name = 'gameResult', value } = Astro.props;
 ---
 
 <fieldset class="result-options" role="radiogroup" aria-label={t('referee.selectResult')}>
@@ -16,21 +17,21 @@ const { name = 'gameResult' } = Astro.props;
 
   <div class="result-grid">
     <label class="result-card">
-      <input type="radio" name={name} value="1-0" class="sr-only" />
+      <input type="radio" name={name} value="1-0" class="sr-only" checked={value === '1-0'} />
       <span class="result-score" aria-hidden="true">1-0</span>
       <span class="result-label">{t('referee.white')}</span>
       <span class="check-badge" aria-hidden="true"></span>
     </label>
 
     <label class="result-card">
-      <input type="radio" name={name} value="½-½" class="sr-only" />
+      <input type="radio" name={name} value="½-½" class="sr-only" checked={value === '½-½'} />
       <span class="result-score" aria-hidden="true">½-½</span>
       <span class="result-label">{t('referee.draw')}</span>
       <span class="check-badge" aria-hidden="true"></span>
     </label>
 
     <label class="result-card">
-      <input type="radio" name={name} value="0-1" class="sr-only" />
+      <input type="radio" name={name} value="0-1" class="sr-only" checked={value === '0-1'} />
       <span class="result-score" aria-hidden="true">0-1</span>
       <span class="result-label">{t('referee.black')}</span>
       <span class="check-badge" aria-hidden="true"></span>
@@ -39,21 +40,21 @@ const { name = 'gameResult' } = Astro.props;
 
   <div class="result-grid">
     <label class="result-card absent-card">
-      <input type="radio" name={name} value="-:+" class="sr-only" />
+      <input type="radio" name={name} value="-:+" class="sr-only" checked={value === '-:+'} />
       <span class="result-score absent-score" aria-hidden="true">0-1F</span>
       <span class="result-label">{t('referee.whiteAbsent')}</span>
       <span class="check-badge" aria-hidden="true"></span>
     </label>
 
     <label class="result-card absent-card">
-      <input type="radio" name={name} value="-:-" class="sr-only" />
+      <input type="radio" name={name} value="-:-" class="sr-only" checked={value === '-:-'} />
       <span class="result-score absent-score" aria-hidden="true">0-0F</span>
       <span class="result-label">{t('referee.bothAbsent')}</span>
       <span class="check-badge" aria-hidden="true"></span>
     </label>
 
     <label class="result-card absent-card">
-      <input type="radio" name={name} value="+:-" class="sr-only" />
+      <input type="radio" name={name} value="+:-" class="sr-only" checked={value === '+:-'} />
       <span class="result-score absent-score" aria-hidden="true">1-0F</span>
       <span class="result-label">{t('referee.blackAbsent')}</span>
       <span class="check-badge" aria-hidden="true"></span>
