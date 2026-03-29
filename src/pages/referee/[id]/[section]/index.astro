@@ -67,10 +67,10 @@ function formatTableLabel(table: number): string {
   return String(table);
 }
 
-const submittedTables = new Set<number>();
-const refResults = getRefereeResults(section, activeRound) as Array<{ table_number: number }>;
+const submittedTables = new Map<number, string>();
+const refResults = getRefereeResults(section, activeRound) as Array<{ table_number: number; result: string }>;
 for (const r of refResults) {
-  submittedTables.add(r.table_number);
+  submittedTables.set(r.table_number, r.result);
 }
 
 const q = `round=${activeRound}&lang=${lang}`;
@@ -92,9 +92,8 @@ const eyebrow = tournamentName && tournamentName !== pageTitle ? tournamentName 
           href={`/referee/${tid}/${section}/${tbl}?${q}`}
           variant="table"
           label={formatTableLabel(tbl)}
-          eyebrow={t("referee.table")}
           done={submittedTables.has(tbl)}
-          doneLabel={t("referee.saved")}
+          doneLabel={submittedTables.get(tbl)}
         />
       ))}
     </div>

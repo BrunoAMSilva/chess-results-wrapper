@@ -31,25 +31,35 @@ const {
   href={href}
   aria-label={ariaLabel}
 >
-  <span class="selection-tile__accent" aria-hidden="true"></span>
-  {done && (
-    <span class="selection-tile__done" aria-hidden="true">
-      <span class="selection-tile__done-icon">✓</span>
-      {doneLabel && <span class="selection-tile__done-text">{doneLabel}</span>}
-    </span>
-  )}
-
   <span class="selection-tile__body">
     {eyebrow && <span class="selection-tile__eyebrow">{eyebrow}</span>}
     <span class="selection-tile__label">{label}</span>
   </span>
 
-  {showArrow && <span class="selection-tile__arrow-mark" aria-hidden="true">→</span>}
+  {
+    done && (
+      <div class="selection-tile__done" aria-hidden="true">
+        <span class="selection-tile__done-circle">
+          <span class="selection-tile__done-icon">✓</span>
+        </span>
+        {doneLabel && (
+          <span class="selection-tile__done-text">{doneLabel}</span>
+        )}
+      </div>
+    )
+  }
+
+  {
+    showArrow && (
+      <span class="selection-tile__arrow-mark" aria-hidden="true">
+        →
+      </span>
+    )
+  }
 </a>
 
 <style>
   .selection-tile {
-    position: relative;
     display: flex;
     align-items: center;
     gap: var(--space-4);
@@ -58,7 +68,11 @@ const {
     padding: var(--space-5);
     border-radius: var(--radius-xl);
     background:
-      linear-gradient(140deg, color-mix(in srgb, var(--primary-fixed-dim) 8%, transparent), transparent 45%),
+      linear-gradient(
+        140deg,
+        color-mix(in srgb, var(--primary-fixed-dim) 8%, transparent),
+        transparent 45%
+      ),
       var(--surface-container-high);
     color: var(--on-surface);
     text-decoration: none;
@@ -72,7 +86,11 @@ const {
 
   .selection-tile:hover {
     background:
-      linear-gradient(140deg, color-mix(in srgb, var(--primary-fixed-dim) 12%, transparent), transparent 52%),
+      linear-gradient(
+        140deg,
+        color-mix(in srgb, var(--primary-fixed-dim) 12%, transparent),
+        transparent 52%
+      ),
       var(--surface-container-highest);
     transform: translateY(-1px);
     box-shadow: var(--shadow-ambient);
@@ -87,7 +105,11 @@ const {
     align-self: stretch;
     width: 4px;
     border-radius: var(--radius-full);
-    background: linear-gradient(180deg, var(--primary-fixed-dim), var(--primary-container));
+    background: linear-gradient(
+      180deg,
+      var(--primary-fixed-dim),
+      var(--primary-container)
+    );
     flex-shrink: 0;
   }
 
@@ -125,54 +147,62 @@ const {
   }
 
   .selection-tile__done {
-    position: absolute;
-    top: var(--space-3);
-    right: var(--space-3);
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: var(--space-1);
-    padding: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--space-1) ;
     border-radius: var(--radius-full);
-    background: var(--win-subtle);
-    color: var(--green-400);
-    font-size: var(--text-2xs);
+    background: var(--primary-container);
+    color: var(--on-primary-fixed);
+    font-size: var(--text-sm);
     font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-wider);
     text-transform: uppercase;
   }
 
+  .selection-tile__done-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    border-radius: var(--radius-full);
+    background: var(--on-primary-fixed);
+    color: var(--primary-container);
+    flex-shrink: 0;
+  }
+
   .selection-tile__done-icon {
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-extrabold);
     line-height: 1;
   }
 
   .selection-tile--done {
     background:
-      linear-gradient(140deg, color-mix(in srgb, var(--green-400) 10%, transparent), transparent 55%),
+      linear-gradient(
+        140deg,
+        color-mix(in srgb, var(--primary-container) 10%, transparent),
+        transparent 55%
+      ),
       var(--surface-container-high);
   }
 
   .selection-tile--done:hover {
     background:
-      linear-gradient(140deg, color-mix(in srgb, var(--green-400) 12%, transparent), transparent 55%),
+      linear-gradient(
+        140deg,
+        color-mix(in srgb, var(--primary-container) 12%, transparent),
+        transparent 55%
+      ),
       var(--surface-container-highest);
   }
 
   .selection-tile--table {
-    aspect-ratio: 1;
     min-height: 0;
     justify-content: center;
-    padding: var(--space-4);
-  }
-
-  .selection-tile--table .selection-tile__accent {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: auto;
-    height: 4px;
-    align-self: auto;
+    flex-direction: column;
+    padding: var(--space-6);
   }
 
   .selection-tile--table .selection-tile__body {
@@ -193,10 +223,6 @@ const {
 
   .selection-tile--table .selection-tile__done {
     padding-inline: var(--space-2);
-  }
-
-  .selection-tile--table .selection-tile__done-text {
-    display: none;
   }
 
   @media (max-width: 720px) {
@@ -227,6 +253,11 @@ const {
     .selection-tile__done {
       background: Highlight;
       color: HighlightText;
+    }
+
+    .selection-tile__done-circle {
+      background: HighlightText;
+      color: Highlight;
     }
 
     .selection-tile__arrow-mark {
