@@ -187,6 +187,29 @@ try { db.exec('ALTER TABLE tournament_players ADD COLUMN national_rating INTEGER
 try { db.exec('ALTER TABLE tournament_players ADD COLUMN performance_rating INTEGER'); } catch (_) {}
 try { db.exec("ALTER TABLE tournament_players ADD COLUMN rating_change TEXT"); } catch (_) {}
 
+// ─── Data migration: fix duplicate standings from art=4/art=1 name mismatch ──
+// art=4 (crosstable) uses "Last First" while art=1 uses "Last, First",
+// which created duplicate player entries and duplicate standings rows.
+// Detect tournaments with >1 row per (tournament_id, rank, type) and clear
+// their standings + reset last_updated so the next visit triggers a fresh scrape.
+try {
+  const dupeTournaments = db.prepare(`
+    SELECT DISTINCT tournament_id
+    FROM standings
+    WHERE type = 'open'
+    GROUP BY tournament_id, rank
+    HAVING COUNT(*) > 1
+  `).all() as Array<{ tournament_id: string }>;
+
+  if (dupeTournaments.length > 0) {
+    const tids = [...new Set(dupeTournaments.map(d => d.tournament_id))];
+    for (const tid of tids) {
+      db.prepare('DELETE FROM standings WHERE tournament_id = ?').run(tid);
+      db.prepare("UPDATE tournaments SET last_updated = '', updated_at = datetime('now') WHERE id = ?").run(tid);
+    }
+  }
+} catch (_) { /* non-critical migration */ }
+
 function playerRichnessScore(row: DbPlayer): number {
   let score = 0;
   if (row.federation) score += 8;
@@ -856,6 +879,11 @@ export function persistStandings(
 ): void {
   const txn = db.transaction(() => {
     upsertTournament(info, tournamentId);
+
+    // Delete existing standings before inserting fresh set.
+    // This prevents stale rows from accumulating when player IDs change
+    // (e.g., name format differences between art=4 and art=1 pages).
+    db.prepare('DELETE FROM standings WHERE tournament_id = ?').run(tournamentId);
 
     const saveStanding = (s: Standing, type: 'open' | 'women') => {
       const playerId = upsertPlayer(

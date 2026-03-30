@@ -283,3 +283,61 @@ describe('End-to-end: Linked tournaments persistence', () => {
     expect(secondLinked.length).toBe(firstLinked.length);
   });
 });
+
+describe('End-to-end: persistStandings clears stale standings', () => {
+  const TOURNAMENT_ID = 'E2E_STALE';
+
+  beforeEach(clearAllTables);
+
+  it('should replace old standings when player names change format (art=4 vs art=1)', () => {
+    // Simulate the bug: first scrape uses art=4 names (no comma),
+    // second scrape uses art=1 names (with comma). Both create separate
+    // player entries. Without the fix, duplicate standings accumulate.
+    const baseInfo = {
+      name: 'Test Tournament',
+      round: 0,
+      totalRounds: 5,
+      date: '2026-03-14',
+      location: 'Test',
+      type: 'swiss' as const,
+    };
+
+    // First persist: art=4 style names (no comma)
+    const art4Standings = [
+      { rank: 1, startingNumber: 5, name: 'Fontelas Diogo Rebelo', fed: 'POR', rating: '0', club: '', points: '5', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '17', tieBreak3: '5', tieBreak4: '5', tieBreak5: '2', tieBreak6: '0' },
+      { rank: 2, startingNumber: 13, name: 'Dias João Pedro Dias', fed: 'POR', rating: '0', club: '', points: '4', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '10', tieBreak3: '3', tieBreak4: '4', tieBreak5: '3', tieBreak6: '0' },
+    ];
+
+    persistStandings(TOURNAMENT_ID, baseInfo, art4Standings);
+
+    let dbRows = getStandings(TOURNAMENT_ID) as Array<Record<string, unknown>>;
+    expect(dbRows).toHaveLength(2);
+
+    // Second persist: art=1 style names (with comma)
+    const art1Standings = [
+      { rank: 1, startingNumber: 5, name: 'Fontelas, Diogo Rebelo', fed: 'POR', rating: '0', club: '', points: '5', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '17', tieBreak3: '5', tieBreak4: '5', tieBreak5: '2', tieBreak6: '0' },
+      { rank: 2, startingNumber: 13, name: 'Dias, João Pedro Dias', fed: 'POR', rating: '0', club: '', points: '4', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '10', tieBreak3: '3', tieBreak4: '4', tieBreak5: '3', tieBreak6: '0' },
+    ];
+
+    persistStandings(TOURNAMENT_ID, baseInfo, art1Standings);
+
+    // After the fix: stale standings from first persist should be gone.
+    // Only the 2 entries from art=1 should remain, not 4.
+    dbRows = getStandings(TOURNAMENT_ID) as Array<Record<string, unknown>>;
+    expect(dbRows).toHaveLength(2);
+    expect(dbRows[0].name).toBe('Fontelas, Diogo Rebelo');
+    expect(dbRows[1].name).toBe('Dias, João Pedro Dias');
+  });
+
+  it('should not duplicate standings when re-persisting identical data', () => {
+    const html = loadFixture('ended_standings.html');
+    const parsed = parseStandingsHtml(html);
+
+    // Persist twice with identical data
+    persistStandings('E2E_STALE', parsed.info, parsed.standings);
+    persistStandings('E2E_STALE', parsed.info, parsed.standings);
+
+    const dbRows = getStandings('E2E_STALE') as Array<Record<string, unknown>>;
+    expect(dbRows).toHaveLength(parsed.standings.length);
+  });
+});

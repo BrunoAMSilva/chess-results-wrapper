@@ -433,8 +433,10 @@ async function scrapeStandingsFromRemote(
   let result: StandingsData | null = null;
   let usedArt = 0;
 
-  // Try crosstable first (art=4), fall back to standard list (art=1)
-  for (const art of [4, 1]) {
+  // Prefer standard list (art=1) for consistent name formatting ("Last, First").
+  // Crosstable (art=4) uses "Last First" (no comma), which creates duplicate
+  // player entries when mixed with pairings/art=1 data.
+  for (const art of [1, 4]) {
     const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${SCRAPE_LANG}&art=${art}&turdet=YES`;
     const html = await fetchTournamentHtml(url, tournamentId);
 
