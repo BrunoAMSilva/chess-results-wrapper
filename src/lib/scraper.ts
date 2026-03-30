@@ -10,6 +10,7 @@ import {
   getPairingsFromDb,
   getStandingsFromDb,
 } from './db';
+import db from './db';
 
 // Re-export types from the shared types module for backward compatibility
 export type {
@@ -250,17 +251,17 @@ function isTournamentFinished(dateStr: string): boolean {
 /**
  * Fetch a lightweight page from chess-results.com and extract the "Last update" timestamp.
  */
-async function fetchRemoteLastUpdated(
+async function fetchRemoteMeta(
   tournamentId: string,
-): Promise<string | undefined> {
+): Promise<{ lastUpdated?: string; totalRounds: number }> {
   try {
     const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${SCRAPE_LANG}&turdet=YES`;
     const html = await fetchTournamentHtml(url, tournamentId);
     const $ = cheerio.load(html);
     const meta = parseTournamentMeta($);
-    return meta.lastUpdated;
+    return { lastUpdated: meta.lastUpdated, totalRounds: meta.totalRounds };
   } catch (_) {
-    return undefined;
+    return { totalRounds: 0 };
   }
 }
 
@@ -553,7 +554,16 @@ export async function ensureTournamentData(
   }
 
   // Finished tournament — check remote freshness
-  const remoteLastUpdated = await fetchRemoteLastUpdated(tournamentId);
+  const remoteMeta = await fetchRemoteMeta(tournamentId);
+  const remoteLastUpdated = remoteMeta.lastUpdated;
+
+  // Fix stale total_rounds: if remote reports more rounds than DB, update DB
+  if (remoteMeta.totalRounds > 0 && remoteMeta.totalRounds > dbTournament.total_rounds) {
+    try {
+      db.prepare('UPDATE tournaments SET total_rounds = ?, updated_at = datetime(\'now\') WHERE id = ?')
+        .run(remoteMeta.totalRounds, tournamentId);
+    } catch (_) { /* non-critical */ }
+  }
 
   if (remoteLastUpdated && dbTournament.last_updated && remoteLastUpdated <= dbTournament.last_updated) {
     freshnessCache.set(tournamentId, { status: 'fresh', timestamp: Date.now() });

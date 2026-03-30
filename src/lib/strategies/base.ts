@@ -78,31 +78,32 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
     }
   });
 
-  // Fallback 1: derive totalRounds from rd= links on the page
+  // Count round separator rows (round-robin pages show all rounds on one page
+  // with "Round N" headers). Computed early so it can inform the capping step.
+  let maxRdFromSeparators = 0;
+  $('table.CRs1 tr').each((_, row) => {
+    const text = $(row).text().trim();
+    const m = text.match(/^(?:Round|Ronda|Runde|Ronde)\s+(\d+)\b/i) ||
+              text.match(/^(\d+)\.\s*(?:Round|Ronda|Runde|Ronde)\b/i);
+    if (m) {
+      const rd = parseInt(m[1], 10);
+      if (rd > maxRdFromSeparators) maxRdFromSeparators = rd;
+    }
+  });
+
+  // Best evidence of how many rounds are actually available on this page:
+  // rd= navigation links (Swiss) or inline round separators (Round Robin).
+  const maxAvailableRound = Math.max(maxRdFromLinks, maxRdFromSeparators);
+
+  // Fallback 1: derive totalRounds from available round evidence
   if (totalRounds === 0) {
-    totalRounds = maxRdFromLinks;
+    totalRounds = maxAvailableRound;
   }
 
-  // Cap totalRounds to the max available round from links — the metadata
-  // "Number of rounds" represents planned rounds which may exceed played rounds
-  if (maxRdFromLinks > 0 && maxRdFromLinks < totalRounds) {
-    totalRounds = maxRdFromLinks;
-  }
-
-  // Fallback 2: count round separator rows (round-robin pages show all rounds
-  // on one page with "Round N" headers)
-  if (totalRounds === 0) {
-    let maxRd = 0;
-    $('table.CRs1 tr').each((_, row) => {
-      const text = $(row).text().trim();
-      const m = text.match(/^(?:Round|Ronda|Runde|Ronde)\s+(\d+)\b/i) ||
-                text.match(/^(\d+)\.\s*(?:Round|Ronda|Runde|Ronde)\b/i);
-      if (m) {
-        const rd = parseInt(m[1], 10);
-        if (rd > maxRd) maxRd = rd;
-      }
-    });
-    totalRounds = maxRd;
+  // Cap totalRounds to actually available rounds — the metadata "Number of
+  // rounds" represents planned rounds which may exceed played rounds.
+  if (maxAvailableRound > 0 && maxAvailableRound < totalRounds) {
+    totalRounds = maxAvailableRound;
   }
 
   // Fallback 3: "after N rounds" text (e.g. "after 9 rounds")
