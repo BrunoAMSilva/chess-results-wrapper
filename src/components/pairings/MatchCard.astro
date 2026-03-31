@@ -7,9 +7,10 @@ interface Props {
   pairing: Pairing;
   index: number;
   lang: number;
+  variant?: "list" | "card";
 }
 
-const { pairing, index, lang } = Astro.props;
+const { pairing, index, lang, variant = "card" } = Astro.props;
 const t = useTranslations(lang);
 
 function resultClass(result: string): string {
@@ -29,6 +30,7 @@ const delayClass = `delay-${delayStep}`;
 <div
   class:list={[
     "match-row",
+    variant === "list" ? "list-variant" : "card-variant",
     delayClass,
     {
       bye: isBye,
@@ -42,16 +44,18 @@ const delayClass = `delay-${delayStep}`;
     <span class="player-name">{reverseName(pairing.white.name)}</span>
   </div>
 
-  <div class="table-divider">
-    <span class="table-num">{pairing.table}</span>
-  </div>
+  <span class="table-num">{pairing.table}</span>
 
   <div class="player black-side">
-    {pairing.black ? (
-      <span class="player-name">{reverseName(pairing.black.name)}</span>
-    ) : (
-      <span class="bye-label">{pairing.result === "1" ? t('match.bye') : t('match.notPaired')}</span>
-    )}
+    {
+      pairing.black ? (
+        <span class="player-name">{reverseName(pairing.black.name)}</span>
+      ) : (
+        <span class="bye-label">
+          {pairing.result === "1" ? t("match.bye") : t("match.notPaired")}
+        </span>
+      )
+    }
   </div>
 </div>
 
@@ -65,6 +69,19 @@ const delayClass = `delay-${delayStep}`;
     min-height: 0;
     animation: fadeInUp var(--duration-slow) ease both;
     color: var(--text);
+  }
+
+  .match-row.card-variant {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-elevation-3);
+    overflow: clip;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+    background-color: rebeccapurple !important;
+  }
+
+  .match-row.card-variant .table-num {
+    font-size: var(--text-5xl);
   }
 
   .match-row:last-child {
@@ -144,15 +161,7 @@ const delayClass = `delay-${delayStep}`;
     letter-spacing: -0.01em;
   }
 
-  .table-divider {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--size-table-divider);
-    background: var(--bg);
-  }
-
-  .table-num {
+  .list-variant .table-num {
     font-family: var(--font-display);
     font-size: var(--text-display-lg);
     font-weight: 900;
@@ -167,15 +176,37 @@ const delayClass = `delay-${delayStep}`;
     font-style: italic;
   }
 
-  .delay-0 { animation-delay: 0ms; }
-  .delay-1 { animation-delay: 40ms; }
-  .delay-2 { animation-delay: 80ms; }
-  .delay-3 { animation-delay: 120ms; }
-  .delay-4 { animation-delay: 160ms; }
-  .delay-5 { animation-delay: 200ms; }
-  .delay-6 { animation-delay: 240ms; }
-  .delay-7 { animation-delay: 280ms; }
-  .delay-8 { animation-delay: 320ms; }
-  .delay-9 { animation-delay: 360ms; }
-  .delay-10 { animation-delay: 400ms; }
+  .delay-0 {
+    animation-delay: 0ms;
+  }
+  .delay-1 {
+    animation-delay: 40ms;
+  }
+  .delay-2 {
+    animation-delay: 80ms;
+  }
+  .delay-3 {
+    animation-delay: 120ms;
+  }
+  .delay-4 {
+    animation-delay: 160ms;
+  }
+  .delay-5 {
+    animation-delay: 200ms;
+  }
+  .delay-6 {
+    animation-delay: 240ms;
+  }
+  .delay-7 {
+    animation-delay: 280ms;
+  }
+  .delay-8 {
+    animation-delay: 320ms;
+  }
+  .delay-9 {
+    animation-delay: 360ms;
+  }
+  .delay-10 {
+    animation-delay: 400ms;
+  }
 </style>

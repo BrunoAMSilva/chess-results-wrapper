@@ -1,0 +1,139 @@
+---
+interface Props {
+  result: string;
+  size?: "sm" | "md" | "lg";
+}
+
+type ScoreModel = {
+  left: string;
+  right: string;
+  suffix?: string;
+  label: string;
+};
+
+const { result, size = "md" } = Astro.props;
+const normalized = result.replace(/\s+/g, "").toLowerCase();
+
+const score: ScoreModel | null = (() => {
+  if (normalized === "+:-" || normalized === "1-0f") {
+    return { left: "1", right: "0", suffix: "F", label: "1-0F" };
+  }
+
+  if (normalized === "-:-" || normalized === "0-0f") {
+    return { left: "0", right: "0", suffix: "F", label: "0-0F" };
+  }
+
+  if (normalized === "-:+" || normalized === "0-1f") {
+    return { left: "0", right: "1", suffix: "F", label: "0-1F" };
+  }
+
+  if (
+    normalized.includes("½-½") ||
+    normalized === "1/2" ||
+    normalized === "1/2-1/2" ||
+    normalized === "0.5-0.5"
+  ) {
+    return { left: "1/2", right: "1/2", label: "1/2-1/2" };
+  }
+
+  if (normalized === "1-0" || normalized === "1:0") {
+    return { left: "1", right: "0", label: "1-0" };
+  }
+
+  if (normalized === "0-1" || normalized === "0:1") {
+    return { left: "0", right: "1", label: "0-1" };
+  }
+
+  return null;
+})();
+
+const fallbackLabel = result.trim() || "-";
+---
+
+{
+  score ? (
+    <span
+      class:list={[
+        "chess-result-score",
+        size,
+        {
+          draw: score.label === "1/2-1/2",
+          forfeit: Boolean(score.suffix),
+        },
+      ]}
+      title={score.label}
+    >
+      <span class="score-side">{score.left}</span>
+      <span class="score-separator" aria-hidden="true">
+        -
+      </span>
+      <span class="score-side">{score.right}</span>
+      {score.suffix ? <span class="score-suffix">{score.suffix}</span> : null}
+    </span>
+  ) : (
+    <span class:list={["chess-result-score", size, "fallback"]} title={fallbackLabel}>
+      {fallbackLabel}
+    </span>
+  )
+}
+
+<style>
+  .chess-result-score {
+    display: inline-flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: var(--space-1);
+    min-width: 0;
+    color: inherit;
+    font-family: var(--font-display);
+    font-weight: var(--weight-extrabold);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: var(--tracking-tight);
+    line-height: var(--leading-none);
+    white-space: nowrap;
+  }
+
+  .score-side,
+  .score-separator {
+    line-height: var(--leading-none);
+  }
+
+  .score-suffix {
+    align-self: flex-start;
+    padding: 0 var(--space-1);
+    border-radius: var(--radius-full);
+    background: color-mix(in oklab, currentColor 16%, transparent);
+    font-size: var(--text-2xs);
+    font-weight: var(--weight-bold);
+    letter-spacing: var(--tracking-wide);
+    line-height: var(--leading-tight);
+    text-transform: uppercase;
+  }
+
+  .draw .score-side {
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .fallback {
+    letter-spacing: var(--tracking-wide);
+  }
+
+  .sm {
+    font-size: var(--text-base);
+  }
+
+  .md {
+    font-size: var(--text-xl);
+  }
+
+  .lg {
+    font-size: var(--text-display-sm);
+  }
+
+  @media (forced-colors: active) {
+    .score-suffix {
+      background: transparent;
+      border: 1px solid currentColor;
+    }
+  }
+</style>

@@ -71,6 +71,7 @@
   --size-standing-main-stat-lg: 100px;
   --size-standing-row-min-height-sm: 60px;
   --size-standing-row-min-height-lg: 80px;
+  --size-presenter-pairing-card-min-width: 350px;
 
   /* ── Radii ──────────────────────────────────────────────── */
   --radius-sm: 6px;

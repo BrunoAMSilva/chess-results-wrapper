@@ -263,36 +263,37 @@ const autoRefresh = isTournamentLive(data?.info.date);
 
     {data && visiblePairings.length > 0 && (
       <section class="matches-section">
-        <div class="column-headers">
-          <span class="col-label col-table">{t('table.table')}</span>
-          <span class="col-label col-players">{t('header.players')}</span>
-          <span class="col-label col-score">{t('table.score')}</span>
-        </div>
-        <div class="carousel" id="carousel" data-total-pages={totalPages} data-interval={CAROUSEL_INTERVAL}>
+        <div
+          class="carousel pairings-carousel"
+          id="carousel"
+          data-total-pages={totalPages}
+          data-interval={CAROUSEL_INTERVAL}
+          data-dynamic-pagination="pairings"
+        >
           {pages.map((page, pageIdx) => (
-            <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
+            <div class:list={["carousel-page", "pairings-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
               {page.map((pairing, i) => (
-                <PresenterPairingCard pairing={pairing} index={i} lang={lang} />
+                <div class="pairings-item" data-carousel-item>
+                  <PresenterPairingCard pairing={pairing} index={i} lang={lang} />
+                </div>
               ))}
             </div>
           ))}
         </div>
-        {totalPages > 1 && (
-          <div class="carousel-footer">
-            <div class="page-dots" id="pageDots">
-              {pages.map((_, i) => (
-                <button
-                  class:list={["page-dot", { active: i === 0 }]}
-                  data-dot={i}
-                  aria-label={`Page ${i + 1}`}
-                />
-              ))}
-            </div>
-            <div class="progress-bar" id="progressBar">
-              <div class="progress-fill" id="progressFill"></div>
-            </div>
+        <div class:list={["carousel-footer", { hidden: totalPages <= 1 }]}>
+          <div class="page-dots" id="pageDots">
+            {pages.map((_, i) => (
+              <button
+                class:list={["page-dot", { active: i === 0 }]}
+                data-dot={i}
+                aria-label={`Page ${i + 1}`}
+              />
+            ))}
           </div>
-        )}
+          <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+        </div>
       </section>
     )}
       </div>
@@ -469,9 +470,21 @@ const autoRefresh = isTournamentLive(data?.info.date);
     height: 100%;
   }
 
-  .carousel-page {
-    gap: var(--space-2);
+  :global(.pairings-carousel) {
+    --pairings-card-min-width: var(--size-presenter-pairing-card-min-width);
+  }
+
+  :global(.pairings-carousel .carousel-page) {
+    gap: var(--space-8);
     padding: var(--space-2);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(var(--pairings-card-min-width), 1fr));
+    align-content: start;
+    grid-auto-rows: max-content;
+  }
+
+  :global(.pairings-item) {
+    min-width: 0;
   }
 
   .sponsor-placeholder {

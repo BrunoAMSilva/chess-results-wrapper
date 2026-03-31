@@ -1,25 +1,229 @@
+type CarouselInstance = ReturnType<typeof initCarousel>;
+
+function chunkElements<T>(items: T[], size: number): T[][] {
+  const safeSize = Math.max(1, size);
+  const chunks: T[][] = [];
+
+  for (let index = 0; index < items.length; index += safeSize) {
+    chunks.push(items.slice(index, index + safeSize));
+  }
+
+  return chunks;
+}
+
+function initDynamicPairingsPagination(
+  container: HTMLElement,
+  onRebuild: () => void,
+) {
+  const items = Array.from(container.querySelectorAll<HTMLElement>("[data-carousel-item]"));
+
+  if (items.length === 0) {
+    return { refresh: () => {}, disconnect: () => {} };
+  }
+
+  const measurePage = document.createElement("div");
+  measurePage.className = "carousel-page pairings-page carousel-measure";
+  measurePage.setAttribute("aria-hidden", "true");
+
+  let resizeFrame = 0;
+  let lastCapacity = 0;
+  let lastWidth = 0;
+  let lastHeight = 0;
+
+  function cloneItems(chunk: HTMLElement[]) {
+    return chunk.map((item) => item.cloneNode(true) as HTMLElement);
+  }
+
+  function measurePageFits(chunk: HTMLElement[], availableHeight: number): boolean {
+    measurePage.replaceChildren(...cloneItems(chunk));
+    return measurePage.scrollHeight <= availableHeight + 1;
+  }
+
+  function resolveItemsPerPage(): number {
+    const availableHeight = container.clientHeight;
+    const availableWidth = container.clientWidth;
+
+    if (availableHeight <= 0 || availableWidth <= 0) {
+      return lastCapacity || 1;
+    }
+
+    container.append(measurePage);
+
+    let upperBound = 1;
+    measurePage.replaceChildren(...cloneItems(items));
+
+    const visibleItems = Array.from(
+      measurePage.children as HTMLCollectionOf<HTMLElement>,
+    ).filter(
+      (item) => item.offsetTop + item.offsetHeight <= availableHeight + 1,
+    );
+
+    upperBound = Math.max(1, visibleItems.length);
+
+    for (let candidate = upperBound; candidate >= 1; candidate -= 1) {
+      const pages = chunkElements(items, candidate);
+      const fitsEveryPage = pages.every((page) => measurePageFits(page, availableHeight));
+
+      if (fitsEveryPage) {
+        measurePage.remove();
+        return candidate;
+      }
+    }
+
+    measurePage.remove();
+    return 1;
+  }
+
+  function rebuild() {
+    if (container.offsetParent === null && container.clientHeight === 0) {
+      return;
+    }
+
+    const currentWidth = container.clientWidth;
+    const currentHeight = container.clientHeight;
+    const nextCapacity = resolveItemsPerPage();
+    const sizeUnchanged =
+      nextCapacity === lastCapacity &&
+      currentWidth === lastWidth &&
+      currentHeight === lastHeight;
+
+    if (sizeUnchanged) {
+      return;
+    }
+
+    lastCapacity = nextCapacity;
+    lastWidth = currentWidth;
+    lastHeight = currentHeight;
+    const pages = chunkElements(items, nextCapacity);
+    const fragment = document.createDocumentFragment();
+
+    pages.forEach((pageItems, pageIndex) => {
+      const page = document.createElement("div");
+      page.className = "carousel-page pairings-page";
+      page.dataset.page = String(pageIndex);
+
+      if (pageIndex === 0) {
+        page.classList.add("active");
+      }
+
+      page.append(...pageItems);
+      fragment.append(page);
+    });
+
+    container.replaceChildren(fragment);
+    container.dataset.totalPages = String(pages.length);
+    onRebuild();
+  }
+
+  const resizeObserver = new ResizeObserver(() => {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(rebuild);
+  });
+
+  resizeObserver.observe(container);
+
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(() => rebuild()).catch(() => rebuild());
+  }
+
+  rebuild();
+
+  return {
+    refresh: rebuild,
+    disconnect: () => {
+      cancelAnimationFrame(resizeFrame);
+      resizeObserver.disconnect();
+      measurePage.remove();
+    },
+  };
+}
+
 function initCarousel(container: HTMLElement) {
-  const totalPages = parseInt(container.dataset.totalPages || "1");
   const interval = parseInt(container.dataset.interval || "10") * 1000;
-  const pages = container.querySelectorAll<HTMLElement>(".carousel-page");
   const wrapper = container.closest("[data-carousel-group]") || container.parentElement!;
-  const dots = wrapper.querySelectorAll<HTMLElement>(".page-dot");
+  const dotsContainer = wrapper.querySelector<HTMLElement>(".page-dots");
+  const footer = wrapper.querySelector<HTMLElement>(".carousel-footer");
   const progressFill = wrapper.querySelector<HTMLElement>(".progress-fill");
   let current = 0;
   let timer: ReturnType<typeof setInterval> | null = null;
   let animFrame: number = 0;
+  let dynamicPagination:
+    | { refresh: () => void; disconnect: () => void }
+    | null = null;
+
+  function getPages() {
+    return Array.from(container.querySelectorAll<HTMLElement>(".carousel-page"));
+  }
+
+  function getTotalPages() {
+    return getPages().length;
+  }
+
+  function renderDots() {
+    if (!dotsContainer) {
+      return;
+    }
+
+    const totalPages = getTotalPages();
+    const existingDots = Array.from(dotsContainer.querySelectorAll<HTMLElement>(".page-dot"));
+
+    if (existingDots.length === totalPages) {
+      existingDots.forEach((dot, index) => {
+        dot.dataset.dot = String(index);
+        dot.setAttribute("aria-label", `Page ${index + 1}`);
+      });
+      return;
+    }
+
+    dotsContainer.replaceChildren();
+
+    for (let index = 0; index < totalPages; index += 1) {
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.className = "page-dot";
+      dot.dataset.dot = String(index);
+      dot.setAttribute("aria-label", `Page ${index + 1}`);
+      dotsContainer.append(dot);
+    }
+  }
+
+  function syncFooter() {
+    const totalPages = getTotalPages();
+
+    if (footer) {
+      footer.classList.toggle("hidden", totalPages <= 1);
+    }
+
+    if (progressFill && totalPages <= 1) {
+      progressFill.style.transition = "none";
+      progressFill.style.width = "0%";
+    }
+  }
 
   function showPage(idx: number) {
+    const pages = getPages();
+    const totalPages = pages.length;
+
+    if (totalPages === 0) {
+      return;
+    }
+
+    const nextIndex = ((idx % totalPages) + totalPages) % totalPages;
+
     pages.forEach((p, i) => {
-      p.classList.toggle("active", i === idx);
-      p.classList.toggle("exit", i !== idx);
+      p.classList.toggle("active", i === nextIndex);
+      p.classList.toggle("exit", i !== nextIndex);
     });
-    dots.forEach((d, i) => d.classList.toggle("active", i === idx));
-    current = idx;
+    dotsContainer
+      ?.querySelectorAll<HTMLElement>(".page-dot")
+      .forEach((dot, i) => dot.classList.toggle("active", i === nextIndex));
+    current = nextIndex;
     startProgress();
   }
 
   function startProgress() {
+    const totalPages = getTotalPages();
+
     if (!progressFill || totalPages <= 1) return;
     cancelAnimationFrame(animFrame);
     progressFill.style.transition = "none";
@@ -32,10 +236,12 @@ function initCarousel(container: HTMLElement) {
   }
 
   function nextPage() {
-    showPage((current + 1) % totalPages);
+    showPage(current + 1);
   }
 
   function start() {
+    const totalPages = getTotalPages();
+
     if (totalPages > 1 && !timer) {
       timer = setInterval(nextPage, interval);
       startProgress();
@@ -50,24 +256,72 @@ function initCarousel(container: HTMLElement) {
     cancelAnimationFrame(animFrame);
   }
 
-  if (totalPages > 1) {
-    start();
+  function refresh(resetIndex = false) {
+    renderDots();
+    syncFooter();
 
-    dots.forEach((dot) => {
-      dot.addEventListener("click", () => {
-        stop();
-        showPage(parseInt(dot.dataset.dot || "0"));
-        start();
-      });
+    if (resetIndex) {
+      current = 0;
+    }
+
+    const totalPages = getTotalPages();
+
+    if (totalPages === 0) {
+      stop();
+      return;
+    }
+
+    if (current >= totalPages) {
+      current = totalPages - 1;
+    }
+
+    showPage(current);
+  }
+
+  dotsContainer?.addEventListener("click", (event) => {
+    const target = event.target;
+
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const dot = target.closest<HTMLElement>(".page-dot");
+
+    if (!dot) {
+      return;
+    }
+
+    stop();
+    showPage(parseInt(dot.dataset.dot || "0"));
+    start();
+  });
+
+  if (container.dataset.dynamicPagination === "pairings") {
+    dynamicPagination = initDynamicPairingsPagination(container, () => {
+      stop();
+      refresh(true);
+      start();
     });
   }
 
-  return { start, stop, showPage };
+  refresh(true);
+  start();
+
+  return {
+    start,
+    stop,
+    showPage,
+    refresh,
+    disconnect() {
+      stop();
+      dynamicPagination?.disconnect();
+    },
+  };
 }
 
 // Initialize all carousels on the page
 const carousels = document.querySelectorAll<HTMLElement>(".carousel");
-const instances = new Map<string, ReturnType<typeof initCarousel>>();
+const instances = new Map<string, CarouselInstance>();
 
 carousels.forEach((el) => {
   const instance = initCarousel(el);
@@ -144,3 +398,7 @@ if (tabContainer) {
   // Stop women carousel initially (it starts hidden)
   instances.get("womenCarousel")?.stop();
 }
+
+window.addEventListener("beforeunload", () => {
+  instances.forEach((instance) => instance.disconnect());
+});

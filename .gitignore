@@ -38,4 +38,4 @@ data/*.db-shm
 
 # test fixtures (downloaded HTML - large files)
 # tests/fixtures/*.html
-*.png
+/*.png

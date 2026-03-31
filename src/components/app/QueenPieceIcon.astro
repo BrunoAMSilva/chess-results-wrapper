@@ -1,0 +1,95 @@
+---
+interface Props {
+  tone?: "white" | "black";
+  size?: "sm" | "md" | "lg";
+  decorative?: boolean;
+}
+
+const { tone = "white", size = "lg", decorative = true } = Astro.props;
+const label = tone === "white" ? "White queen" : "Black queen";
+---
+
+<span class:list={["queen-piece-icon", tone, size]}>
+  <svg
+    viewBox="0 0 512 512"
+    aria-hidden={decorative ? "true" : undefined}
+    aria-label={decorative ? undefined : label}
+    role={decorative ? undefined : "img"}
+    focusable="false"
+  >
+    <path
+      class="queen-shape queen-stroke"
+      d="M477.518 181.966a25 25 0 0 1-34.91 23l-62.29 150.26h-248.92l-62.24-150.19a25 25 0 1 1 9.73-7.29l87 71.2 20.92-126.4a25 25 0 1 1 14.7-1.85l54.31 117 54.42-117.3a25 25 0 1 1 14.58 2.08l20.93 126.42 87.26-71.3a25 25 0 1 1 44.51-15.63zm-71.66 241.25h-300v60h300v-60zm-27.75-52h-244.22v36h244.22v-36z"
+    ></path>
+    <path
+      class="queen-shape queen-fill"
+      d="M477.518 181.966a25 25 0 0 1-34.91 23l-62.29 150.26h-248.92l-62.24-150.19a25 25 0 1 1 9.73-7.29l87 71.2 20.92-126.4a25 25 0 1 1 14.7-1.85l54.31 117 54.42-117.3a25 25 0 1 1 14.58 2.08l20.93 126.42 87.26-71.3a25 25 0 1 1 44.51-15.63zm-71.66 241.25h-300v60h300v-60zm-27.75-52h-244.22v36h244.22v-36z"
+    ></path>
+  </svg>
+
+  <style>
+    .queen-piece-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      line-height: 0;
+    }
+
+    .queen-piece-icon svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .queen-shape {
+      transform-origin: center;
+    }
+
+    .queen-fill {
+      fill: var(--queen-fill);
+    }
+
+    .queen-stroke {
+      fill: none;
+      stroke: var(--queen-stroke);
+      stroke-width: 1.3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .white {
+      --queen-fill: var(--neutral-50);
+      --queen-stroke: var(--neutral-900);
+    }
+
+    .black {
+      --queen-fill: var(--neutral-900);
+      --queen-stroke: var(--neutral-50);
+    }
+
+    .sm {
+      width: var(--space-6);
+      height: var(--space-6);
+    }
+
+    .md {
+      width: var(--space-8);
+      height: var(--space-8);
+    }
+
+    .lg {
+      width: calc(var(--space-8) + var(--space-2));
+      height: calc(var(--space-8) + var(--space-2));
+    }
+
+    @media (forced-colors: active) {
+      .white,
+      .black {
+        --queen-fill: Canvas;
+        --queen-stroke: CanvasText;
+      }
+    }
+  </style></span
+>
