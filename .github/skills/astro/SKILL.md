@@ -9,9 +9,9 @@ metadata:
     - react
     - typescript
   dependencies:
-    astro: "6.0.0"
+    astro: ">=5.0.0 <6.0.0"
     typescript: ">=5.0.0 <6.0.0"
-    react: "19.0.0"
+    react: ">=18.0.0 <19.0.0"
 ---
 
 # Astro

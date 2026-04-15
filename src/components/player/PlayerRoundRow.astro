@@ -18,7 +18,6 @@ const t = useTranslations(lang);
 
 const isWhite = color === "white";
 
-// Determine result class for styling
 type ResultType = "win" | "loss" | "draw" | "pending";
 let resultType: ResultType = "pending";
 
@@ -33,179 +32,337 @@ if (result) {
   }
 }
 
-// Extract the player's score from the result
-let playerScore = "-";
-if (result) {
-  const normalize = result.replace(/\s+/g, "");
-  if (normalize.includes("1-0") || normalize.includes("1:0")) {
-    playerScore = isWhite ? "1" : "0";
-  } else if (normalize.includes("0-1") || normalize.includes("0:1")) {
-    playerScore = isWhite ? "0" : "1";
-  } else if (normalize.includes("½") || normalize.includes("1/2") || normalize.includes("0.5")) {
-    playerScore = "½";
-  }
-}
-
 const displayName = isBye ? t("player.bye") : reverseName(opponent);
+const roundLabel = String(round).padStart(2, "0");
+
+// The layout assumes pending matches have different styling
+const isPending = resultType === "pending";
 ---
 
-<div
-  class:list={["round-row", resultType]}
-  style={`--delay: ${index * 50}ms`}
->
-  <div class="round-col">
-    <span class="round-num">{round}</span>
-  </div>
+<div class:list={["round-card-modern", resultType]} style={`--delay: ${index * 50}ms`}>
+  <div class="card-indicator"></div>
+  
+  <div class="card-left-group">
+    <div class="round-num-block">
+      <span class:list={["rnd-num-modern", resultType]}>{roundLabel}</span>
+      <span class="rnd-label-modern">{t("standings.rnd") || "ROUND"}</span>
+    </div>
 
-  <div class="opponent-col">
-    <div class="opponent-info">
-      <span class="piece-icon" class:list={[{ "white-piece": isWhite, "black-piece": !isWhite }]}></span>
-      <span class:list={["opponent-name", { "bye-text": isBye }]}>{displayName}</span>
+    <div class="card-divider-modern"></div>
+
+    <div class="opponent-block">
+      <div class="opp-header">
+        <span class="opp-label">{t("player.opponent")}</span>
+        <span class="material-symbols-outlined icon-flag">flag</span>
+      </div>
+      <h4 class:list={["opp-name-modern", { "bye-text": isBye, "pending-text": isPending && !isBye }]}>
+        {displayName}
+      </h4>
+      <p class="opp-sub">
+        {isBye ? t("player.notPlayed") : isPending ? String(t("player.table") || "Table") + " " + table : ""}
+      </p>
     </div>
   </div>
 
-  <div class="result-col">
-    <span class:list={["result-badge", resultType]}>{playerScore}</span>
-  </div>
+  <div class="card-right-group">
+    {!isBye && (
+      <div class="data-col">
+        <span class="data-label">COLOR</span>
+        <span class:list={["color-badge", isWhite ? "white" : "black"]}>
+          {isWhite ? t("player.white") : t("player.black")}
+        </span>
+      </div>
+    )}
 
-  <div class="table-col">
-    <span class="table-num">{isBye ? "-" : table}</span>
+    {isPending && !isBye ? (
+      <button class="view-details-btn">
+        View Details
+      </button>
+    ) : (
+      <div class="data-col">
+        <span class="data-label">RESULT</span>
+        <div class:list={["result-badge", resultType]}>
+          <span class="result-text">{result || "–"}</span>
+        </div>
+      </div>
+    )}
   </div>
 </div>
 
-<style>
-  .round-row {
-    display: grid;
-    grid-template-columns: 48px 1fr 48px 48px;
-    align-items: center;
-    background: var(--surface);
-    min-height: 52px;
+<style is:global>
+  .round-card-modern {
+    position: relative;
+    overflow: hidden;
+    background: var(--surface-container-high);
+    border-radius: var(--radius-xl);
+    padding: var(--space-8);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-6);
+    transition: background-color var(--duration-fast);
     animation: fadeInUp var(--duration-slow) ease both;
     animation-delay: var(--delay);
-    color: var(--text);
+    margin-bottom: var(--space-4);
   }
 
-  .round-row:last-child {
+  .round-card-modern:hover {
+    background: var(--surface-hover);
   }
 
-  .round-row.win {
-    border-left: 3px solid var(--win);
+  .round-card-modern:active {
+    transform: scale(0.98);
+    transition: transform 200ms;
   }
 
-  .round-row.loss {
-    border-left: 3px solid var(--loss);
+  /* Pending specific styling */
+  .round-card-modern.pending {
+    background: var(--surface-container-low);
+    border: 1px solid var(--outline-variant);
+  }
+  
+  .card-indicator {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--outline-variant);
+    opacity: 0.5;
   }
 
-  .round-row.draw {
-    border-left: 3px solid var(--draw);
+  .round-card-modern.win .card-indicator {
+    background: var(--primary-container);
+    opacity: 1;
   }
-
-  .round-row.pending {
-    border-left: 3px solid var(--border);
-  }
-
-  .round-col {
+  
+  .card-left-group {
     display: flex;
-    justify-content: center;
+    align-items: center;
+    gap: var(--space-8);
+    width: 100%;
+  }
+
+  .round-num-block {
+    display: flex;
+    flex-direction: column;
     align-items: center;
   }
 
-  .round-num {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
-    color: var(--text-dim);
+  .rnd-num-modern {
+    font-family: var(--font-display);
+    font-weight: var(--weight-extrabold);
+    font-size: var(--text-4xl);
+    color: var(--text-secondary);
+    opacity: 0.5;
   }
 
-  .opponent-col {
+  .rnd-num-modern.win {
+    color: var(--accent);
+    opacity: 1;
+  }
+
+  .rnd-num-modern.pending {
+    opacity: 0.3;
+  }
+
+  .rnd-label-modern {
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-widest);
+    text-align: center;
+  }
+
+  .rnd-num-modern.pending + .rnd-label-modern {
+    opacity: 0.3;
+  }
+
+  .card-divider-modern {
+    display: none;
+    height: 48px;
+    width: 1px;
+    background: var(--outline-variant);
+    opacity: 0.3;
+  }
+
+  .opponent-block {
     display: flex;
-    align-items: center;
-    min-width: 0;
-    overflow: hidden;
-    padding: 0 var(--space-2);
+    flex-direction: column;
   }
 
-  .opponent-info {
+  .opp-header {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    min-width: 0;
+    margin-bottom: var(--space-1);
   }
 
-  .piece-icon {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-
-  .white-piece {
-    background: linear-gradient(135deg, var(--white-piece) 0%, var(--neutral-200) 100%);
-  }
-
-  .black-piece {
-    background: linear-gradient(135deg, var(--black-piece) 0%, var(--neutral-800) 100%);
-  }
-
-  .opponent-name {
-    font-size: var(--text-sm);
+  .opp-label {
+    color: var(--text-secondary);
+    font-size: var(--text-xs);
     font-weight: var(--weight-medium);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wider);
+  }
+
+  .icon-flag {
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+  }
+
+  .opp-name-modern {
+    font-family: var(--font-display);
+    font-weight: var(--weight-bold);
+    font-size: var(--text-xl);
     color: var(--text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    margin: 0;
   }
 
-  .bye-text {
-    color: var(--text-dim);
+  .opp-name-modern.pending-text {
+    opacity: 0.5;
+  }
+
+  .opp-name-modern.bye-text {
     font-style: italic;
+    opacity: 0.7;
   }
 
-  .result-col {
+  .opp-sub {
+    color: var(--text-secondary);
+    font-size: var(--text-sm);
+    font-family: var(--font-sans);
+    letter-spacing: var(--tracking-wide);
+    margin: 0;
+  }
+
+  .card-right-group {
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: space-between;
+    gap: var(--space-12);
+    width: 100%;
+  }
+
+  .data-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .data-label {
+    font-size: 10px;
+    font-family: var(--font-sans);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-widest);
+  }
+
+  .color-badge {
+    padding: var(--space-2) var(--space-5);
+    border-radius: var(--radius-full);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    font-family: var(--font-display);
+    text-transform: uppercase;
+  }
+
+  .color-badge.white {
+    background: var(--on-surface);
+    color: var(--bg);
+  }
+
+  .color-badge.black {
+    background: var(--surface-container-highest);
+    color: var(--on-surface);
+    border: 1px solid var(--border-strong);
   }
 
   .result-badge {
+    padding: var(--space-2) var(--space-5);
+    border-radius: var(--radius-lg);
+    background: var(--surface-container-highest);
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
-    border-radius: var(--radius-sm);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-bold);
+    min-width: 80px;
   }
 
   .result-badge.win {
-    background: var(--win-subtle);
-    color: var(--win);
+    background: #cdd8e0;
+  }
+  .result-badge.win .result-text {
+    color: #1a1a24;
   }
 
   .result-badge.loss {
-    background: var(--loss-subtle);
-    color: var(--loss);
+    background: #e7bdb1;
+  }
+  .result-badge.loss .result-text {
+    color: #1a1a24;
   }
 
   .result-badge.draw {
-    background: var(--draw-subtle);
-    color: var(--draw);
-  }
-
-  .result-badge.pending {
     background: var(--surface-container-highest);
-    color: var(--text-dim);
+  }
+  .result-badge.draw .result-text {
+    color: var(--text);
+  }
+  
+  .result-text {
+    font-family: var(--font-display);
+    font-weight: var(--weight-extrabold);
+    font-size: var(--text-xl);
+    color: var(--text);
+    white-space: nowrap;
+    line-height: var(--leading-none);
+    letter-spacing: 0.05em;
   }
 
-  .table-col {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  .view-details-btn {
+    background: var(--primary-container);
+    color: var(--on-primary-fixed);
+    font-weight: var(--weight-bold);
+    padding: var(--space-3) var(--space-6);
+    border-radius: var(--radius-lg);
+    font-size: var(--text-base);
+    transition: all var(--duration-fast);
+    width: 100%;
   }
 
-  .table-num {
-    font-size: var(--text-xs);
-    color: var(--text-dim);
-    font-weight: var(--weight-medium);
+  .view-details-btn:hover {
+    filter: brightness(1.1);
+  }
+
+  .view-details-btn:active {
+    transform: scale(0.95);
+  }
+
+  /* Responsive layout: row on larger screens */
+  @media (min-width: 768px) {
+    .round-card-modern {
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .card-left-group {
+      width: auto;
+    }
+
+    .card-divider-modern {
+      display: block;
+    }
+
+    .card-right-group {
+      width: auto;
+      justify-content: flex-end;
+    }
+
+    .view-details-btn {
+      width: auto;
+    }
   }
 </style>
