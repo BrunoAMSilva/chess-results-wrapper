@@ -1,6 +1,6 @@
 ---
 import type { Standing } from "../../lib/scraper";
-import { reverseName } from "../../lib/utils";
+import { reverseName, federationFlag } from "../../lib/utils";
 import { useTranslations } from "../../i18n/ui";
 import TieBreaks from "./TieBreaks.astro";
 
@@ -42,7 +42,7 @@ const attributes = tid
   <div class="player-info">
     <span class="player-name">{playerDisplayName}</span>
     <span class="player-fed">
-      {standing.fed}
+      {standing.fed && <span aria-label={standing.fed} title={standing.fed}>{federationFlag(standing.fed)}</span>}
       {
         standing.rating && standing.rating !== "0" && (
           <Fragment> • {standing.rating}</Fragment>

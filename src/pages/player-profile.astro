@@ -8,7 +8,7 @@ import { useTranslations } from "../i18n/ui";
 import { findPlayerByIdentity, getPlayerById, getPlayerResultRows, getPlayerTournamentHistory } from "../lib/db";
 import { scrapeStandings } from "../lib/scraper";
 import { resolvePageLang } from "../lib/page-lang";
-import { reverseName } from "../lib/utils";
+import { reverseName, federationFlag } from "../lib/utils";
 import type { DbPlayer, DbPlayerTournamentHistory } from "../lib/types";
 
 const idParam = Astro.url.searchParams.get("id") || "";
@@ -108,7 +108,7 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
         </div>
         <div class="identity-item">
           <dt>{t("player.profile.federation")}</dt>
-          <dd>{player.federation || "-"}</dd>
+          <dd>{player.federation ? <span title={player.federation}>{federationFlag(player.federation)} {player.federation}</span> : "-"}</dd>
         </div>
         <div class="identity-item">
           <dt>{t("player.profile.sex")}</dt>

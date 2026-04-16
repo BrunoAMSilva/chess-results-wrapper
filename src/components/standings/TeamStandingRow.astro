@@ -1,6 +1,6 @@
 ---
 import type { TeamStanding } from "../../lib/types";
-import { reverseName } from "../../lib/utils";
+import { reverseName, federationFlag } from "../../lib/utils";
 import { useTranslations } from "../../i18n/ui";
 import TieBreaks from "./TieBreaks.astro";
 
@@ -58,7 +58,7 @@ const delayClass = `delay-${delayStep}`;
           <div class="player-info">
             <span class="player-name">{reverseName(p.name)}</span>
             <span class="player-meta">
-              {p.fed && <Fragment>{p.fed}</Fragment>}
+              {p.fed && <span aria-label={p.fed} title={p.fed}>{federationFlag(p.fed)}</span>}
               {p.rating && p.rating !== "0" && (
                 <Fragment> • {p.rating}</Fragment>
               )}
