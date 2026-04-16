@@ -31,10 +31,19 @@ export interface XmlExportParams {
   resultsMap: Record<number, string>;
   /** Map from starting_number → national_id */
   nationalIds: Record<number, string>;
+  /**
+   * Which Swiss-Manager import format to produce.
+   * - `'results'` (default): `<Results>` root — for "Import Player-Results"
+   * - `'team-compositions'`: `<TeamCompositions>` root — for "Import Teamcompositions"
+   */
+  format?: 'results' | 'team-compositions';
 }
 
 /**
  * Build Swiss-Manager compatible XML for referee result export.
+ *
+ * Produces a single valid XML document matching one of the Swiss-Manager
+ * import formats (see {@link XmlExportParams.format}).
  *
  * Key conventions:
  * - Individual tournaments: p.white/p.black are actual board White/Black.
@@ -43,11 +52,10 @@ export interface XmlExportParams {
  *   even boards → away has White.
  * - Referee results are entered from left-player (home) perspective.
  * - "Result" Res is from actual White's perspective.
- * - "TeamComposition" Res is from the individual player's perspective.
  * - Player IDs use national_id when available, falling back to starting number.
  */
 export function buildRefereeExportXml(params: XmlExportParams): string {
-  const { round, teamPairings, allPairings, resultsMap, nationalIds } = params;
+  const { round, teamPairings, allPairings, resultsMap, nationalIds, format = 'results' } = params;
 
   function resolvePlayerId(startingNumber: number): string {
     return nationalIds[startingNumber] || String(startingNumber || 0);
@@ -69,85 +77,68 @@ export function buildRefereeExportXml(params: XmlExportParams): string {
   }
 
   const lines: string[] = [];
-  lines.push('<?xml version="1.0" encoding="utf-8"?>');
+  lines.push('<?xml version="1.0" encoding="UTF-8"?>');
 
-  // ── Team Compositions (team tournaments only) ──────────────────────────────
-
-  if (teamPairings.length > 0) {
+  if (format === 'team-compositions') {
+    // ── Team Compositions ──────────────────────────────────────────────────
     lines.push('<TeamCompositions>');
     for (const tm of teamPairings) {
       const homeTeamId = resolveTeamId(tm.whiteTeam);
       const awayTeamId = resolveTeamId(tm.blackTeam);
 
       for (const b of tm.boards) {
-        const res = resultsMap[b.table] ?? '';
-        const smRes = mapResult(res);
         const boardNum = b.table % 100;
 
-        // Determine actual board colors for this board.
-        // In chess-results team tournaments, odd boards: home team has White;
-        // even boards: away team has White.
-        const homeHasWhite = boardNum % 2 === 1;
-        const boardWhiteTeamId = homeHasWhite ? homeTeamId : awayTeamId;
-        const boardBlackTeamId = homeHasWhite ? awayTeamId : homeTeamId;
-
         // Home team player entry (b.white = home team player).
-        // smRes = referee result from home player's perspective = this player's perspective.
         lines.push(
-          `<TeamComposition Round="${round}" PlayerId="${resolvePlayerId(b.white.number)}" Board="${boardNum}" Res="${smRes}"` +
-            ` TeamUniqueId="${homeTeamId}" TeamUniqueId2="${awayTeamId}"` +
-            ` TeamUniqueIdWhite="${boardWhiteTeamId}" TeamUniqueIdBlack="${boardBlackTeamId}"/>`,
+          `<TeamComposition Round="${round}" TeamUniqueId="${homeTeamId}" Board="${boardNum}" PlayerId="${resolvePlayerId(b.white.number)}"/>`,
         );
 
         // Away team player entry (b.black = away team player).
-        // Result is inverted (away perspective).
         if (b.black) {
           lines.push(
-            `<TeamComposition Round="${round}" PlayerId="${resolvePlayerId(b.black.number)}" Board="${boardNum}" Res="${invertResult(smRes)}"` +
-              ` TeamUniqueId="${awayTeamId}" TeamUniqueId2="${homeTeamId}"` +
-              ` TeamUniqueIdWhite="${boardWhiteTeamId}" TeamUniqueIdBlack="${boardBlackTeamId}"/>`,
+            `<TeamComposition Round="${round}" TeamUniqueId="${awayTeamId}" Board="${boardNum}" PlayerId="${resolvePlayerId(b.black.number)}"/>`,
           );
         }
       }
     }
     lines.push('</TeamCompositions>');
-  }
-
-  // ── Results ────────────────────────────────────────────────────────────────
-
-  lines.push('<Results>');
-
-  if (teamPairings.length > 0) {
-    // Team tournament: b.white/b.black are home/away — resolve actual board colors.
-    for (const p of allPairings) {
-      const res = resultsMap[p.table] ?? '';
-      const smRes = mapResult(res);
-      const boardNum = p.table % 100;
-      const homeHasWhite = boardNum % 2 === 1;
-
-      // Determine actual White/Black player numbers
-      const actualWhiteNum = homeHasWhite ? p.white.number : (p.black?.number || 0);
-      const actualBlackNum = homeHasWhite ? (p.black?.number || 0) : p.white.number;
-
-      // smRes is from home perspective; convert to actual White's perspective
-      const whiteRes = homeHasWhite ? smRes : invertResult(smRes);
-
-      lines.push(
-        `<Result Round="${round}" PlayerWhiteId="${resolvePlayerId(actualWhiteNum)}" PlayerBlackId="${resolvePlayerId(actualBlackNum)}" Res="${whiteRes}" />`,
-      );
-    }
   } else {
-    // Individual tournament: p.white/p.black are actual White/Black
-    for (const p of allPairings) {
-      const res = resultsMap[p.table] ?? '';
-      const smRes = mapResult(res);
-      lines.push(
-        `<Result Round="${round}" PlayerWhiteId="${resolvePlayerId(p.white.number)}" PlayerBlackId="${resolvePlayerId(p.black?.number || 0)}" Res="${smRes}" />`,
-      );
-    }
-  }
+    // ── Results (default) ────────────────────────────────────────────────────
+    lines.push('<Results>');
 
-  lines.push('</Results>');
+    if (teamPairings.length > 0) {
+      // Team tournament: b.white/b.black are home/away — resolve actual board colors.
+      for (const p of allPairings) {
+        const res = resultsMap[p.table] ?? '';
+        const smRes = mapResult(res);
+        const boardNum = p.table % 100;
+        const homeHasWhite = boardNum % 2 === 1;
+
+        // Determine actual White/Black player numbers
+        const actualWhiteNum = homeHasWhite ? p.white.number : (p.black?.number || 0);
+        const actualBlackNum = homeHasWhite ? (p.black?.number || 0) : p.white.number;
+
+        // smRes is from home perspective; convert to actual White's perspective
+        const whiteRes = homeHasWhite ? smRes : invertResult(smRes);
+
+        lines.push(
+          `<Result Round="${round}" PlayerWhiteId="${resolvePlayerId(actualWhiteNum)}" PlayerBlackId="${resolvePlayerId(actualBlackNum)}" Res="${whiteRes}" />`,
+        );
+      }
+    } else {
+      // Individual tournament: p.white/p.black are actual White/Black
+      for (const p of allPairings) {
+        const res = resultsMap[p.table] ?? '';
+        const smRes = mapResult(res);
+        lines.push(
+          `<Result Round="${round}" PlayerWhiteId="${resolvePlayerId(p.white.number)}" PlayerBlackId="${resolvePlayerId(p.black?.number || 0)}" Res="${smRes}" />`,
+        );
+      }
+    }
+
+    lines.push('</Results>');
+  }
 
   return lines.join('\n');
 }

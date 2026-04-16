@@ -26,7 +26,8 @@ const isProfile = currentPath === "/player-profile";
 const isOptions = currentPath === "/options";
 const isReferee = currentPath.startsWith("/referee") || navMode === "referee";
 const isRefereeResults = /^\/referee\/[^\/]+\/results$/.test(currentPath);
-const isRefereeTables = !!refereeTid && !isRefereeResults && !isOptions;
+const isRefereeSettings = /^\/referee\/[^\/]+\/settings$/.test(currentPath);
+const isRefereeTables = !!refereeTid && !isRefereeResults && !isRefereeSettings && !isOptions;
 
 // Contextual back URL for referee pages: go one path level up
 const round = Astro.url.searchParams.get("round");
@@ -169,6 +170,26 @@ if (isOptions && navMode === "referee" && tid) {
               <polyline points="10 9 9 9 8 9"></polyline>
             </svg>
             <span>{t('referee.results')}</span>
+          </a>
+          <a
+            href={tid ? `/referee/${tid}/settings?lang=${lang}` : `/referee?lang=${lang}`}
+            class:list={["nav-item", { active: isRefereeSettings }]}
+            aria-current={isRefereeSettings ? "page" : undefined}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="22"
+              height="22"
+              stroke="currentColor"
+              stroke-width="2"
+              fill="none"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span>{t('referee.upload')}</span>
           </a>
           <a
             href={`/options?${tid ? `tid=${tid}&` : ''}lang=${lang}&mode=referee`}

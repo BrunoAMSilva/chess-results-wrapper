@@ -7,6 +7,8 @@ import type { Pairing, TeamPairing } from "../../lib/types";
 export const GET: APIRoute = async ({ url }) => {
   const tid = url.searchParams.get("tid");
   const roundStr = url.searchParams.get("round");
+  const formatParam = url.searchParams.get("format");
+  const format = formatParam === "team-compositions" ? "team-compositions" as const : "results" as const;
 
   if (!tid) {
     return new Response(JSON.stringify({ error: "Missing tid" }), {
@@ -61,12 +63,17 @@ export const GET: APIRoute = async ({ url }) => {
       allPairings,
       resultsMap,
       nationalIds,
+      format,
     });
+
+    const filename = format === 'team-compositions'
+      ? `round-${round}-team-compositions.xml`
+      : `round-${round}-results.xml`;
 
     return new Response(xml, {
       headers: {
         "Content-Type": "application/xml; charset=utf-8",
-        "Content-Disposition": `attachment; filename="round-${round}-results.xml"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "no-store",
       },
     });

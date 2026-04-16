@@ -10,6 +10,31 @@
 			"label": "Run all unit tests",
 			"type": "shell",
 			"command": "npx vitest run"
+		},
+		{
+			"label": "Verify tests",
+			"type": "shell",
+			"command": "npx vitest run tests/unit/chess-results-upload.test.ts tests/unit/db.test.ts"
+		},
+		{
+			"label": "Run tests final",
+			"type": "shell",
+			"command": "npx vitest run tests/unit/chess-results-upload.test.ts tests/unit/db.test.ts"
+		},
+		{
+			"label": "Run xml-export tests",
+			"type": "shell",
+			"command": "npx vitest run tests/unit/xml-export.test.ts"
+		},
+		{
+			"label": "Run xml-export tests 2",
+			"type": "shell",
+			"command": "npx vitest run tests/unit/xml-export.test.ts"
+		},
+		{
+			"label": "Run all tests",
+			"type": "shell",
+			"command": "npx vitest run 2>&1 | tail -30"
 		}
 	]
 }

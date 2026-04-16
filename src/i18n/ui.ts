@@ -186,6 +186,8 @@ export const ui = {
     'referee.sidSave': 'Save SID',
     'referee.sidInvalid': 'SID must be exactly 32 hexadecimal characters.',
     'referee.sidSaved': 'SID saved successfully!',
+    'referee.copyResults': 'Copy Results',
+    'referee.copied': 'Copied!',
   },
   10: {
     'site.title': 'Emparceiramentos',
@@ -364,6 +366,8 @@ export const ui = {
     'referee.sidSave': 'Guardar SID',
     'referee.sidInvalid': 'O SID deve ter exatamente 32 caracteres hexadecimais.',
     'referee.sidSaved': 'SID guardado com sucesso!',
+    'referee.copyResults': 'Copiar Resultados',
+    'referee.copied': 'Copiado!',
   },
   0: {
     'site.title': 'Schachpaarungen',
@@ -542,6 +546,8 @@ export const ui = {
     'referee.sidSave': 'SID speichern',
     'referee.sidInvalid': 'Die SID muss genau 32 hexadezimale Zeichen haben.',
     'referee.sidSaved': 'SID erfolgreich gespeichert!',
+    'referee.copyResults': 'Ergebnisse kopieren',
+    'referee.copied': 'Kopiert!',
   },
   2: {
     'site.title': 'Emparejamientos',
@@ -720,6 +726,8 @@ export const ui = {
     'referee.sidSave': 'Guardar SID',
     'referee.sidInvalid': 'El SID debe tener exactamente 32 caracteres hexadecimales.',
     'referee.sidSaved': '¡SID guardado con éxito!',
+    'referee.copyResults': 'Copiar Resultados',
+    'referee.copied': '¡Copiado!',
   },
   20: {
     'site.title': 'Appariements',
@@ -898,6 +906,8 @@ export const ui = {
     'referee.sidSave': 'Enregistrer SID',
     'referee.sidInvalid': 'Le SID doit comporter exactement 32 caractères hexadécimaux.',
     'referee.sidSaved': 'SID enregistré avec succès !',
+    'referee.copyResults': 'Copier les résultats',
+    'referee.copied': 'Copié !',
   },
 } as const;
 

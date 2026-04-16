@@ -249,6 +249,21 @@ for (const entry of uploadLog) {
                   {t("referee.exportXml")}
                 </ActionButton>
               )}
+              {hasExport && (
+                <ActionButton
+                  id="copyResultsBtn"
+                  class="copy-btn"
+                  type="button"
+                  variant="secondary"
+                  size="compact"
+                  pill
+                  data-section={sec.name}
+                  data-round={String(activeRound)}
+                  data-copied={t("referee.copied")}
+                >
+                  {t("referee.copyResults")}
+                </ActionButton>
+              )}
               {hasExport && hasSid && (
                 <ActionButton
                   id="uploadBtn"
@@ -390,6 +405,58 @@ for (const entry of uploadLog) {
           btn.textContent = btn.getAttribute("data-label") || "Upload";
           alert("Network error");
         });
+    });
+  }
+
+  // Copy results as text for organizer
+  var copyBtn = document.getElementById("copyResultsBtn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", function() {
+      var section = copyBtn.getAttribute("data-section") || "";
+      var round = copyBtn.getAttribute("data-round") || "";
+      var copiedLabel = copyBtn.getAttribute("data-copied") || "Copied!";
+      var originalLabel = copyBtn.textContent;
+
+      var rows = document.querySelectorAll(".results-row.submitted");
+      var lines = [];
+      lines.push(section + " — Round " + round);
+      lines.push("");
+
+      rows.forEach(function(row) {
+        var table = row.querySelector(".table-badge");
+        var white = row.querySelector(".player-white");
+        var black = row.querySelector(".player-black");
+        var result = row.querySelector(".result-badge");
+        if (table && white && result) {
+          var t = table.textContent.trim();
+          var w = white.textContent.trim();
+          var b = black ? black.textContent.trim() : "—";
+          var r = result.textContent.trim();
+          lines.push(t + ". " + w + " – " + b + "  " + r);
+        }
+      });
+
+      var text = lines.join("\n");
+      navigator.clipboard.writeText(text).then(function() {
+        copyBtn.textContent = copiedLabel;
+        setTimeout(function() {
+          copyBtn.textContent = originalLabel;
+        }, 2000);
+      }).catch(function() {
+        // Fallback: select text in a temporary textarea
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        copyBtn.textContent = copiedLabel;
+        setTimeout(function() {
+          copyBtn.textContent = originalLabel;
+        }, 2000);
+      });
     });
   }
 </script>

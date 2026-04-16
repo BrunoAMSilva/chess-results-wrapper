@@ -129,7 +129,7 @@ describe('buildRefereeExportXml — individual tournament', () => {
     expect(results[2].Res).toBe('0-1');
   });
 
-  it('should NOT produce TeamCompositions for individual tournament', () => {
+  it('should NOT produce TeamCompositions in results format', () => {
     const xml = buildRefereeExportXml({
       round: 1,
       teamPairings: [],
@@ -264,7 +264,26 @@ describe('buildRefereeExportXml — team tournament', () => {
     104: '+:-',
   };
 
-  it('should produce TeamCompositions section', () => {
+  it('should produce TeamCompositions section in team-compositions format', () => {
+    const xml = buildRefereeExportXml({
+      round: 1,
+      teamPairings: [teamMatch],
+      allPairings,
+      resultsMap,
+      nationalIds,
+      format: 'team-compositions',
+    });
+
+    expect(xml).toContain('<TeamCompositions>');
+    expect(xml).toContain('</TeamCompositions>');
+    expect(xml).not.toContain('<Results>');
+
+    const compositions = parseLine(xml, 'TeamComposition');
+    // 4 boards × 2 players = 8 entries
+    expect(compositions).toHaveLength(8);
+  });
+
+  it('should NOT produce TeamCompositions in default results format for team tournaments', () => {
     const xml = buildRefereeExportXml({
       round: 1,
       teamPairings: [teamMatch],
@@ -273,12 +292,8 @@ describe('buildRefereeExportXml — team tournament', () => {
       nationalIds,
     });
 
-    expect(xml).toContain('<TeamCompositions>');
-    expect(xml).toContain('</TeamCompositions>');
-
-    const compositions = parseLine(xml, 'TeamComposition');
-    // 4 boards × 2 players = 8 entries
-    expect(compositions).toHaveLength(8);
+    expect(xml).not.toContain('<TeamCompositions>');
+    expect(xml).toContain('<Results>');
   });
 
   it('should use national IDs as PlayerId in TeamCompositions', () => {
@@ -288,6 +303,7 @@ describe('buildRefereeExportXml — team tournament', () => {
       allPairings,
       resultsMap,
       nationalIds,
+      format: 'team-compositions',
     });
 
     const compositions = parseLine(xml, 'TeamComposition');
@@ -304,13 +320,14 @@ describe('buildRefereeExportXml — team tournament', () => {
     expect(playerIds).toContain('60004'); // away board 4
   });
 
-  it('should assign TeamUniqueId = player own team, TeamUniqueId2 = opponent team', () => {
+  it('should assign TeamUniqueId based on player team', () => {
     const xml = buildRefereeExportXml({
       round: 1,
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
       nationalIds,
+      format: 'team-compositions',
     });
 
     const compositions = parseLine(xml, 'TeamComposition');
@@ -323,87 +340,56 @@ describe('buildRefereeExportXml — team tournament', () => {
     for (const c of compositions) {
       if (['50001', '50002', '50003', '50004'].includes(c.PlayerId)) {
         expect(c.TeamUniqueId).toBe(alphaId);
-        expect(c.TeamUniqueId2).toBe(betaId);
       }
       if (['60001', '60002', '60003', '60004'].includes(c.PlayerId)) {
         expect(c.TeamUniqueId).toBe(betaId);
-        expect(c.TeamUniqueId2).toBe(alphaId);
       }
     }
   });
 
-  it('should set TeamUniqueIdWhite/Black based on odd/even board color rule', () => {
+  it('should only include spec attributes: Round, TeamUniqueId, Board, PlayerId', () => {
     const xml = buildRefereeExportXml({
       round: 1,
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
       nationalIds,
+      format: 'team-compositions',
+    });
+
+    const compositions = parseLine(xml, 'TeamComposition');
+    for (const c of compositions) {
+      // Spec attributes present
+      expect(c.Round).toBeDefined();
+      expect(c.TeamUniqueId).toBeDefined();
+      expect(c.Board).toBeDefined();
+      expect(c.PlayerId).toBeDefined();
+      // Non-spec attributes removed
+      expect(c.Res).toBeUndefined();
+      expect(c.TeamUniqueId2).toBeUndefined();
+      expect(c.TeamUniqueIdWhite).toBeUndefined();
+      expect(c.TeamUniqueIdBlack).toBeUndefined();
+    }
+  });
+
+  it('should assign home team ID to home players and away team ID to away players', () => {
+    const xml = buildRefereeExportXml({
+      round: 1,
+      teamPairings: [teamMatch],
+      allPairings,
+      resultsMap,
+      nationalIds,
+      format: 'team-compositions',
     });
 
     const compositions = parseLine(xml, 'TeamComposition');
 
     // "Alpha Club" = 1 (home), "Beta Club" = 2 (away)
-    const alphaId = '1';
-    const betaId = '2';
-
-    // Board 1 (odd): home (Alpha) has White
-    const board1 = compositions.filter(c => c.Board === '1');
-    expect(board1).toHaveLength(2);
-    for (const c of board1) {
-      expect(c.TeamUniqueIdWhite).toBe(alphaId);
-      expect(c.TeamUniqueIdBlack).toBe(betaId);
-    }
-
-    // Board 2 (even): away (Beta) has White
-    const board2 = compositions.filter(c => c.Board === '2');
-    expect(board2).toHaveLength(2);
-    for (const c of board2) {
-      expect(c.TeamUniqueIdWhite).toBe(betaId);
-      expect(c.TeamUniqueIdBlack).toBe(alphaId);
-    }
-
-    // Board 3 (odd): home (Alpha) has White
-    const board3 = compositions.filter(c => c.Board === '3');
-    for (const c of board3) {
-      expect(c.TeamUniqueIdWhite).toBe(alphaId);
-      expect(c.TeamUniqueIdBlack).toBe(betaId);
-    }
-
-    // Board 4 (even): away (Beta) has White
-    const board4 = compositions.filter(c => c.Board === '4');
-    for (const c of board4) {
-      expect(c.TeamUniqueIdWhite).toBe(betaId);
-      expect(c.TeamUniqueIdBlack).toBe(alphaId);
-    }
-  });
-
-  it('should set Res from each player perspective in TeamCompositions', () => {
-    const xml = buildRefereeExportXml({
-      round: 1,
-      teamPairings: [teamMatch],
-      allPairings,
-      resultsMap,
-      nationalIds,
-    });
-
-    const compositions = parseLine(xml, 'TeamComposition');
-
-    // Board 1: home won → home Res="1-0", away Res="0-1"
-    expect(compositions.find(c => c.PlayerId === '50001')!.Res).toBe('1-0');
-    expect(compositions.find(c => c.PlayerId === '60001')!.Res).toBe('0-1');
-
-    // Board 2: home lost → home Res="0-1", away Res="1-0"
-    expect(compositions.find(c => c.PlayerId === '50002')!.Res).toBe('0-1');
-    expect(compositions.find(c => c.PlayerId === '60002')!.Res).toBe('1-0');
-
-    // Board 3: draw → both Res="1/2"
-    expect(compositions.find(c => c.PlayerId === '50003')!.Res).toBe('1/2');
-    expect(compositions.find(c => c.PlayerId === '60003')!.Res).toBe('1/2');
-
-    // Board 4: home won by forfeit → home Res="1-0F", away Res="0-1F"
-    expect(compositions.find(c => c.PlayerId === '50004')!.Res).toBe('1-0F');
-    expect(compositions.find(c => c.PlayerId === '60004')!.Res).toBe('0-1F');
+    // Home players get TeamUniqueId=1, away players get TeamUniqueId=2
+    expect(compositions.find(c => c.PlayerId === '50001')!.TeamUniqueId).toBe('1');
+    expect(compositions.find(c => c.PlayerId === '60001')!.TeamUniqueId).toBe('2');
+    expect(compositions.find(c => c.PlayerId === '50002')!.TeamUniqueId).toBe('1');
+    expect(compositions.find(c => c.PlayerId === '60002')!.TeamUniqueId).toBe('2');
   });
 
   it('should use national IDs as PlayerWhiteId/PlayerBlackId in Results', () => {
@@ -461,21 +447,32 @@ describe('buildRefereeExportXml — team tournament', () => {
     expect(results[3].Res).toBe('0-1F');
   });
 
-  it('should produce both TeamCompositions and Results sections', () => {
-    const xml = buildRefereeExportXml({
+  it('should produce valid XML with single root element for each format', () => {
+    const resultsXml = buildRefereeExportXml({
       round: 1,
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
       nationalIds,
+      format: 'results',
     });
 
-    // TeamCompositions appears before Results
-    const tcIndex = xml.indexOf('<TeamCompositions>');
-    const rIndex = xml.indexOf('<Results>');
-    expect(tcIndex).toBeGreaterThan(-1);
-    expect(rIndex).toBeGreaterThan(-1);
-    expect(tcIndex).toBeLessThan(rIndex);
+    const tcXml = buildRefereeExportXml({
+      round: 1,
+      teamPairings: [teamMatch],
+      allPairings,
+      resultsMap,
+      nationalIds,
+      format: 'team-compositions',
+    });
+
+    // Results format has <Results> root, no TeamCompositions
+    expect(resultsXml).toContain('<Results>');
+    expect(resultsXml).not.toContain('<TeamCompositions>');
+
+    // TeamCompositions format has <TeamCompositions> root, no Results
+    expect(tcXml).toContain('<TeamCompositions>');
+    expect(tcXml).not.toContain('<Results>');
   });
 
   it('should handle multiple team matches with correct team IDs', () => {
@@ -494,6 +491,7 @@ describe('buildRefereeExportXml — team tournament', () => {
       allPairings: allP,
       resultsMap: {},
       nationalIds: {},
+      format: 'team-compositions',
     });
 
     const compositions = parseLine(xml, 'TeamComposition');
@@ -502,13 +500,11 @@ describe('buildRefereeExportXml — team tournament', () => {
     // Match 1: Gamma(home)=3 vs Alpha(away)=1
     const m1home = compositions.find(c => c.PlayerId === '21' && c.Board === '1')!;
     expect(m1home.TeamUniqueId).toBe('3'); // Gamma
-    expect(m1home.TeamUniqueId2).toBe('1'); // Alpha
 
     // Match 2: Beta(home)=2 vs Gamma(away)=3
     const m2entries = compositions.filter(c => c.Board === '1' && c.Round === '2');
     const m2home = m2entries.find(c => c.PlayerId === '11')!;
     expect(m2home.TeamUniqueId).toBe('2'); // Beta
-    expect(m2home.TeamUniqueId2).toBe('3'); // Gamma
   });
 });
 
@@ -526,7 +522,7 @@ describe('buildRefereeExportXml — XML structure', () => {
       nationalIds: {},
     });
 
-    expect(xml).toMatch(/^<\?xml version="1\.0" encoding="utf-8"\?>/);
+    expect(xml).toMatch(/^<\?xml version="1\.0" encoding="UTF-8"\?>/);
   });
 
   it('should always include Results section even with no pairings', () => {
