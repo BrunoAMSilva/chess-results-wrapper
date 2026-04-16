@@ -671,6 +671,50 @@ export async function ensurePlayerCards(
   } catch (_) { /* best-effort */ }
 }
 
+/**
+ * Fetch the Startrank→Uid mapping from chess-results.com XML endpoint.
+ * UIDs are internal chess-results IDs needed for the result upload API.
+ * Persists each mapping to the player_uids table.
+ */
+export async function fetchPlayerUids(
+  tournamentId: string,
+): Promise<Record<number, number>> {
+  const { upsertPlayerUid } = await import('./db');
+  const url = `${BASE_URL}/xml.aspx?tnr=${tournamentId}&key1=Alphabetic`;
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch player UIDs: HTTP ${response.status}`);
+  }
+  const xml = await response.text();
+  const $ = cheerio.load(xml, { xml: true });
+  const map: Record<number, number> = {};
+
+  $('Daten').each((_, el) => {
+    const startrank = parseInt($(el).attr('Startrank') || '', 10);
+    const uid = parseInt($(el).attr('Uid') || '', 10);
+    if (startrank > 0 && uid > 0) {
+      map[startrank] = uid;
+      upsertPlayerUid(tournamentId, startrank, uid);
+    }
+  });
+
+  return map;
+}
+
+/**
+ * Ensure player UIDs are cached for a tournament.
+ * Fetches from chess-results.com if not already in DB.
+ * Mirrors the ensurePlayerCards() caching pattern.
+ */
+export async function ensurePlayerUids(
+  tournamentId: string,
+): Promise<Record<number, number>> {
+  const { getPlayerUidMap } = await import('./db');
+  const existing = getPlayerUidMap(tournamentId);
+  if (Object.keys(existing).length > 0) return existing;
+  return fetchPlayerUids(tournamentId);
+}
+
 // ─── Parsing functions (delegate to strategy) ─────────────────────────────────
 
 /**

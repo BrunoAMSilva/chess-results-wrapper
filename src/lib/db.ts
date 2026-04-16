@@ -137,6 +137,37 @@ db.exec(`
     UNIQUE(tournament_id, round, table_number)
   );
   CREATE INDEX IF NOT EXISTS idx_referee_results_tournament_round ON referee_results(tournament_id, round);
+
+  -- Per-tournament configuration (e.g. SID for chess-results.com upload)
+  CREATE TABLE IF NOT EXISTS tournament_config (
+    tournament_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (tournament_id, key)
+  );
+
+  -- Cached chess-results.com player UIDs (internal IDs, not starting rank)
+  CREATE TABLE IF NOT EXISTS player_uids (
+    tournament_id TEXT NOT NULL,
+    starting_number INTEGER NOT NULL,
+    uid INTEGER NOT NULL,
+    PRIMARY KEY (tournament_id, starting_number)
+  );
+
+  -- Upload log tracking results POSTed to chess-results.com
+  CREATE TABLE IF NOT EXISTS upload_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tournament_id TEXT NOT NULL,
+    round INTEGER NOT NULL,
+    table_number INTEGER NOT NULL,
+    uid INTEGER NOT NULL,
+    result_code TEXT NOT NULL,
+    status TEXT NOT NULL,
+    status_msg TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(tournament_id, round, table_number)
+  );
+  CREATE INDEX IF NOT EXISTS idx_upload_log_tournament_round ON upload_log(tournament_id, round);
 `);
 
 // ─── Database versioning ────────────────────────────────────────────────────
@@ -1407,4 +1438,81 @@ export function findLatestIncompleteRound(tournamentId: string, totalRounds: num
   `).get(tournamentId, totalRounds) as { round: number } | undefined;
 
   return row?.round ?? 1;
+}
+
+// ── Tournament Configuration ──
+
+export function setTournamentConfig(tournamentId: string, key: string, value: string): void {
+  db.prepare(`
+    INSERT INTO tournament_config (tournament_id, key, value)
+    VALUES (?, ?, ?)
+    ON CONFLICT(tournament_id, key) DO UPDATE SET value = excluded.value
+  `).run(tournamentId, key, value);
+}
+
+export function getTournamentConfig(tournamentId: string, key: string): string | null {
+  const row = db.prepare(`
+    SELECT value FROM tournament_config WHERE tournament_id = ? AND key = ?
+  `).get(tournamentId, key) as { value: string } | undefined;
+  return row?.value ?? null;
+}
+
+// ── Player UIDs (chess-results.com internal IDs) ──
+
+export function upsertPlayerUid(tournamentId: string, startingNumber: number, uid: number): void {
+  db.prepare(`
+    INSERT INTO player_uids (tournament_id, starting_number, uid)
+    VALUES (?, ?, ?)
+    ON CONFLICT(tournament_id, starting_number) DO UPDATE SET uid = excluded.uid
+  `).run(tournamentId, startingNumber, uid);
+}
+
+export function getPlayerUidMap(tournamentId: string): Record<number, number> {
+  const rows = db.prepare(`
+    SELECT starting_number, uid FROM player_uids WHERE tournament_id = ?
+  `).all(tournamentId) as Array<{ starting_number: number; uid: number }>;
+  const map: Record<number, number> = {};
+  for (const r of rows) {
+    map[r.starting_number] = r.uid;
+  }
+  return map;
+}
+
+// ── Upload Log ──
+
+export function logUploadResult(
+  tournamentId: string,
+  round: number,
+  tableNumber: number,
+  uid: number,
+  resultCode: string,
+  status: string,
+  statusMsg: string,
+): void {
+  db.prepare(`
+    INSERT INTO upload_log (tournament_id, round, table_number, uid, result_code, status, status_msg)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(tournament_id, round, table_number) DO UPDATE SET
+      uid = excluded.uid,
+      result_code = excluded.result_code,
+      status = excluded.status,
+      status_msg = excluded.status_msg,
+      created_at = datetime('now')
+  `).run(tournamentId, round, tableNumber, uid, resultCode, status, statusMsg);
+}
+
+export function getUploadLog(tournamentId: string, round: number) {
+  return db.prepare(`
+    SELECT table_number, uid, result_code, status, status_msg, created_at
+    FROM upload_log
+    WHERE tournament_id = ? AND round = ?
+    ORDER BY table_number
+  `).all(tournamentId, round) as Array<{
+    table_number: number;
+    uid: number;
+    result_code: string;
+    status: string;
+    status_msg: string;
+    created_at: string;
+  }>;
 }

@@ -24,6 +24,12 @@ import db, {
   getOpeningNames,
   searchOpeningCatalog,
   searchOpeningCatalogResults,
+  setTournamentConfig,
+  getTournamentConfig,
+  upsertPlayerUid,
+  getPlayerUidMap,
+  logUploadResult,
+  getUploadLog,
 } from '../../src/lib/db';
 import { MIN_OPENING_REHEARSAL_PLIES } from '../../src/lib/constants';
 import { TournamentType } from '../../src/lib/types';
@@ -32,6 +38,9 @@ import type { TournamentInfo, Standing, Pairing } from '../../src/lib/types';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function clearAllTables(): void {
+  db.exec('DELETE FROM upload_log');
+  db.exec('DELETE FROM player_uids');
+  db.exec('DELETE FROM tournament_config');
   db.exec('DELETE FROM openings');
   db.exec('DELETE FROM results');
   db.exec('DELETE FROM standings');
@@ -1206,5 +1215,107 @@ describe('Database - getPairingsFromDb', () => {
     expect(result!.teamPairings).toHaveLength(1);
     expect(result!.teamPairings![0].whiteTeam).toBe('Team X');
     expect(result!.teamPairings![0].blackTeam).toBe('Team Y');
+  });
+});
+
+// ── Tournament Config ────────────────────────────────────────────────────────
+
+describe('Database - Tournament Config', () => {
+  beforeEach(clearAllTables);
+
+  it('stores and retrieves a config value', () => {
+    setTournamentConfig('T1', 'sid', 'aabbccdd11223344aabbccdd11223344');
+    const val = getTournamentConfig('T1', 'sid');
+    expect(val).toBe('aabbccdd11223344aabbccdd11223344');
+  });
+
+  it('returns null for missing config', () => {
+    expect(getTournamentConfig('T1', 'sid')).toBeNull();
+  });
+
+  it('overwrites existing config on re-set', () => {
+    setTournamentConfig('T1', 'sid', 'aaaa');
+    setTournamentConfig('T1', 'sid', 'bbbb');
+    expect(getTournamentConfig('T1', 'sid')).toBe('bbbb');
+  });
+
+  it('stores separate keys independently', () => {
+    setTournamentConfig('T1', 'sid', 'abc');
+    setTournamentConfig('T1', 'other', 'xyz');
+    expect(getTournamentConfig('T1', 'sid')).toBe('abc');
+    expect(getTournamentConfig('T1', 'other')).toBe('xyz');
+  });
+});
+
+// ── Player UIDs ──────────────────────────────────────────────────────────────
+
+describe('Database - Player UIDs', () => {
+  beforeEach(clearAllTables);
+
+  it('upserts and retrieves UID map', () => {
+    upsertPlayerUid('T1', 1, 100);
+    upsertPlayerUid('T1', 2, 200);
+    const map = getPlayerUidMap('T1');
+    expect(map).toEqual({ 1: 100, 2: 200 });
+  });
+
+  it('returns empty map when no UIDs exist', () => {
+    expect(getPlayerUidMap('T1')).toEqual({});
+  });
+
+  it('overwrites UID on re-upsert', () => {
+    upsertPlayerUid('T1', 1, 100);
+    upsertPlayerUid('T1', 1, 999);
+    const map = getPlayerUidMap('T1');
+    expect(map[1]).toBe(999);
+  });
+
+  it('keeps tournament UIDs separate', () => {
+    upsertPlayerUid('T1', 1, 100);
+    upsertPlayerUid('T2', 1, 200);
+    expect(getPlayerUidMap('T1')).toEqual({ 1: 100 });
+    expect(getPlayerUidMap('T2')).toEqual({ 1: 200 });
+  });
+});
+
+// ── Upload Log ───────────────────────────────────────────────────────────────
+
+describe('Database - Upload Log', () => {
+  beforeEach(clearAllTables);
+
+  it('logs and retrieves upload results', () => {
+    logUploadResult('T1', 1, 5, 42, '1', 'OK', '');
+    const log = getUploadLog('T1', 1);
+    expect(log).toHaveLength(1);
+    expect(log[0].table_number).toBe(5);
+    expect(log[0].uid).toBe(42);
+    expect(log[0].result_code).toBe('1');
+    expect(log[0].status).toBe('OK');
+  });
+
+  it('returns empty array when no log entries', () => {
+    expect(getUploadLog('T1', 1)).toEqual([]);
+  });
+
+  it('overwrites log on re-upload (same table)', () => {
+    logUploadResult('T1', 1, 5, 42, '1', 'ERROR', 'fail');
+    logUploadResult('T1', 1, 5, 42, '1', 'OK', '');
+    const log = getUploadLog('T1', 1);
+    expect(log).toHaveLength(1);
+    expect(log[0].status).toBe('OK');
+  });
+
+  it('stores separate entries per table', () => {
+    logUploadResult('T1', 1, 1, 10, '1', 'OK', '');
+    logUploadResult('T1', 1, 2, 20, '0', 'OK', '');
+    const log = getUploadLog('T1', 1);
+    expect(log).toHaveLength(2);
+  });
+
+  it('filters by round', () => {
+    logUploadResult('T1', 1, 1, 10, '1', 'OK', '');
+    logUploadResult('T1', 2, 1, 10, '1', 'OK', '');
+    expect(getUploadLog('T1', 1)).toHaveLength(1);
+    expect(getUploadLog('T1', 2)).toHaveLength(1);
   });
 });

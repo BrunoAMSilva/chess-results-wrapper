@@ -4,7 +4,7 @@ import EmptyState from "../../../components/app/EmptyState.astro";
 import ActionButton from "../../../components/controls/ActionButton.astro";
 import RoundProgressCard from "../../../components/referee/RoundProgressCard.astro";
 import { scrapePairings } from "../../../lib/scraper";
-import { getRefereeResults } from "../../../lib/db";
+import { getRefereeResults, getTournamentConfig, getUploadLog } from "../../../lib/db";
 import { useTranslations } from "../../../i18n/ui";
 import { resolvePageLang } from "../../../lib/page-lang";
 import type { LinkedTournament, Pairing, TeamPairing } from "../../../lib/types";
@@ -168,6 +168,14 @@ if (hasSections) {
 
 const resultsTitle = allSections[0]?.name || currentLabel || t("referee.results");
 const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentName : undefined;
+
+// Check SID configuration and upload status
+const hasSid = !!getTournamentConfig(activeSection, "sid");
+const uploadLog = hasSid ? getUploadLog(activeSection, activeRound) : [];
+const uploadStatusMap: Record<number, { status: string; statusMsg: string }> = {};
+for (const entry of uploadLog) {
+  uploadStatusMap[entry.table_number] = { status: entry.status, statusMsg: entry.status_msg };
+}
 ---
 
 <ResponsiveLayout title={resultsTitle} eyebrow={eyebrow} lang={lang} navMode="referee">
@@ -241,6 +249,29 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
                   {t("referee.exportXml")}
                 </ActionButton>
               )}
+              {hasExport && hasSid && (
+                <ActionButton
+                  id="uploadBtn"
+                  class="upload-btn"
+                  type="button"
+                  size="compact"
+                  pill
+                  data-tid={sec.id}
+                  data-round={String(activeRound)}
+                >
+                  {t("referee.upload")}
+                </ActionButton>
+              )}
+              {!hasSid && hasExport && (
+                <ActionButton
+                  href={`/referee/${tid}/settings?lang=${lang}`}
+                  variant="secondary"
+                  size="compact"
+                  pill
+                >
+                  {t("referee.configureSid")}
+                </ActionButton>
+              )}
             </Fragment>
           )}
         </RoundProgressCard>
@@ -285,6 +316,11 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
                     <span class:list={["result-badge", resultTone, { "has-result": !!result }]}> 
                       {result ? result.result : t("referee.pending")}
                     </span>
+                    {uploadStatusMap[tbl] && (
+                      <span class:list={["upload-status", uploadStatusMap[tbl].status.toLowerCase()]} title={uploadStatusMap[tbl].statusMsg}>
+                        {uploadStatusMap[tbl].status === "OK" ? "✓" : "✗"}
+                      </span>
+                    )}
                   </span>
                 </div>
               );
@@ -322,6 +358,40 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
   setTimeout(function() {
     window.location.reload();
   }, 15000);
+
+  // Upload to chess-results.com
+  var uploadBtn = document.getElementById("uploadBtn");
+  if (uploadBtn) {
+    uploadBtn.addEventListener("click", function() {
+      var btn = uploadBtn;
+      var tid = btn.getAttribute("data-tid");
+      var round = btn.getAttribute("data-round");
+      btn.disabled = true;
+      btn.textContent = btn.getAttribute("data-uploading") || "Uploading…";
+
+      fetch("/api/referee-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tid: tid, round: parseInt(round, 10), section: tid }),
+      })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          if (data.ok) {
+            // Reload to show updated upload status
+            window.location.reload();
+          } else {
+            btn.disabled = false;
+            btn.textContent = btn.getAttribute("data-label") || "Upload";
+            alert(data.error || "Upload failed");
+          }
+        })
+        .catch(function() {
+          btn.disabled = false;
+          btn.textContent = btn.getAttribute("data-label") || "Upload";
+          alert("Network error");
+        });
+    });
+  }
 </script>
 
 <style>
@@ -552,6 +622,41 @@ const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentNa
 
     .export-btn {
       width: 100%;
+    }
+  }
+
+  .upload-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: var(--radius-full);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-bold);
+    margin-left: var(--space-1);
+    flex-shrink: 0;
+  }
+
+  .upload-status.ok {
+    background: var(--accent-subtle);
+    color: var(--accent-text);
+  }
+
+  .upload-status.error,
+  .upload-status.warning {
+    background: var(--danger-subtle, rgba(229, 62, 62, 0.15));
+    color: var(--danger, #e53e3e);
+  }
+
+  .col-result {
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  @media (forced-colors: active) {
+    .upload-status {
+      border: 1px solid ButtonBorder;
     }
   }
 </style>

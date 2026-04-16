@@ -1,0 +1,15 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run upload tests",
+			"type": "shell",
+			"command": "npx vitest run tests/unit/chess-results-upload.test.ts tests/unit/db.test.ts"
+		},
+		{
+			"label": "Run all unit tests",
+			"type": "shell",
+			"command": "npx vitest run"
+		}
+	]
+}
