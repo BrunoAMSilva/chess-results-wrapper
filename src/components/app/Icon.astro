@@ -1,0 +1,57 @@
+---
+/**
+ * Icon — Renders an icon from the shared SVG sprite.
+ *
+ * Icons resolve through public/icons/sprite.svg via <use>, keeping markup
+ * small and letting browsers cache the sprite across pages.
+ *
+ * @example
+ * <Icon name="search" />
+ * <Icon name="settings" size={20} class="my-class" />
+ * <Icon name="arrow-left" size={16} aria-label="Go back" />
+ */
+import { iconSpritePath, type IconName } from "../../lib/ui/icons";
+
+interface Props {
+  /** The icon name from the registered icon set. */
+  name: IconName;
+  /** Icon size in px. Defaults to 24. */
+  size?: number;
+  /** CSS class(es). */
+  class?: string;
+  /** Any additional SVG attributes (aria-hidden, fill, stroke, etc.). */
+  [key: string]: unknown;
+}
+
+const { name, size = 24, class: className, style, ...rest } = Astro.props;
+
+if (
+  !("aria-hidden" in rest) &&
+  !("aria-label" in rest) &&
+  !("aria-labelledby" in rest) &&
+  !("role" in rest)
+) {
+  rest["aria-hidden"] = "true";
+}
+---
+
+<svg
+  {...rest}
+  class:list={["icon", className]}
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  focusable="false"
+>
+  <use href={`${iconSpritePath}#${name}`}></use>
+</svg>
+
+<style>
+  .icon {
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+    color: inherit;
+  }
+</style>

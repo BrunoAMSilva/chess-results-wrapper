@@ -1,5 +1,6 @@
 ---
 import Layout from "../../layouts/TVLayout.astro";
+import Icon from "../../components/app/Icon.astro";
 import StandingRow from "../../components/standings/StandingRow.astro";
 import ErrorCard from "../../components/app/ErrorCard.astro";
 import EmptyState from "../../components/app/EmptyState.astro";
@@ -91,10 +92,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
       <div class="main-column">
         {data && allStandings.length === 0 && (
           <EmptyState message={t('empty.standings')}>
-            <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M12 8v4M12 16h.01"/>
-            </svg>
+            <Icon slot="icon" name="info" size={24} />
           </EmptyState>
         )}
 

@@ -1,5 +1,6 @@
 ---
 import Layout from "../../layouts/TVLayout.astro";
+import Icon from "../../components/app/Icon.astro";
 import PresenterPairingCard from "../../components/presenter/PresenterPairingCard.astro";
 import StandingRow from "../../components/standings/StandingRow.astro";
 import ErrorCard from "../../components/app/ErrorCard.astro";
@@ -144,20 +145,20 @@ const autoRefresh = isTournamentLive(data?.info.date);
             <div class="round-nav">
               {hasPreviousRound ? (
                 <a href={`/present?tid=${tid}&round=${previousRound}&lang=${lang}${presenterExtraSuffix}`} class="nav-btn" aria-label={t('header.prevRound')}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                  <Icon name="chevron-left" size={20} />
                 </a>
               ) : (
                 <span class:list={["nav-btn", "disabled"]} aria-hidden="true">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                  <Icon name="chevron-left" size={20} />
                 </span>
               )}
               {hasNextRound ? (
                 <a href={`/present?tid=${tid}&round=${nextRound}&lang=${lang}${presenterExtraSuffix}`} class="nav-btn" aria-label={t('header.nextRound')}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                  <Icon name="chevron-right" size={20} />
                 </a>
               ) : (
                 <span class:list={["nav-btn", "disabled"]} aria-hidden="true">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                  <Icon name="chevron-right" size={20} />
                 </span>
               )}
             </div>
@@ -254,10 +255,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
 
     {data && visiblePairings.length === 0 && playerList.length === 0 && (
       <EmptyState message={t('empty.pairings')}>
-        <svg slot="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="M12 8v4M12 16h.01"/>
-        </svg>
+        <Icon slot="icon" name="info" size={24} />
       </EmptyState>
     )}
 
