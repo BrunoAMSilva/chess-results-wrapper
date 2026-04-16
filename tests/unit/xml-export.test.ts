@@ -83,16 +83,7 @@ describe('mapResult', () => {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 describe('buildRefereeExportXml — individual tournament', () => {
-  const nationalIds: Record<number, string> = {
-    1: '50001',
-    2: '50002',
-    3: '50003',
-    10: '50010',
-    11: '50011',
-    13: '50013',
-  };
-
-  it('should produce Results section with player national IDs', () => {
+  it('should produce Results section with player starting rank numbers', () => {
     const pairings: Pairing[] = [
       makeBoard(1, 1, 10),
       makeBoard(2, 11, 2),
@@ -109,20 +100,19 @@ describe('buildRefereeExportXml — individual tournament', () => {
       teamPairings: [],
       allPairings: pairings,
       resultsMap,
-      nationalIds,
     });
 
     const results = parseLine(xml, 'Result');
     expect(results).toHaveLength(3);
 
-    // Board 1: White=player 1 (national 50001), Black=player 10 (national 50010)
-    expect(results[0].PlayerWhiteId).toBe('50001');
-    expect(results[0].PlayerBlackId).toBe('50010');
+    // Board 1: White=player 1, Black=player 10
+    expect(results[0].PlayerWhiteSNo).toBe('1');
+    expect(results[0].PlayerBlackSNo).toBe('10');
     expect(results[0].Res).toBe('1-0');
 
     // Board 2: draw
-    expect(results[1].PlayerWhiteId).toBe('50011');
-    expect(results[1].PlayerBlackId).toBe('50002');
+    expect(results[1].PlayerWhiteSNo).toBe('11');
+    expect(results[1].PlayerBlackSNo).toBe('2');
     expect(results[1].Res).toBe('1/2');
 
     // Board 3: Black wins
@@ -135,41 +125,25 @@ describe('buildRefereeExportXml — individual tournament', () => {
       teamPairings: [],
       allPairings: [makeBoard(1, 1, 10)],
       resultsMap: { 1: '1-0' },
-      nationalIds,
     });
 
     expect(xml).not.toContain('<TeamCompositions>');
     expect(xml).not.toContain('<TeamComposition ');
   });
 
-  it('should handle BYE (no opponent) with PlayerBlackId="0"', () => {
+  it('should handle BYE (no opponent) with PlayerBlackSNo="0"', () => {
     const xml = buildRefereeExportXml({
       round: 3,
       teamPairings: [],
       allPairings: [makeBoard(5, 6, null)],
       resultsMap: { 5: '+:-' },
-      nationalIds: { 6: '50006' },
     });
 
     const results = parseLine(xml, 'Result');
     expect(results).toHaveLength(1);
-    expect(results[0].PlayerWhiteId).toBe('50006');
-    expect(results[0].PlayerBlackId).toBe('0');
+    expect(results[0].PlayerWhiteSNo).toBe('6');
+    expect(results[0].PlayerBlackSNo).toBe('0');
     expect(results[0].Res).toBe('1-0F');
-  });
-
-  it('should fall back to starting number when national ID is missing', () => {
-    const xml = buildRefereeExportXml({
-      round: 1,
-      teamPairings: [],
-      allPairings: [makeBoard(1, 99, 88)],
-      resultsMap: { 1: '1-0' },
-      nationalIds: {}, // no national IDs
-    });
-
-    const results = parseLine(xml, 'Result');
-    expect(results[0].PlayerWhiteId).toBe('99');
-    expect(results[0].PlayerBlackId).toBe('88');
   });
 
   it('should handle all result types', () => {
@@ -195,7 +169,6 @@ describe('buildRefereeExportXml — individual tournament', () => {
       teamPairings: [],
       allPairings: pairings,
       resultsMap,
-      nationalIds: {},
     });
 
     const results = parseLine(xml, 'Result');
@@ -213,7 +186,6 @@ describe('buildRefereeExportXml — individual tournament', () => {
       teamPairings: [],
       allPairings: [makeBoard(1, 1, 2)],
       resultsMap: {}, // no results entered
-      nationalIds: {},
     });
 
     const results = parseLine(xml, 'Result');
@@ -236,12 +208,8 @@ describe('buildRefereeExportXml — team tournament', () => {
   const homeTeam = 'Alpha Club';
   const awayTeam = 'Beta Club';
 
-  // Home players: SNR 1,2,3,4 → national IDs 50001-50004
-  // Away players: SNR 11,12,13,14 → national IDs 60001-60004
-  const nationalIds: Record<number, string> = {
-    1: '50001', 2: '50002', 3: '50003', 4: '50004',
-    11: '60001', 12: '60002', 13: '60003', 14: '60004',
-  };
+  // Home players: SNR 1,2,3,4
+  // Away players: SNR 11,12,13,14
 
   const teamMatch = makeTeamMatch(1, homeTeam, awayTeam, [
     { homeNum: 1, awayNum: 11 },   // board 1 → table 101
@@ -270,7 +238,6 @@ describe('buildRefereeExportXml — team tournament', () => {
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
-      nationalIds,
       format: 'team-compositions',
     });
 
@@ -289,35 +256,33 @@ describe('buildRefereeExportXml — team tournament', () => {
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
-      nationalIds,
     });
 
     expect(xml).not.toContain('<TeamCompositions>');
     expect(xml).toContain('<Results>');
   });
 
-  it('should use national IDs as PlayerId in TeamCompositions', () => {
+  it('should use starting rank numbers as PlayerSNo in TeamCompositions', () => {
     const xml = buildRefereeExportXml({
       round: 1,
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
-      nationalIds,
       format: 'team-compositions',
     });
 
     const compositions = parseLine(xml, 'TeamComposition');
-    const playerIds = compositions.map(c => c.PlayerId);
+    const playerSNos = compositions.map(c => c.PlayerSNo);
 
-    // All 8 entries should use national IDs
-    expect(playerIds).toContain('50001'); // home board 1
-    expect(playerIds).toContain('60001'); // away board 1
-    expect(playerIds).toContain('50002'); // home board 2
-    expect(playerIds).toContain('60002'); // away board 2
-    expect(playerIds).toContain('50003'); // home board 3
-    expect(playerIds).toContain('60003'); // away board 3
-    expect(playerIds).toContain('50004'); // home board 4
-    expect(playerIds).toContain('60004'); // away board 4
+    // All 8 entries should use starting rank numbers
+    expect(playerSNos).toContain('1');  // home board 1
+    expect(playerSNos).toContain('11'); // away board 1
+    expect(playerSNos).toContain('2');  // home board 2
+    expect(playerSNos).toContain('12'); // away board 2
+    expect(playerSNos).toContain('3');  // home board 3
+    expect(playerSNos).toContain('13'); // away board 3
+    expect(playerSNos).toContain('4');  // home board 4
+    expect(playerSNos).toContain('14'); // away board 4
   });
 
   it('should assign TeamUniqueId based on player team', () => {
@@ -326,7 +291,6 @@ describe('buildRefereeExportXml — team tournament', () => {
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
-      nationalIds,
       format: 'team-compositions',
     });
 
@@ -336,24 +300,23 @@ describe('buildRefereeExportXml — team tournament', () => {
     const alphaId = '1';
     const betaId = '2';
 
-    // Home team player entries (board 1,2,3,4 — odd entries: index 0,2,4,6)
+    // Home team player entries use starting rank numbers
     for (const c of compositions) {
-      if (['50001', '50002', '50003', '50004'].includes(c.PlayerId)) {
+      if (['1', '2', '3', '4'].includes(c.PlayerSNo)) {
         expect(c.TeamUniqueId).toBe(alphaId);
       }
-      if (['60001', '60002', '60003', '60004'].includes(c.PlayerId)) {
+      if (['11', '12', '13', '14'].includes(c.PlayerSNo)) {
         expect(c.TeamUniqueId).toBe(betaId);
       }
     }
   });
 
-  it('should only include spec attributes: Round, TeamUniqueId, Board, PlayerId', () => {
+  it('should only include spec attributes: Round, TeamUniqueId, Board, PlayerSNo', () => {
     const xml = buildRefereeExportXml({
       round: 1,
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
-      nationalIds,
       format: 'team-compositions',
     });
 
@@ -363,8 +326,9 @@ describe('buildRefereeExportXml — team tournament', () => {
       expect(c.Round).toBeDefined();
       expect(c.TeamUniqueId).toBeDefined();
       expect(c.Board).toBeDefined();
-      expect(c.PlayerId).toBeDefined();
+      expect(c.PlayerSNo).toBeDefined();
       // Non-spec attributes removed
+      expect(c.PlayerId).toBeUndefined();
       expect(c.Res).toBeUndefined();
       expect(c.TeamUniqueId2).toBeUndefined();
       expect(c.TeamUniqueIdWhite).toBeUndefined();
@@ -378,7 +342,6 @@ describe('buildRefereeExportXml — team tournament', () => {
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
-      nationalIds,
       format: 'team-compositions',
     });
 
@@ -386,64 +349,62 @@ describe('buildRefereeExportXml — team tournament', () => {
 
     // "Alpha Club" = 1 (home), "Beta Club" = 2 (away)
     // Home players get TeamUniqueId=1, away players get TeamUniqueId=2
-    expect(compositions.find(c => c.PlayerId === '50001')!.TeamUniqueId).toBe('1');
-    expect(compositions.find(c => c.PlayerId === '60001')!.TeamUniqueId).toBe('2');
-    expect(compositions.find(c => c.PlayerId === '50002')!.TeamUniqueId).toBe('1');
-    expect(compositions.find(c => c.PlayerId === '60002')!.TeamUniqueId).toBe('2');
+    expect(compositions.find(c => c.PlayerSNo === '1')!.TeamUniqueId).toBe('1');
+    expect(compositions.find(c => c.PlayerSNo === '11')!.TeamUniqueId).toBe('2');
+    expect(compositions.find(c => c.PlayerSNo === '2')!.TeamUniqueId).toBe('1');
+    expect(compositions.find(c => c.PlayerSNo === '12')!.TeamUniqueId).toBe('2');
   });
 
-  it('should use national IDs as PlayerWhiteId/PlayerBlackId in Results', () => {
+  it('should use starting rank numbers as PlayerWhiteSNo/PlayerBlackSNo in Results', () => {
     const xml = buildRefereeExportXml({
       round: 1,
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
-      nationalIds,
     });
 
     const results = parseLine(xml, 'Result');
     expect(results).toHaveLength(4);
 
-    const allIds = results.flatMap(r => [r.PlayerWhiteId, r.PlayerBlackId]);
-    // All IDs should be national IDs (5-digit)
-    for (const id of allIds) {
-      expect(id).toMatch(/^\d{5}$/);
+    const allSNos = results.flatMap(r => [r.PlayerWhiteSNo, r.PlayerBlackSNo]);
+    // All SNo values should be defined
+    for (const sno of allSNos) {
+      expect(sno).toBeDefined();
     }
   });
 
-  it('should swap player IDs and invert result on even boards for Results', () => {
+  it('should swap player SNo and invert result on even boards for Results', () => {
     const xml = buildRefereeExportXml({
       round: 1,
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
-      nationalIds,
     });
 
     const results = parseLine(xml, 'Result');
 
-    // Board 1 (odd): home=White → White=50001(home), Black=60001(away)
+    // Board 1 (odd): home=White → White=1(home), Black=11(away)
     // Referee result "1-0" from home(=White) perspective → Res="1-0"
-    expect(results[0].PlayerWhiteId).toBe('50001');
-    expect(results[0].PlayerBlackId).toBe('60001');
+    expect(results[0].PlayerWhiteSNo).toBe('1');
+    expect(results[0].PlayerBlackSNo).toBe('11');
     expect(results[0].Res).toBe('1-0');
 
-    // Board 2 (even): away=White → White=60002(away), Black=50002(home)
+    // Board 2 (even): away=White → White=12(away), Black=2(home)
     // Referee result "0-1" from home perspective → from White(=away) perspective: invert → "1-0"
-    expect(results[1].PlayerWhiteId).toBe('60002');
-    expect(results[1].PlayerBlackId).toBe('50002');
+    expect(results[1].PlayerWhiteSNo).toBe('12');
+    expect(results[1].PlayerBlackSNo).toBe('2');
     expect(results[1].Res).toBe('1-0');
 
-    // Board 3 (odd): home=White → White=50003, Black=60003
+    // Board 3 (odd): home=White → White=3, Black=13
     // Referee result "½-½" → Res="1/2"
-    expect(results[2].PlayerWhiteId).toBe('50003');
-    expect(results[2].PlayerBlackId).toBe('60003');
+    expect(results[2].PlayerWhiteSNo).toBe('3');
+    expect(results[2].PlayerBlackSNo).toBe('13');
     expect(results[2].Res).toBe('1/2');
 
-    // Board 4 (even): away=White → White=60004(away), Black=50004(home)
+    // Board 4 (even): away=White → White=14(away), Black=4(home)
     // Referee result "+:-" from home perspective = "1-0F" → invert for White(=away): "0-1F"
-    expect(results[3].PlayerWhiteId).toBe('60004');
-    expect(results[3].PlayerBlackId).toBe('50004');
+    expect(results[3].PlayerWhiteSNo).toBe('14');
+    expect(results[3].PlayerBlackSNo).toBe('4');
     expect(results[3].Res).toBe('0-1F');
   });
 
@@ -453,7 +414,6 @@ describe('buildRefereeExportXml — team tournament', () => {
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
-      nationalIds,
       format: 'results',
     });
 
@@ -462,7 +422,6 @@ describe('buildRefereeExportXml — team tournament', () => {
       teamPairings: [teamMatch],
       allPairings,
       resultsMap,
-      nationalIds,
       format: 'team-compositions',
     });
 
@@ -490,7 +449,6 @@ describe('buildRefereeExportXml — team tournament', () => {
       teamPairings: [match1, match2],
       allPairings: allP,
       resultsMap: {},
-      nationalIds: {},
       format: 'team-compositions',
     });
 
@@ -498,12 +456,12 @@ describe('buildRefereeExportXml — team tournament', () => {
 
     // Alphabetically sorted: Alpha=1, Beta=2, Gamma=3
     // Match 1: Gamma(home)=3 vs Alpha(away)=1
-    const m1home = compositions.find(c => c.PlayerId === '21' && c.Board === '1')!;
+    const m1home = compositions.find(c => c.PlayerSNo === '21' && c.Board === '1')!;
     expect(m1home.TeamUniqueId).toBe('3'); // Gamma
 
     // Match 2: Beta(home)=2 vs Gamma(away)=3
     const m2entries = compositions.filter(c => c.Board === '1' && c.Round === '2');
-    const m2home = m2entries.find(c => c.PlayerId === '11')!;
+    const m2home = m2entries.find(c => c.PlayerSNo === '11')!;
     expect(m2home.TeamUniqueId).toBe('2'); // Beta
   });
 });
@@ -519,7 +477,6 @@ describe('buildRefereeExportXml — XML structure', () => {
       teamPairings: [],
       allPairings: [],
       resultsMap: {},
-      nationalIds: {},
     });
 
     expect(xml).toMatch(/^<\?xml version="1\.0" encoding="UTF-8"\?>/);
@@ -531,7 +488,6 @@ describe('buildRefereeExportXml — XML structure', () => {
       teamPairings: [],
       allPairings: [],
       resultsMap: {},
-      nationalIds: {},
     });
 
     expect(xml).toContain('<Results>');
@@ -544,7 +500,6 @@ describe('buildRefereeExportXml — XML structure', () => {
       teamPairings: [],
       allPairings: [makeBoard(1, 1, 2)],
       resultsMap: { 1: '1-0' },
-      nationalIds: {},
     });
 
     const results = parseLine(xml, 'Result');

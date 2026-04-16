@@ -197,76 +197,67 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
 
   var saving = false;
 
-  // Progressive enhancement: hide save button until a selection is made
-  var hasPreselection = form && form.querySelector('input[name="gameResult"]:checked');
-  if (saveBtn && !hasPreselection) saveBtn.classList.add("hidden");
+  // Hide save button — selection auto-submits
+  if (saveBtn) saveBtn.classList.add("hidden");
 
-  function showSave() {
-    if (saveBtn) saveBtn.classList.remove("hidden");
-  }
+  function submitResult() {
+    if (saving || !form) return;
 
-  gameRadios.forEach(function(radio) {
-    radio.addEventListener("change", function() {
-      showSave();
-    });
-  });
+    var fd = new FormData(form);
+    var result = fd.get("gameResult");
+    if (!result) return;
 
-  // Progressive enhancement: intercept submit for AJAX experience
-  if (form) {
-    form.addEventListener("submit", async function(e) {
-      e.preventDefault();
-      if (saving) return;
+    saving = true;
+    // Disable all radios to prevent double-tap
+    gameRadios.forEach(function(r) { r.disabled = true; });
 
-      var fd = new FormData(form);
-      var result = fd.get("gameResult");
-
-      if (!result) return;
-      saving = true;
-      if (saveBtn) saveBtn.setAttribute("aria-disabled", "true");
-
-      try {
-        var res = await fetch(form.action, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tid: fd.get("tid"),
-            round: Number(fd.get("round")),
-            table: Number(fd.get("table")),
-            result: result,
-          }),
-        });
-        var data = await res.json();
-        var resp = { ok: res.ok, data: data };
-
-        if (feedback) {
-          feedback.classList.remove("hidden", "success", "error");
-          if (resp.ok) {
-            window.location.href = form.querySelector('input[name="_redirect"]').value;
-            return;
-          } else {
-            feedback.classList.add("error");
-            feedback.textContent = resp.data.error || errorMsg;
-            saving = false;
-            if (saveBtn) {
-              saveBtn.removeAttribute("aria-disabled");
-              saveBtn.classList.remove("hidden");
-            }
-            feedback.focus();
-          }
-        }
-      } catch {
+    fetch(form.action, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tid: fd.get("tid"),
+        round: Number(fd.get("round")),
+        table: Number(fd.get("table")),
+        result: result,
+      }),
+    })
+    .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+    .then(function(resp) {
+      if (resp.ok) {
+        window.location.href = form.querySelector('input[name="_redirect"]').value;
+      } else {
         if (feedback) {
           feedback.classList.remove("hidden", "success", "error");
           feedback.classList.add("error");
-          feedback.textContent = errorMsg;
+          feedback.textContent = resp.data.error || errorMsg;
           feedback.focus();
         }
         saving = false;
-        if (saveBtn) {
-          saveBtn.removeAttribute("aria-disabled");
-          saveBtn.classList.remove("hidden");
-        }
+        gameRadios.forEach(function(r) { r.disabled = false; });
       }
+    })
+    .catch(function() {
+      if (feedback) {
+        feedback.classList.remove("hidden", "success", "error");
+        feedback.classList.add("error");
+        feedback.textContent = errorMsg;
+        feedback.focus();
+      }
+      saving = false;
+      gameRadios.forEach(function(r) { r.disabled = false; });
+    });
+  }
+
+  // Auto-submit on selection
+  gameRadios.forEach(function(radio) {
+    radio.addEventListener("change", submitResult);
+  });
+
+  // Keep form submit as fallback (no-JS progressive enhancement)
+  if (form) {
+    form.addEventListener("submit", function(e) {
+      e.preventDefault();
+      submitResult();
     });
   }
 })();

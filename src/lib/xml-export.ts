@@ -29,8 +29,6 @@ export interface XmlExportParams {
   allPairings: Pairing[];
   /** Referee results keyed by table number (raw format like "1-0", "½-½", etc.) */
   resultsMap: Record<number, string>;
-  /** Map from starting_number → national_id */
-  nationalIds: Record<number, string>;
   /**
    * Which Swiss-Manager import format to produce.
    * - `'results'` (default): `<Results>` root — for "Import Player-Results"
@@ -52,13 +50,15 @@ export interface XmlExportParams {
  *   even boards → away has White.
  * - Referee results are entered from left-player (home) perspective.
  * - "Result" Res is from actual White's perspective.
- * - Player IDs use national_id when available, falling back to starting number.
+ * - Player identification uses Starting Rank Number (SNo), which is the
+ *   sequential number Swiss-Manager assigns and publishes to chess-results.com.
+ *   This is the most reliable identifier since it originates from Swiss-Manager.
  */
 export function buildRefereeExportXml(params: XmlExportParams): string {
-  const { round, teamPairings, allPairings, resultsMap, nationalIds, format = 'results' } = params;
+  const { round, teamPairings, allPairings, resultsMap, format = 'results' } = params;
 
-  function resolvePlayerId(startingNumber: number): string {
-    return nationalIds[startingNumber] || String(startingNumber || 0);
+  function playerSNo(startingNumber: number): string {
+    return String(startingNumber || 0);
   }
 
   // Build stable team name → ID mapping (deterministic from sorted names)
@@ -91,13 +91,13 @@ export function buildRefereeExportXml(params: XmlExportParams): string {
 
         // Home team player entry (b.white = home team player).
         lines.push(
-          `<TeamComposition Round="${round}" TeamUniqueId="${homeTeamId}" Board="${boardNum}" PlayerId="${resolvePlayerId(b.white.number)}"/>`,
+          `<TeamComposition Round="${round}" TeamUniqueId="${homeTeamId}" Board="${boardNum}" PlayerSNo="${playerSNo(b.white.number)}"/>`,
         );
 
         // Away team player entry (b.black = away team player).
         if (b.black) {
           lines.push(
-            `<TeamComposition Round="${round}" TeamUniqueId="${awayTeamId}" Board="${boardNum}" PlayerId="${resolvePlayerId(b.black.number)}"/>`,
+            `<TeamComposition Round="${round}" TeamUniqueId="${awayTeamId}" Board="${boardNum}" PlayerSNo="${playerSNo(b.black.number)}"/>`,
           );
         }
       }
@@ -123,7 +123,7 @@ export function buildRefereeExportXml(params: XmlExportParams): string {
         const whiteRes = homeHasWhite ? smRes : invertResult(smRes);
 
         lines.push(
-          `<Result Round="${round}" PlayerWhiteId="${resolvePlayerId(actualWhiteNum)}" PlayerBlackId="${resolvePlayerId(actualBlackNum)}" Res="${whiteRes}" />`,
+          `<Result Round="${round}" PlayerWhiteSNo="${playerSNo(actualWhiteNum)}" PlayerBlackSNo="${playerSNo(actualBlackNum)}" Res="${whiteRes}" />`,
         );
       }
     } else {
@@ -132,7 +132,7 @@ export function buildRefereeExportXml(params: XmlExportParams): string {
         const res = resultsMap[p.table] ?? '';
         const smRes = mapResult(res);
         lines.push(
-          `<Result Round="${round}" PlayerWhiteId="${resolvePlayerId(p.white.number)}" PlayerBlackId="${resolvePlayerId(p.black?.number || 0)}" Res="${smRes}" />`,
+          `<Result Round="${round}" PlayerWhiteSNo="${playerSNo(p.white.number)}" PlayerBlackSNo="${playerSNo(p.black?.number || 0)}" Res="${smRes}" />`,
         );
       }
     }

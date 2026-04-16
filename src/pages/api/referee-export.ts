@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
-import { scrapePairings, ensurePlayerCards } from "../../lib/scraper";
-import { getRefereeResults, getPlayerNationalIds } from "../../lib/db";
+import { scrapePairings } from "../../lib/scraper";
+import { getRefereeResults } from "../../lib/db";
 import { buildRefereeExportXml } from "../../lib/xml-export";
 import type { Pairing, TeamPairing } from "../../lib/types";
 
@@ -52,17 +52,11 @@ export const GET: APIRoute = async ({ url }) => {
       allPairings.push(...data.pairings);
     }
 
-    // Ensure player card data is available for national ID lookup
-    await ensurePlayerCards(tid);
-
-    const nationalIds = getPlayerNationalIds(tid);
-
     const xml = buildRefereeExportXml({
       round,
       teamPairings,
       allPairings,
       resultsMap,
-      nationalIds,
       format,
     });
 

@@ -35,6 +35,11 @@
 			"label": "Run all tests",
 			"type": "shell",
 			"command": "npx vitest run 2>&1 | tail -30"
+		},
+		{
+			"label": "Run xml-export tests final",
+			"type": "shell",
+			"command": "npx vitest run tests/unit/xml-export.test.ts"
 		}
 	]
 }
