@@ -31,6 +31,7 @@ export const iconRegistry = {
   "info": "info",
   "tv": "tv",
   "play": "play",
+  "log-out": "log-out",
 } as const satisfies Record<string, string>;
 
 export type IconName = keyof typeof iconRegistry;

@@ -10,6 +10,15 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+# Firebase client config must be present at build time (inlined into client JS)
+ARG PUBLIC_FIREBASE_API_KEY
+ARG PUBLIC_FIREBASE_AUTH_DOMAIN
+ARG PUBLIC_FIREBASE_PROJECT_ID
+ARG PUBLIC_FIREBASE_STORAGE_BUCKET
+ARG PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+ARG PUBLIC_FIREBASE_APP_ID
+
 RUN npm run build
 
 # Production stage
