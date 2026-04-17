@@ -21,12 +21,18 @@ let teamPairings: TeamPairing[] | undefined;
 let linkedTournaments: LinkedTournament[] | undefined;
 let currentLabel = "";
 let tournamentName = "";
+let tournamentDate = "";
+let tournamentLocation = "";
+let tournamentType = "";
 
 try {
   const initial = await scrapePairings(tid, 1);
   totalRounds = initial.info.totalRounds;
   linkedTournaments = initial.info.linkedTournaments;
   tournamentName = initial.info.name;
+  tournamentDate = initial.info.date || "";
+  tournamentLocation = initial.info.location || "";
+  tournamentType = initial.info.type || "";
   currentLabel = initial.info.currentLabel || initial.info.name;
 
   if (roundParam) {
@@ -176,3 +182,34 @@ const roundBaseUrl = `/referee/${tid}?lang=${lang}`;
     }
   }
 </style>
+
+<script is:inline define:vars={{ tid, tournamentName, tournamentDate, tournamentLocation, tournamentType }}>
+  (function () {
+    try {
+      if (!tid) return;
+      var key = "recentTournaments";
+      var stored = localStorage.getItem(key);
+      var recent = stored ? JSON.parse(stored) : [];
+      var existing = recent.find(function (r) {
+        return r.id === tid;
+      });
+      recent = recent.filter(function (r) {
+        return r.id !== tid;
+      });
+      recent.unshift({
+        id: tid,
+        name: tournamentName || (existing && existing.name) || ("Tournament " + tid),
+        type: tournamentType || (existing && existing.type) || "",
+        date: tournamentDate || (existing && existing.date) || "",
+        location: tournamentLocation || (existing && existing.location) || "",
+        playerCount: existing && typeof existing.playerCount === "number"
+          ? existing.playerCount
+          : undefined,
+      });
+      recent = recent.slice(0, 5);
+      localStorage.setItem(key, JSON.stringify(recent));
+    } catch (e) {
+      /* localStorage unavailable */
+    }
+  })();
+</script>
