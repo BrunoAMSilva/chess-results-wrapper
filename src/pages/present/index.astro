@@ -14,6 +14,7 @@ import TextInput from "../../components/controls/TextInput.astro";
 import PresenterConfigPanel from "../../components/presenter/PresenterConfigPanel.astro";
 import PresenterSidebar from "../../components/presenter/PresenterSidebar.astro";
 import { scrapePairings, scrapeStandings } from "../../lib/scraper";
+import { setTournamentConfig, getTournamentConfig } from "../../lib/db";
 import { useTranslations } from "../../i18n/ui";
 import { DEFAULT_TOURNAMENT, PRESENTER_PAIRINGS_PER_PAGE, CAROUSEL_INTERVAL, LANGUAGE_OPTIONS } from "../../lib/constants";
 import { paginateArray } from "../../lib/utils";
@@ -24,9 +25,27 @@ const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const round = getIntParam(Astro.url.searchParams.get("round"), 1, 1, 64);
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), PRESENTER_PAIRINGS_PER_PAGE, 1, 50);
-const sponsorImage = Astro.url.searchParams.get("sponsor")?.trim() || "";
-const sponsorAlt = Astro.url.searchParams.get("sponsorAlt")?.trim() || "Sponsor";
 const hideNonPaired = Astro.url.searchParams.get("hideNonPaired") === "1";
+
+// Sponsor: URL params override → DB fallback, auto-save when provided via URL
+const sponsorParam = Astro.url.searchParams.get("sponsor")?.trim() || "";
+const sponsorAltParam = Astro.url.searchParams.get("sponsorAlt")?.trim() || "";
+
+let sponsorImage = sponsorParam;
+let sponsorAlt = sponsorAltParam || "Sponsor";
+
+if (sponsorParam) {
+  // Auto-save to DB for quick demo reuse
+  setTournamentConfig(tid, "sponsor_image", sponsorParam);
+  if (sponsorAltParam) setTournamentConfig(tid, "sponsor_alt", sponsorAltParam);
+} else {
+  // Load from DB when not in URL
+  const savedImage = getTournamentConfig(tid, "sponsor_image");
+  if (savedImage) {
+    sponsorImage = savedImage;
+    sponsorAlt = getTournamentConfig(tid, "sponsor_alt") || "Sponsor";
+  }
+}
 
 const sponsorSwitchParams = new URLSearchParams();
 if (sponsorImage) sponsorSwitchParams.set("sponsor", sponsorImage);
