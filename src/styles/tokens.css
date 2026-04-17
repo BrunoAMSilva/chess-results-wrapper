@@ -144,8 +144,8 @@
   --primary-container: var(--gold-400);
   --primary-fixed-dim: #fff2d6;
   --on-primary-fixed: #1a1a24;
-  --secondary-fixed-dim: #e7bdb1;  /* Walnut/Black chess tone */
-  --tertiary-fixed-dim: #e1c299;   /* Tan/White chess tone */
+  --secondary-fixed-dim: #161511;  /* Walnut/Black chess tone */
+  --tertiary-fixed-dim: #fdf6ee;   /* Tan/White chess tone */
 }
 
 /* ============================================================

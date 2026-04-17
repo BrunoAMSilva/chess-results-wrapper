@@ -7,6 +7,13 @@ interface Props {
   done?: boolean;
   showArrow?: boolean;
   doneLabel?: string;
+  resultType?:
+    | "white-win"
+    | "black-win"
+    | "draw"
+    | "forfeit-white"
+    | "forfeit-black"
+    | "forfeit-both";
   ariaLabel?: string;
 }
 
@@ -18,6 +25,7 @@ const {
   done = false,
   showArrow = false,
   doneLabel,
+  resultType,
   ariaLabel,
 } = Astro.props;
 ---
@@ -27,6 +35,7 @@ const {
     "selection-tile",
     `selection-tile--${variant}`,
     { "selection-tile--done": done, "selection-tile--arrow": showArrow },
+    resultType && `selection-tile--${resultType}`,
   ]}
   href={href}
   aria-label={ariaLabel}
@@ -150,9 +159,9 @@ const {
     display: flex;
     align-items: center;
     gap: var(--space-1);
-    padding: var(--space-1) var(--space-1) ;
+    padding: var(--space-1) var(--space-1);
     border-radius: var(--radius-full);
-    background: var(--primary-container);
+    background: var(--accent);
     color: var(--on-primary-fixed);
     font-size: var(--text-sm);
     font-weight: var(--weight-bold);
@@ -168,7 +177,7 @@ const {
     height: 1.125rem;
     border-radius: var(--radius-full);
     background: var(--on-primary-fixed);
-    color: var(--primary-container);
+    color: var(--accent);
     flex-shrink: 0;
   }
 
@@ -196,6 +205,106 @@ const {
         transparent 55%
       ),
       var(--surface-container-highest);
+  }
+
+  .selection-tile--white-win {
+    background: var(--tertiary-fixed-dim);
+    color: #000;
+  }
+
+  .selection-tile--white-win:hover {
+    background: color-mix(in srgb, var(--tertiary-fixed-dim) 85%, #fff);
+  }
+
+  .selection-tile--white-win .selection-tile__label {
+    color: #000;
+  }
+
+  .selection-tile--black-win {
+    background: #000;
+    color: #fff;
+  }
+
+  .selection-tile--black-win:hover {
+    background: #1a1a1a;
+  }
+
+  .selection-tile--black-win .selection-tile__label {
+    color: #fff;
+  }
+
+  .selection-tile--draw {
+    background: var(--accent);
+    color: #000;
+  }
+
+  .selection-tile--draw:hover {
+    background: color-mix(in srgb, var(--accent) 85%, #fff);
+  }
+
+  .selection-tile--draw .selection-tile__label {
+    color: #000;
+  }
+
+  .selection-tile--draw .selection-tile__done {
+    background: #000;
+    color: #fff;
+  }
+
+  .selection-tile--draw .selection-tile__done-circle {
+    background: #fff;
+    color: #000;
+  }
+
+  .selection-tile--forfeit-white {
+    background: linear-gradient(
+      45deg,
+      var(--tertiary-fixed-dim) 80%,
+      var(--red-500) 80%
+    );
+    color: #000;
+  }
+
+  .selection-tile--forfeit-white:hover {
+    background: linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--tertiary-fixed-dim) 85%, #fff) 80%,
+      color-mix(in srgb, var(--red-500) 85%, #fff) 80%
+    );
+  }
+
+  .selection-tile--forfeit-white .selection-tile__label {
+    color: #000;
+  }
+
+  .selection-tile--forfeit-black {
+    background: linear-gradient(135deg, var(--red-500) 20%, #000 20%);
+    color: #fff;
+  }
+
+  .selection-tile--forfeit-black:hover {
+    background: linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--red-500) 85%, #fff) 20%,
+      #1a1a1a 20%
+    );
+  }
+
+  .selection-tile--forfeit-black .selection-tile__label {
+    color: #fff;
+  }
+
+  .selection-tile--forfeit-both {
+    background: var(--red-500);
+    color: #fff;
+  }
+
+  .selection-tile--forfeit-both:hover {
+    background: color-mix(in srgb, var(--red-500) 85%, #fff);
+  }
+
+  .selection-tile--forfeit-both .selection-tile__label {
+    color: #fff;
   }
 
   .selection-tile--table {

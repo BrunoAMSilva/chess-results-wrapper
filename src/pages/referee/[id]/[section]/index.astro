@@ -67,10 +67,30 @@ function formatTableLabel(table: number): string {
   return String(table);
 }
 
-const submittedTables = new Map<number, string>();
+const RESULT_DISPLAY: Record<string, string> = {
+  "+:-": "1-0F",
+  "-:+": "0-1F",
+  "-:-": "0-0F",
+};
+
+type ResultType = "white-win" | "black-win" | "draw" | "forfeit-white" | "forfeit-black" | "forfeit-both";
+function resultToType(result: string): ResultType {
+  if (result === "+:-") return "forfeit-white";
+  if (result === "-:+") return "forfeit-black";
+  if (result === "-:-") return "forfeit-both";
+  if (result === "1-0") return "white-win";
+  if (result === "0-1") return "black-win";
+  return "draw";
+}
+
+function resultDisplayLabel(result: string): string {
+  return RESULT_DISPLAY[result] ?? result;
+}
+
+const submittedTables = new Map<number, { result: string; type: ResultType }>();
 const refResults = getRefereeResults(section, activeRound) as Array<{ table_number: number; result: string }>;
 for (const r of refResults) {
-  submittedTables.set(r.table_number, r.result);
+  submittedTables.set(r.table_number, { result: r.result, type: resultToType(r.result) });
 }
 
 const q = `round=${activeRound}&lang=${lang}`;
@@ -93,7 +113,8 @@ const eyebrow = tournamentName && tournamentName !== pageTitle ? tournamentName 
           variant="table"
           label={formatTableLabel(tbl)}
           done={submittedTables.has(tbl)}
-          doneLabel={submittedTables.get(tbl)}
+          doneLabel={submittedTables.has(tbl) ? resultDisplayLabel(submittedTables.get(tbl)!.result) : undefined}
+          resultType={submittedTables.get(tbl)?.type}
         />
       ))}
     </div>
