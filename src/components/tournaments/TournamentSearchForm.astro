@@ -93,8 +93,8 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
     </FormField>
     {showSubmit && (
       <ActionButton type="submit" class="search-btn" >
-        {submitLabel}
-        <Icon slot="icon" name="arrow-right" size={18} />
+        <span class="sr-only">{submitLabel}</span>
+        <Icon slot="icon" name="arrow-right" size={22} />
       </ActionButton>
     )}
   </form>

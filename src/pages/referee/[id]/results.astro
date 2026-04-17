@@ -4,10 +4,18 @@ import EmptyState from "../../../components/app/EmptyState.astro";
 import ActionButton from "../../../components/controls/ActionButton.astro";
 import RoundProgressCard from "../../../components/referee/RoundProgressCard.astro";
 import { scrapePairings } from "../../../lib/scraper";
-import { getRefereeResults, getTournamentConfig, getUploadLog } from "../../../lib/db";
+import {
+  getRefereeResults,
+  getTournamentConfig,
+  getUploadLog,
+} from "../../../lib/db";
 import { useTranslations } from "../../../i18n/ui";
 import { resolvePageLang } from "../../../lib/page-lang";
-import type { LinkedTournament, Pairing, TeamPairing } from "../../../lib/types";
+import type {
+  LinkedTournament,
+  Pairing,
+  TeamPairing,
+} from "../../../lib/types";
 
 const tid = Astro.params.id!;
 const lang = resolvePageLang(Astro.url, Astro.cookies);
@@ -48,13 +56,18 @@ try {
   currentLabel = initial.info.currentLabel || initial.info.name;
 
   if (roundParam) {
-    activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds));
+    activeRound = Math.max(
+      1,
+      Math.min(parseInt(roundParam, 10) || 1, totalRounds),
+    );
   } else {
     let foundRound = 1;
     for (let r = totalRounds; r >= 1; r--) {
       const data = r === 1 ? initial : await scrapePairings(tid, r);
       const pairings = data.pairings || [];
-      const hasNoResults = pairings.length > 0 && pairings.every((p) => !p.result || p.result.trim() === "");
+      const hasNoResults =
+        pairings.length > 0 &&
+        pairings.every((p) => !p.result || p.result.trim() === "");
       if (hasNoResults) {
         foundRound = r;
       } else if (pairings.length > 0) {
@@ -81,9 +94,10 @@ try {
   }
 
   // Determine which section to show (default to first)
-  const activeSectionId = sectionParam && sectionIds.some((s) => s.id === sectionParam)
-    ? sectionParam
-    : sectionIds[0]?.id;
+  const activeSectionId =
+    sectionParam && sectionIds.some((s) => s.id === sectionParam)
+      ? sectionParam
+      : sectionIds[0]?.id;
   const loadSections = sectionIds.filter((s) => s.id === activeSectionId);
 
   for (const sec of loadSections) {
@@ -91,7 +105,8 @@ try {
     const pairings: Pairing[] = data.pairings || [];
     const teamPairings: TeamPairing[] | undefined = data.teamPairings;
 
-    const tablePlayersMap: Record<number, { white: string; black: string }> = {};
+    const tablePlayersMap: Record<number, { white: string; black: string }> =
+      {};
     if (teamPairings && teamPairings.length > 0) {
       for (const tm of teamPairings) {
         for (const b of tm.boards) {
@@ -111,12 +126,17 @@ try {
     }
 
     const resultsMap: Record<number, RefereeResult> = {};
-    const refResults = getRefereeResults(sec.id, activeRound) as RefereeResult[];
+    const refResults = getRefereeResults(
+      sec.id,
+      activeRound,
+    ) as RefereeResult[];
     for (const r of refResults) {
       resultsMap[r.table_number] = r;
     }
 
-    const tables = Object.keys(tablePlayersMap).map(Number).sort((a, b) => a - b);
+    const tables = Object.keys(tablePlayersMap)
+      .map(Number)
+      .sort((a, b) => a - b);
     const submittedCount = tables.filter((t) => resultsMap[t]).length;
 
     allSections.push({
@@ -137,7 +157,10 @@ const rounds = Array.from({ length: totalRounds }, (_, i) => i + 1);
 const activeSection = allSections[0]?.id || tid;
 const roundBaseUrl = `/referee/${tid}/results?lang=${lang}&section=${activeSection}`;
 
-function formatTemplate(template: string, values: Record<string, string | number>) {
+function formatTemplate(
+  template: string,
+  values: Record<string, string | number>,
+) {
   let formatted = template;
   for (const [key, value] of Object.entries(values)) {
     formatted = formatted.replaceAll(`{${key}}`, String(value));
@@ -145,12 +168,19 @@ function formatTemplate(template: string, values: Record<string, string | number
   return formatted;
 }
 
-function getResultTone(result?: string): "pending" | "white" | "black" | "draw" | "other" {
+function getResultTone(
+  result?: string,
+): "pending" | "white" | "black" | "draw" | "other" {
   if (!result) return "pending";
   const normalized = result.replace(/\s+/g, "").toLowerCase();
   if (normalized.includes("1-0") || normalized.includes("1:0")) return "white";
   if (normalized.includes("0-1") || normalized.includes("0:1")) return "black";
-  if (normalized.includes("1/2") || normalized.includes("0.5") || normalized.includes("½")) return "draw";
+  if (
+    normalized.includes("1/2") ||
+    normalized.includes("0.5") ||
+    normalized.includes("½")
+  )
+    return "draw";
   return "other";
 }
 
@@ -166,78 +196,165 @@ if (hasSections) {
   sectionList.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-const resultsTitle = allSections[0]?.name || currentLabel || t("referee.results");
-const eyebrow = tournamentName && tournamentName !== resultsTitle ? tournamentName : undefined;
+const resultsTitle =
+  allSections[0]?.name || currentLabel || t("referee.results");
+const eyebrow =
+  tournamentName && tournamentName !== resultsTitle
+    ? tournamentName
+    : undefined;
 
 // Check SID configuration and upload status
 const hasSid = !!getTournamentConfig(activeSection, "sid");
 const uploadLog = hasSid ? getUploadLog(activeSection, activeRound) : [];
-const uploadStatusMap: Record<number, { status: string; statusMsg: string }> = {};
+const uploadStatusMap: Record<number, { status: string; statusMsg: string }> =
+  {};
 for (const entry of uploadLog) {
-  uploadStatusMap[entry.table_number] = { status: entry.status, statusMsg: entry.status_msg };
+  uploadStatusMap[entry.table_number] = {
+    status: entry.status,
+    statusMsg: entry.status_msg,
+  };
 }
 ---
 
-<ResponsiveLayout title={resultsTitle} eyebrow={eyebrow} lang={lang} navMode="referee">
-  {error && (
-    <div class="error-msg">
-      <p>{error}</p>
-    </div>
-  )}
+<ResponsiveLayout
+  title={resultsTitle}
+  eyebrow={eyebrow}
+  lang={lang}
+  navMode="referee"
+>
+  {
+    error && (
+      <div class="error-msg">
+        <p>{error}</p>
+      </div>
+    )
+  }
 
   <div class="results-overview">
-    {allSections.map((sec, index) => {
-      const remainingCount = Math.max(sec.tables.length - sec.submittedCount, 0);
-      const eyebrowText = formatTemplate(t("referee.roundCompletion"), {
-        round: activeRound,
-      });
-      const progressLabel = formatTemplate(t("referee.progressStatus"), {
-        submitted: sec.submittedCount,
-        total: sec.tables.length,
-      });
-      const remainingTemplate = remainingCount === 1
-        ? t("referee.progressRemainingSingular")
-        : t("referee.progressRemainingPlural");
-      const summaryText = remainingCount === 0 && sec.tables.length > 0
-        ? t("referee.allSubmitted")
-        : formatTemplate(remainingTemplate, {
-            count: remainingCount,
-            section: sec.name,
-          });
-      const progressValueText = `${progressLabel}. ${summaryText}`;
-      const hasExport = sec.submittedCount > 0;
+    {
+      allSections.map((sec, index) => {
+        const remainingCount = Math.max(
+          sec.tables.length - sec.submittedCount,
+          0,
+        );
+        const eyebrowText = formatTemplate(t("referee.roundCompletion"), {
+          round: activeRound,
+        });
+        const progressLabel = formatTemplate(t("referee.progressStatus"), {
+          submitted: sec.submittedCount,
+          total: sec.tables.length,
+        });
+        const remainingTemplate =
+          remainingCount === 1
+            ? t("referee.progressRemainingSingular")
+            : t("referee.progressRemainingPlural");
+        const summaryText =
+          remainingCount === 0 && sec.tables.length > 0
+            ? t("referee.allSubmitted")
+            : formatTemplate(remainingTemplate, {
+                count: remainingCount,
+                section: sec.name,
+              });
+        const progressValueText = `${progressLabel}. ${summaryText}`;
+        const hasExport = sec.submittedCount > 0;
 
-      return (
-      <div class="section-block">
-        <RoundProgressCard
-          submittedCount={sec.submittedCount}
-          totalCount={sec.tables.length}
-          eyebrowText={eyebrowText}
-          progressLabel={progressLabel}
-          summaryText={summaryText}
-          progressValueText={progressValueText}
-        >
-          {index === 0 && (
-            <Fragment slot="eyebrow-controls">
-              <select class="card-inline-select round-inline-select" id="roundSelect" aria-label={t("referee.round")}>
-                {rounds.map((round) => (
-                  <option value={round} selected={round === activeRound}>{round}</option>
-                ))}
-              </select>
-
-            </Fragment>
-          )}
-
-          {index === 0 && (
-            <Fragment slot="supporting-controls">
-              {hasSections && sectionList.length > 0 && (
-                <select class="card-inline-select section-inline-select" id="sectionSelect" aria-label={t("referee.changeSection")}>
-                  {sectionList.map((s) => (
-                    <option value={s.id} selected={s.id === activeSection}>{s.name}</option>
-                  ))}
-                </select>
+        return (
+          <div class="section-block">
+            <RoundProgressCard
+              submittedCount={sec.submittedCount}
+              totalCount={sec.tables.length}
+              eyebrowText={eyebrowText}
+              progressLabel={progressLabel}
+              summaryText={summaryText}
+              progressValueText={progressValueText}
+            >
+              {index === 0 && (
+                <Fragment slot="eyebrow-controls">
+                  <select
+                    class="card-inline-select round-inline-select"
+                    id="roundSelect"
+                    aria-label={t("referee.round")}
+                  >
+                    {rounds.map((round) => (
+                      <option value={round} selected={round === activeRound}>
+                        {round}
+                      </option>
+                    ))}
+                  </select>
+                </Fragment>
               )}
-              {hasExport && (
+
+              {index === 0 && (
+                <Fragment slot="supporting-controls">
+                  {hasSections && sectionList.length > 0 && (
+                    <select
+                      class="card-inline-select section-inline-select"
+                      id="sectionSelect"
+                      aria-label={t("referee.changeSection")}
+                    >
+                      {sectionList.map((s) => (
+                        <option value={s.id} selected={s.id === activeSection}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {hasExport && (
+                    <ActionButton
+                      class="export-btn"
+                      href={`/api/referee-export?tid=${sec.id}&round=${activeRound}`}
+                      download={`round-${activeRound}-results.xml`}
+                      variant="secondary"
+                      size="compact"
+                      pill
+                    >
+                      {t("referee.exportXml")}
+                    </ActionButton>
+                  )}
+                  {hasExport && (
+                    <ActionButton
+                      id="copyResultsBtn"
+                      class="copy-btn"
+                      type="button"
+                      variant="secondary"
+                      size="compact"
+                      pill
+                      data-section={sec.name}
+                      data-round={String(activeRound)}
+                      data-copied={t("referee.copied")}
+                    >
+                      {t("referee.copyResults")}
+                    </ActionButton>
+                  )}
+                  {hasExport && hasSid && (
+                    <ActionButton
+                      id="uploadBtn"
+                      class="upload-btn"
+                      type="button"
+                      size="compact"
+                      pill
+                      data-tid={sec.id}
+                      data-round={String(activeRound)}
+                    >
+                      {t("referee.upload")}
+                    </ActionButton>
+                  )}
+                  {!hasSid && hasExport && (
+                    <ActionButton
+                      href={`/referee/${tid}/settings?lang=${lang}`}
+                      variant="secondary"
+                      size="compact"
+                      pill
+                    >
+                      {t("referee.configureSid")}
+                    </ActionButton>
+                  )}
+                </Fragment>
+              )}
+            </RoundProgressCard>
+
+            {hasExport && index !== 0 && (
+              <div class="export-section">
                 <ActionButton
                   class="export-btn"
                   href={`/api/referee-export?tid=${sec.id}&round=${activeRound}`}
@@ -248,103 +365,74 @@ for (const entry of uploadLog) {
                 >
                   {t("referee.exportXml")}
                 </ActionButton>
-              )}
-              {hasExport && (
-                <ActionButton
-                  id="copyResultsBtn"
-                  class="copy-btn"
-                  type="button"
-                  variant="secondary"
-                  size="compact"
-                  pill
-                  data-section={sec.name}
-                  data-round={String(activeRound)}
-                  data-copied={t("referee.copied")}
-                >
-                  {t("referee.copyResults")}
-                </ActionButton>
-              )}
-              {hasExport && hasSid && (
-                <ActionButton
-                  id="uploadBtn"
-                  class="upload-btn"
-                  type="button"
-                  size="compact"
-                  pill
-                  data-tid={sec.id}
-                  data-round={String(activeRound)}
-                >
-                  {t("referee.upload")}
-                </ActionButton>
-              )}
-              {!hasSid && hasExport && (
-                <ActionButton
-                  href={`/referee/${tid}/settings?lang=${lang}`}
-                  variant="secondary"
-                  size="compact"
-                  pill
-                >
-                  {t("referee.configureSid")}
-                </ActionButton>
-              )}
-            </Fragment>
-          )}
-        </RoundProgressCard>
+              </div>
+            )}
 
-        {hasExport && index !== 0 && (
-          <div class="export-section">
-            <ActionButton
-              class="export-btn"
-              href={`/api/referee-export?tid=${sec.id}&round=${activeRound}`}
-              download={`round-${activeRound}-results.xml`}
-              variant="secondary"
-              size="compact"
-              pill
-            >
-              {t("referee.exportXml")}
-            </ActionButton>
+            {sec.tables.length === 0 ? (
+              <EmptyState message={t("referee.noResultsYet")} compact />
+            ) : (
+              <table class="results-table">
+                <thead>
+                  <tr class="results-header">
+                    <th class="col-table">{t("referee.table")}</th>
+                    <th class="col-players">
+                      {t("table.white")} – {t("table.black")}
+                    </th>
+                    <th class="col-result">{t("referee.result")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sec.tables.map((tbl) => {
+                    const players = sec.tablePlayersMap[tbl];
+                    const result = sec.resultsMap[tbl];
+                    const resultTone = getResultTone(result?.result);
+                    return (
+                      <tr
+                        class:list={[
+                          "results-row",
+                          { submitted: !!result, pending: !result },
+                        ]}
+                      >
+                        <td class="col-table">
+                          <span class="table-badge">{tbl}</span>
+                        </td>
+                        <td class="col-players">
+                          <span class="player-white">{players.white}</span>
+                          <span class="vs">&nbsp;–&nbsp;</span>
+                          <span class="player-black">{players.black}</span>
+                        </td>
+                        <td class="col-result">
+                          <span
+                            class:list={[
+                              "result-badge",
+                              resultTone,
+                              { "has-result": !!result },
+                            ]}
+                          >
+                            {result ? result.result : t("referee.pending")}
+                          </span>
+                          {uploadStatusMap[tbl] && (
+                            <span
+                              class:list={[
+                                "upload-status",
+                                uploadStatusMap[tbl].status.toLowerCase(),
+                              ]}
+                              title={uploadStatusMap[tbl].statusMsg}
+                            >
+                              {uploadStatusMap[tbl].status === "OK" ? "✓" : "✗"}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
-        )}
-
-        {sec.tables.length === 0 ? (
-          <EmptyState message={t("referee.noResultsYet")} compact />
-        ) : (
-          <div class="results-table">
-            <div class="results-header">
-              <span class="col-table">{t("referee.table")}</span>
-              <span class="col-players">{t("table.white")} – {t("table.black")}</span>
-              <span class="col-result">{t("referee.result")}</span>
-            </div>
-            {sec.tables.map((tbl) => {
-              const players = sec.tablePlayersMap[tbl];
-              const result = sec.resultsMap[tbl];
-              const resultTone = getResultTone(result?.result);
-              return (
-                <div class:list={["results-row", { submitted: !!result, pending: !result }]}>
-                  <span class="col-table"><span class="table-badge">{tbl}</span></span>
-                  <span class="col-players">
-                    <span class="player-white">{players.white}</span>
-                    <span class="vs">–</span>
-                    <span class="player-black">{players.black}</span>
-                  </span>
-                  <span class="col-result">
-                    <span class:list={["result-badge", resultTone, { "has-result": !!result }]}> 
-                      {result ? result.result : t("referee.pending")}
-                    </span>
-                    {uploadStatusMap[tbl] && (
-                      <span class:list={["upload-status", uploadStatusMap[tbl].status.toLowerCase()]} title={uploadStatusMap[tbl].statusMsg}>
-                        {uploadStatusMap[tbl].status === "OK" ? "✓" : "✗"}
-                      </span>
-                    )}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-      );
-    })}
+        );
+      })
+    }
   </div>
 </ResponsiveLayout>
 
@@ -352,7 +440,7 @@ for (const entry of uploadLog) {
   // Round select navigation
   var roundSelect = document.getElementById("roundSelect");
   if (roundSelect) {
-    roundSelect.addEventListener("change", function() {
+    roundSelect.addEventListener("change", function () {
       var url = new URL(window.location.href);
       url.searchParams.set("round", roundSelect.value);
       window.location.href = url.toString();
@@ -362,7 +450,7 @@ for (const entry of uploadLog) {
   // Section select navigation
   var sectionSelect = document.getElementById("sectionSelect");
   if (sectionSelect) {
-    sectionSelect.addEventListener("change", function() {
+    sectionSelect.addEventListener("change", function () {
       var url = new URL(window.location.href);
       url.searchParams.set("section", sectionSelect.value);
       window.location.href = url.toString();
@@ -370,14 +458,14 @@ for (const entry of uploadLog) {
   }
 
   // Auto-refresh every 15 seconds
-  setTimeout(function() {
+  setTimeout(function () {
     window.location.reload();
   }, 15000);
 
   // Upload to chess-results.com
   var uploadBtn = document.getElementById("uploadBtn");
   if (uploadBtn) {
-    uploadBtn.addEventListener("click", function() {
+    uploadBtn.addEventListener("click", function () {
       var btn = uploadBtn;
       var tid = btn.getAttribute("data-tid");
       var round = btn.getAttribute("data-round");
@@ -387,10 +475,16 @@ for (const entry of uploadLog) {
       fetch("/api/referee-upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tid: tid, round: parseInt(round, 10), section: tid }),
+        body: JSON.stringify({
+          tid: tid,
+          round: parseInt(round, 10),
+          section: tid,
+        }),
       })
-        .then(function(res) { return res.json(); })
-        .then(function(data) {
+        .then(function (res) {
+          return res.json();
+        })
+        .then(function (data) {
           if (data.ok) {
             // Reload to show updated upload status
             window.location.reload();
@@ -400,7 +494,7 @@ for (const entry of uploadLog) {
             alert(data.error || "Upload failed");
           }
         })
-        .catch(function() {
+        .catch(function () {
           btn.disabled = false;
           btn.textContent = btn.getAttribute("data-label") || "Upload";
           alert("Network error");
@@ -411,7 +505,7 @@ for (const entry of uploadLog) {
   // Copy results as text for organizer
   var copyBtn = document.getElementById("copyResultsBtn");
   if (copyBtn) {
-    copyBtn.addEventListener("click", function() {
+    copyBtn.addEventListener("click", function () {
       var section = copyBtn.getAttribute("data-section") || "";
       var round = copyBtn.getAttribute("data-round") || "";
       var copiedLabel = copyBtn.getAttribute("data-copied") || "Copied!";
@@ -422,7 +516,7 @@ for (const entry of uploadLog) {
       lines.push(section + " — Round " + round);
       lines.push("");
 
-      rows.forEach(function(row) {
+      rows.forEach(function (row) {
         var table = row.querySelector(".table-badge");
         var white = row.querySelector(".player-white");
         var black = row.querySelector(".player-black");
@@ -437,26 +531,29 @@ for (const entry of uploadLog) {
       });
 
       var text = lines.join("\n");
-      navigator.clipboard.writeText(text).then(function() {
-        copyBtn.textContent = copiedLabel;
-        setTimeout(function() {
-          copyBtn.textContent = originalLabel;
-        }, 2000);
-      }).catch(function() {
-        // Fallback: select text in a temporary textarea
-        var ta = document.createElement("textarea");
-        ta.value = text;
-        ta.style.position = "fixed";
-        ta.style.opacity = "0";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
-        copyBtn.textContent = copiedLabel;
-        setTimeout(function() {
-          copyBtn.textContent = originalLabel;
-        }, 2000);
-      });
+      navigator.clipboard
+        .writeText(text)
+        .then(function () {
+          copyBtn.textContent = copiedLabel;
+          setTimeout(function () {
+            copyBtn.textContent = originalLabel;
+          }, 2000);
+        })
+        .catch(function () {
+          // Fallback: select text in a temporary textarea
+          var ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          copyBtn.textContent = copiedLabel;
+          setTimeout(function () {
+            copyBtn.textContent = originalLabel;
+          }, 2000);
+        });
     });
   }
 </script>
@@ -491,51 +588,59 @@ for (const entry of uploadLog) {
   }
 
   .results-table {
-    display: flex;
-    flex-direction: column;
-    border-radius: var(--radius-lg);
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
     background: var(--surface-container-low);
-    box-shadow: var(--shadow-card);
-    overflow: hidden;
   }
 
-  .results-header {
-    display: grid;
-    grid-template-columns: 48px 1fr 80px;
-    gap: var(--space-3);
+  .results-header th {
     padding: var(--space-3) var(--space-4);
-    background: var(--surface-container-high);
+    background: var(--surface-container-low);
     border-bottom: 1px solid var(--border-strong);
     font-size: var(--text-xs);
     font-weight: var(--weight-bold);
     color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: var(--tracking-wide);
+    text-align: left;
   }
 
-  .results-row {
-    display: grid;
-    grid-template-columns: 48px 1fr 80px;
-    gap: var(--space-3);
+  .results-header .col-table {
+    width: 48px;
+    text-align: center;
+  }
+
+  .results-header .col-result {
+    width: 80px;
+    text-align: right;
+  }
+
+  
+  .results-row td {
     padding: var(--space-3) var(--space-4);
-    align-items: center;
+    border-block-end: 2px solid var(--border-light);
     font-size: var(--text-sm);
-    border-bottom: 1px solid var(--border-light);
     background: var(--surface-container-low);
+    height: 100%;
   }
 
-  .results-row:last-child {
+  .results-row:last-child td {
     border-bottom: none;
   }
 
-  .results-row.submitted {
-    background: color-mix(in srgb, var(--surface-container-low) 76%, var(--accent-subtle));
+  .results-row.submitted td {
+    background: color-mix(
+      in srgb,
+      var(--surface-container-low) 76%,
+      var(--accent-subtle)
+    );
   }
 
   .col-table {
-    display: flex;
-    justify-content: center;
     text-align: center;
+    width: 48px;
   }
 
   .table-badge {
@@ -553,9 +658,6 @@ for (const entry of uploadLog) {
   }
 
   .col-players {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
     overflow: hidden;
   }
 
@@ -582,8 +684,8 @@ for (const entry of uploadLog) {
   }
 
   .col-result {
-    display: flex;
-    justify-content: flex-end;
+    text-align: right;
+    width: 80px;
   }
 
   .result-badge {
@@ -641,11 +743,27 @@ for (const entry of uploadLog) {
       padding: var(--space-3) 0;
     }
 
+    .results-table,
+    .results-table thead,
+    .results-table tbody,
+    .results-table tr,
+    .results-table th,
+    .results-table td {
+      display: block;
+    }
+
     .results-header {
-      display: none;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
 
     .results-row {
+      display: grid;
       grid-template-columns: auto 1fr;
       grid-template-areas:
         "table result"
@@ -654,20 +772,53 @@ for (const entry of uploadLog) {
       padding: var(--space-4);
     }
 
-    .col-table {
+    .results-row td.col-table {
       grid-area: table;
-      justify-content: flex-start;
+      text-align: left;
+      width: auto;
+      padding: 0;
+      border-bottom: none;
     }
 
-    .col-result {
+    .results-row td.col-result {
       grid-area: result;
+      width: auto;
+      padding: 0;
+      border-bottom: none;
     }
 
-    .col-players {
+    .results-row td.col-players {
       grid-area: players;
       flex-wrap: wrap;
       gap: var(--space-1);
       margin-top: var(--space-2);
+      padding: 0;
+      border-bottom: none;
+    }
+
+    .results-row td {
+      background: transparent;
+    }
+
+    .results-row.submitted td {
+      background: transparent;
+    }
+
+    .results-row {
+      background: var(--surface-container-low);
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .results-row:last-child {
+      border-bottom: none;
+    }
+
+    .results-row.submitted {
+      background: color-mix(
+        in srgb,
+        var(--surface-container-low) 76%,
+        var(--accent-subtle)
+      );
     }
 
     .player-white,
@@ -716,9 +867,8 @@ for (const entry of uploadLog) {
     color: var(--danger, #e53e3e);
   }
 
-  .col-result {
-    align-items: center;
-    gap: var(--space-1);
+  .col-result :where(.result-badge, .upload-status) {
+    vertical-align: middle;
   }
 
   @media (forced-colors: active) {

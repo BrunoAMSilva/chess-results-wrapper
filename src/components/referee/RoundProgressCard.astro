@@ -23,27 +23,28 @@ const safeTotal = Math.max(totalCount, 0);
 const safeSubmitted = Math.min(Math.max(submittedCount, 0), safeTotal);
 const progressValue = safeTotal > 0 ? (safeSubmitted / safeTotal) * 100 : 0;
 const progressPercentLabel = `${Math.round(progressValue)}%`;
-const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summaryText}`;
+const resolvedProgressValueText =
+  progressValueText || `${progressLabel}. ${summaryText}`;
 ---
 
 <section class="round-progress-card" aria-label={eyebrowText}>
   <div class="eyebrow-row">
     <h2 class="eyebrow">{eyebrowText}</h2>
-    {hasEyebrowControls && (
-      <div class="eyebrow-controls">
-        <slot name="eyebrow-controls" />
-      </div>
-    )}
+    {
+      hasEyebrowControls && (
+        <div class="eyebrow-controls">
+          <slot name="eyebrow-controls" />
+        </div>
+      )
+    }
   </div>
 
   <div class="progress-meta-row" aria-hidden="true">
-    <p class="progress-label">{progressLabel}</p>
+    <div class="progress-value" aria-hidden="true">
+      <span class="progress-value-primary">{safeSubmitted}</span>
+      <span class="progress-value-secondary">/ {safeTotal}</span>
+    </div>
     <span class="progress-percent">{progressPercentLabel}</span>
-  </div>
-
-  <div class="progress-value" aria-hidden="true">
-    <span class="progress-value-primary">{safeSubmitted}</span>
-    <span class="progress-value-secondary">/ {safeTotal}</span>
   </div>
 
   <div
@@ -55,19 +56,18 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     aria-valuenow={safeSubmitted}
     aria-valuetext={resolvedProgressValueText}
   >
-    <div class="progress-fill" style={`--progress: ${progressValue}%`} />
+    <div class="progress-fill" style={`--progress: ${progressValue}%`}></div>
   </div>
 
-  <div class="supporting-row">
-    <p class="progress-supporting">
-      {summaryText}
-    </p>
-    {hasSupportingControls && (
-      <div class="supporting-controls">
-        <slot name="supporting-controls" />
+  {
+    hasSupportingControls && (
+      <div class="supporting-row">
+        <div class="supporting-controls">
+          <slot name="supporting-controls" />
+        </div>
       </div>
-    )}
-  </div>
+    )
+  }
 </section>
 
 <style>
@@ -86,10 +86,15 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
     display: grid;
     gap: var(--space-6);
     padding: var(--space-8);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
     background:
       radial-gradient(circle at 84% 72%, var(--accent-glow), transparent 30%),
-      linear-gradient(120deg, var(--rpc-surface-start) 0%, var(--rpc-surface-start) 48%, var(--rpc-surface-end) 100%);
+      linear-gradient(
+        120deg,
+        var(--rpc-surface-start) 0%,
+        var(--rpc-surface-start) 48%,
+        var(--rpc-surface-end) 100%
+      );
     color: var(--rpc-text);
     box-shadow: var(--rpc-shadow);
     overflow: hidden;
@@ -209,7 +214,6 @@ const resolvedProgressValueText = progressValueText || `${progressLabel}. ${summ
   .supporting-controls :global(.card-inline-select) {
     width: min(11rem, 42vw);
   }
-
 
   .eyebrow {
     margin: 0;
