@@ -603,7 +603,8 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
             event.preventDefault();
             event.stopPropagation();
             const pillTid = (pill as HTMLElement).dataset.tid;
-            if (pillTid) navigateToTournament(pillTid);
+            const pillName = (pill as HTMLElement).textContent?.trim();
+            if (pillTid) navigateToTournament(pillTid, pillName);
           });
         });
 
@@ -650,9 +651,9 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
       }
     }
 
-    function navigateToTournament(tid: string) {
+    function navigateToTournament(tid: string, name?: string) {
       const entry = currentResults.find((result) => result.id === tid);
-      saveRecentTournament(entry || { id: tid, name: `Tournament ${tid}` });
+      saveRecentTournament(entry || { id: tid, name: name || `Tournament ${tid}` });
       window.location.href = buildTournamentHref(tid);
     }
 

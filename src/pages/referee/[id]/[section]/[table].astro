@@ -205,7 +205,29 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
 
     var fd = new FormData(form);
     var result = fd.get("gameResult");
-    if (!result) return;
+
+    // If no result selected (cleared), send DELETE and redirect
+    if (!result) {
+      saving = true;
+      gameRadios.forEach(function(r) { r.disabled = true; });
+      fetch(form.action, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tid: fd.get("tid"),
+          round: Number(fd.get("round")),
+          table: Number(fd.get("table")),
+        }),
+      })
+      .then(function() {
+        window.location.href = form.querySelector('input[name="_redirect"]').value;
+      })
+      .catch(function() {
+        saving = false;
+        gameRadios.forEach(function(r) { r.disabled = false; });
+      });
+      return;
+    }
 
     saving = true;
     // Disable all radios to prevent double-tap

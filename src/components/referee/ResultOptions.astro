@@ -10,6 +10,7 @@ type Props = {
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const t = useTranslations(lang);
 const { name = 'gameResult', value } = Astro.props;
+const hasValue = !!value;
 ---
 
 <fieldset class="result-options" role="radiogroup" aria-label={t('referee.selectResult')}>
@@ -60,7 +61,40 @@ const { name = 'gameResult', value } = Astro.props;
       <span class="check-badge" aria-hidden="true"></span>
     </label>
   </div>
+
+  <p class:list={['clear-hint', { visible: hasValue }]} aria-live="polite">
+    {t('referee.tapToClear')}
+  </p>
 </fieldset>
+
+<script>
+  function initResultToggle(fieldset: HTMLFieldSetElement) {
+    let lastChecked: HTMLInputElement | null = fieldset.querySelector('input[type="radio"]:checked');
+    const hint = fieldset.querySelector<HTMLParagraphElement>('.clear-hint');
+    const radios = fieldset.querySelectorAll<HTMLInputElement>('input[type="radio"]');
+
+    for (const radio of radios) {
+      radio.addEventListener('click', () => {
+        if (radio === lastChecked) {
+          radio.checked = false;
+          lastChecked = null;
+          hint?.classList.remove('visible');
+          radio.dispatchEvent(new Event('change', { bubbles: true }));
+        } else {
+          lastChecked = radio;
+          hint?.classList.add('visible');
+        }
+      });
+    }
+  }
+
+  function setupAll() {
+    document.querySelectorAll<HTMLFieldSetElement>('.result-options').forEach(initResultToggle);
+  }
+
+  setupAll();
+  document.addEventListener('astro:after-swap', setupAll);
+</script>
 
 <style>
   .result-options {
@@ -220,6 +254,26 @@ const { name = 'gameResult', value } = Astro.props;
   }
 
   .result-card:has(input:checked) .check-badge {
+    opacity: 1;
+  }
+
+  /* ── Clear hint message ───────────────────────────────── */
+
+  .clear-hint {
+    font-size: var(--text-xs);
+    color: var(--text-dim);
+    text-align: center;
+    margin: 0;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition:
+      max-height var(--duration-normal) var(--ease-out),
+      opacity var(--duration-normal) var(--ease-out);
+  }
+
+  .clear-hint.visible {
+    max-height: 2rem;
     opacity: 1;
   }
 </style>

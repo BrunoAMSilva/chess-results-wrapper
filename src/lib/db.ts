@@ -1415,6 +1415,17 @@ export function getRefereeResults(tournamentId: string, round: number) {
   `).all(tournamentId, round) as Array<{ table_number: number; result: string; created_at: string }>;
 }
 
+export function deleteRefereeResult(
+  tournamentId: string,
+  round: number,
+  tableNumber: number,
+): void {
+  db.prepare(`
+    DELETE FROM referee_results
+    WHERE tournament_id = ? AND round = ? AND table_number = ?
+  `).run(tournamentId, round, tableNumber);
+}
+
 /**
  * Find the latest round where all pairings have empty results (i.e. unplayed).
  * Searches from the highest round downward. Returns 1 if no such round exists.

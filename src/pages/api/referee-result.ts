@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { upsertRefereeResult, getRefereeResults } from "../../lib/db";
+import { upsertRefereeResult, deleteRefereeResult, getRefereeResults } from "../../lib/db";
 
 const VALID_RESULTS = ["1-0", "0-1", "½-½", "+:-", "-:+", "-:-"];
 
@@ -112,4 +112,28 @@ export const GET: APIRoute = async ({ url }) => {
   return new Response(JSON.stringify({ results }), {
     headers: { "Content-Type": "application/json" },
   });
+};
+
+export const DELETE: APIRoute = async ({ request }) => {
+  try {
+    const raw = await request.json();
+    const tid = typeof raw.tid === "string" ? raw.tid : "";
+    const round = Number(raw.round);
+    const table = Number(raw.table);
+
+    if (!tid) return jsonError("Missing or invalid tid", 400);
+    if (!Number.isInteger(round) || round < 1 || round > 64)
+      return jsonError("Invalid round", 400);
+    if (!Number.isInteger(table) || table < 1)
+      return jsonError("Invalid table number", 400);
+
+    deleteRefereeResult(tid, round, table);
+
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Failed to delete result";
+    return jsonError(message, 500);
+  }
 };

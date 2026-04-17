@@ -6,6 +6,7 @@ import TeamMatchGroup from "../components/pairings/TeamMatchGroup.astro";
 import RoundSelector from "../components/controls/RoundSelector.astro";
 import TournamentSelector from "../components/tournaments/TournamentSelector.astro";
 import { scrapePairings } from "../lib/scraper";
+import { getTournament } from "../lib/db";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
 import { getIntParam } from "../lib/request-params";
@@ -29,6 +30,12 @@ try {
   teamPairings = data.teamPairings;
 } catch (e) {
   error = e instanceof Error ? e.message : t('error.load');
+}
+
+// Fallback: get tournament name from DB when scraper fails
+let dbName = '';
+if (!data?.info?.name) {
+  try { dbName = getTournament(tid)?.name || ''; } catch (_) {}
 }
 
 const isTeamView = teamPairings && teamPairings.length > 0;
@@ -129,10 +136,10 @@ const recentPlayerCount = !isTeamView
   }
 </style>
 
-<script is:inline define:vars={{ tid, tournamentName: data?.info.name || '', tournamentDate: data?.info.date || '', tournamentLocation: data?.info.location || '', tournamentType: data?.info.type || '', tournamentPlayerCount: recentPlayerCount }}>
+<script is:inline define:vars={{ tid, tournamentName: data?.info.name || dbName, tournamentDate: data?.info.date || '', tournamentLocation: data?.info.location || '', tournamentType: data?.info.type || '', tournamentPlayerCount: recentPlayerCount }}>
   (function() {
     try {
-      if (!tid || !tournamentName) return;
+      if (!tid) return;
       var key = 'recentTournaments';
       var stored = localStorage.getItem(key);
       var recent = stored ? JSON.parse(stored) : [];

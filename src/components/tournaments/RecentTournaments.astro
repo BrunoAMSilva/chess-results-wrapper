@@ -197,4 +197,8 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
 
   document.addEventListener('DOMContentLoaded', initRecentTournaments);
   document.addEventListener('astro:after-swap', initRecentTournaments);
+  // Re-render when restored from bfcache (back/forward after full-page navigation)
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) initRecentTournaments();
+  });
 </script>
