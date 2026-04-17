@@ -52,9 +52,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
         headers: { "Content-Type": "application/json" },
       });
     }
-    const loginUrl = new URL("/login", url.origin);
-    loginUrl.searchParams.set("redirect", pathname + url.search);
-    return context.redirect(loginUrl.toString());
+    const redirect = encodeURIComponent(pathname + url.search);
+    return context.redirect(`/login?redirect=${redirect}`);
   }
 
   const user = await verifySessionToken(token);
@@ -69,9 +68,8 @@ export const onRequest = defineMiddleware(async (context, next) => {
         headers: { "Content-Type": "application/json" },
       });
     }
-    const loginUrl = new URL("/login", url.origin);
-    loginUrl.searchParams.set("redirect", pathname + url.search);
-    return context.redirect(loginUrl.toString());
+    const redirect = encodeURIComponent(pathname + url.search);
+    return context.redirect(`/login?redirect=${redirect}`);
   }
 
   // Store user in locals for pages/endpoints
