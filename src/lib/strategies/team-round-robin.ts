@@ -82,6 +82,7 @@ export class TeamRoundRobinStrategy implements TournamentStrategy {
         team.players.map((p, i) => ({
           rank: i + 1,
           startingNumber: p.board,
+          title: '',
           name: p.name,
           fed: p.fed,
           rating: p.rating,

@@ -3,6 +3,7 @@ import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import EmptyState from "../components/app/EmptyState.astro";
 import MetricTile from "../components/app/MetricTile.astro";
 import PlayerIdentityActions from "../components/player/PlayerIdentityActions.astro";
+import PlayerName from "../components/player/PlayerName.astro";
 import PlayerTournamentHistoryRow from "../components/player/PlayerTournamentHistoryRow.astro";
 import { useTranslations } from "../i18n/ui";
 import { findPlayerByIdentity, getPlayerById, getPlayerResultRows, getPlayerTournamentHistory } from "../lib/db";
@@ -97,7 +98,7 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
   {player && (
     <section class="identity-card">
       <div class="identity-head">
-        <h2 class="name">{reverseName(player.name)}</h2>
+        <h2 class="name"><PlayerName name={player.name} title={player.title} /></h2>
         <p class="subtitle">{t("player.profile.identity")}</p>
       </div>
 

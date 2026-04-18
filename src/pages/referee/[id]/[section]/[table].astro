@@ -7,7 +7,7 @@ import { resolvePageLang } from "../../../../lib/page-lang";
 import type { Pairing, TeamPairing } from "../../../../lib/types";
 import Matchup from "../../../../components/referee/Matchup.astro";
 import ResultOptions from "../../../../components/referee/ResultOptions.astro";
-import { getRefereeResults, getTournament } from "../../../../lib/db";
+import { getRefereeResults, getTournament, getPlayerTitleMap } from "../../../../lib/db";
 
 const tid = Astro.params.id!;
 const section = Astro.params.section!;
@@ -72,6 +72,9 @@ try {
 const existingResults = getRefereeResults(section, activeRound);
 const existingResult = existingResults.find(r => r.table_number === tableNum)?.result;
 
+let titleMap: Record<string, string> = {};
+try { titleMap = getPlayerTitleMap(section); } catch (_) {}
+
 const isTeamTournament = tableNum >= 100;
 const tableLabel = isTeamTournament
   ? `${Math.floor(tableNum / 100)}.${tableNum % 100}`
@@ -92,6 +95,8 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
     <Matchup
       whiteName={whiteName}
       blackName={blackName}
+      whiteTitle={titleMap[whiteName]}
+      blackTitle={titleMap[blackName]}
     />
 
     <form

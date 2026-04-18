@@ -2,9 +2,11 @@
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import EmptyState from "../components/app/EmptyState.astro";
 import PlayerIdentityActions from "../components/player/PlayerIdentityActions.astro";
+import PlayerName from "../components/player/PlayerName.astro";
 import PlayerRoundRow from "../components/player/PlayerRoundRow.astro";
 import TieBreaks from "../components/standings/TieBreaks.astro";
 import { scrapePairings, scrapeStandings } from "../lib/scraper";
+import { getPlayerTitleMap } from "../lib/db";
 import { reverseName } from "../lib/utils";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
@@ -19,6 +21,7 @@ const t = useTranslations(lang);
 
 let error: string | null = null;
 let playerName = "";
+let playerTitle = "";
 let playerRating = "";
 let playerFed = "";
 let playerClub = "";
@@ -65,6 +68,7 @@ if (!playerParam) {
     if (standing) {
       canonicalPlayerName = standing.name;
       playerName = reverseName(standing.name);
+      playerTitle = standing.title;
       playerRating = standing.rating;
       playerFed = standing.fed;
       playerClub = standing.club;
@@ -158,6 +162,9 @@ if (!playerParam) {
 
 const pageTitle = playerName || t("player.progress");
 const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerName)}${playerFed ? `&fed=${encodeURIComponent(playerFed)}` : ""}&lang=${lang}`;
+
+let titleMap: Record<string, string> = {};
+try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
 ---
 
 <MobileLayout title={pageTitle} lang={lang}>
@@ -176,7 +183,9 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
         </div>
       </div>
       <div class="hero-content">
-        <h2 class="hero-name">{playerName}</h2>
+        <h2 class="hero-name">
+          <PlayerName name={canonicalPlayerName} title={playerTitle} />
+        </h2>
         <div class="hero-actions">
           <a class="profile-link-modern" href={profileHref}>{t("player.profile.openProfile")}</a>
           <PlayerIdentityActions playerName={canonicalPlayerName} federation={playerFed} lang={lang} />
@@ -227,6 +236,7 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
               isBye={r.isBye}
               index={i}
               lang={lang}
+              opponentTitle={titleMap[r.opponent]}
             />
           ))
         ) : (
@@ -316,6 +326,16 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
     margin-bottom: var(--space-4);
     letter-spacing: var(--tracking-tight);
     line-height: var(--leading-none);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+
+  .player-title {
+    font-size: var(--text-sm);
+    font-weight: 700;
+    color: var(--accent-text);
+    text-decoration: none;
   }
 
   @media (min-width: 768px) {

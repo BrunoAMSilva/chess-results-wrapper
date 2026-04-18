@@ -1,0 +1,36 @@
+---
+import { reverseName } from "../../lib/utils";
+
+interface Props {
+  name: string;
+  title?: string;
+}
+
+const { name, title } = Astro.props;
+const displayName = reverseName(name);
+---
+
+<span class="player-name">
+  {title && <abbr class="player-title" title={title}>{title}</abbr>}
+  {displayName}
+</span>
+
+<style>
+  .player-name {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-1);
+  }
+
+  .player-title {
+    font-size: var(--text-xs);
+    font-weight: 700;
+    color: #000;
+    background-color: var(--accent);
+    padding: 0.05em 0.4em;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    flex-shrink: 0;
+    line-height: 1.4;
+  }
+</style>

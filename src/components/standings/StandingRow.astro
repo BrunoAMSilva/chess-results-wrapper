@@ -1,6 +1,7 @@
 ---
 import type { Standing } from "../../lib/scraper";
 import { reverseName, federationFlag } from "../../lib/utils";
+import PlayerName from "../player/PlayerName.astro";
 import { useTranslations } from "../../i18n/ui";
 import TieBreaks from "./TieBreaks.astro";
 
@@ -40,7 +41,7 @@ const attributes = tid
   </div>
 
   <div class="player-info">
-    <span class="player-name">{playerDisplayName}</span>
+    <PlayerName name={standing.name} title={standing.title} />
     <span class="player-fed">
       {standing.fed && <span aria-label={standing.fed} title={standing.fed}>{federationFlag(standing.fed)}</span>}
       {
@@ -193,7 +194,7 @@ const attributes = tid
     padding-block: var(--space-3) var(--space-2);
   }
 
-  .player-name {
+  .player-info :global(.player-name) {
     font-size: var(--text-lg);
     font-weight: 700;
     white-space: nowrap;
@@ -203,10 +204,9 @@ const attributes = tid
     line-height: 1.1;
     margin-bottom: var(--space-1);
     text-decoration: none;
-    display: block;
   }
 
-  .player-name:active {
+  .player-info :global(.player-name:active) {
     opacity: 0.7;
   }
 

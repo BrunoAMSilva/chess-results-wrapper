@@ -50,6 +50,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS players (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
     fide_id TEXT,
     federation TEXT NOT NULL DEFAULT '',
     sex TEXT NOT NULL DEFAULT '',
@@ -214,6 +215,7 @@ if (!standingsCols.some(c => c.name === 'type')) {
 // ─── Column migrations (idempotent) ─────────────────────────────────────────
 try { db.exec('ALTER TABLE players ADD COLUMN birth_year INTEGER'); } catch (_) {}
 try { db.exec('ALTER TABLE players ADD COLUMN national_id TEXT'); } catch (_) {}
+try { db.exec("ALTER TABLE players ADD COLUMN title TEXT NOT NULL DEFAULT ''"); } catch (_) {}
 try { db.exec('ALTER TABLE tournament_players ADD COLUMN national_rating INTEGER'); } catch (_) {}
 try { db.exec('ALTER TABLE tournament_players ADD COLUMN performance_rating INTEGER'); } catch (_) {}
 try { db.exec("ALTER TABLE tournament_players ADD COLUMN rating_change TEXT"); } catch (_) {}
@@ -427,11 +429,13 @@ export function upsertPlayer(
   fideId: string | null = null,
   birthYear: number | null = null,
   nationalId: string | null = null,
+  title: string = '',
 ): number {
   const normalizedName = name.trim();
   const normalizedFed = federation.trim();
   const normalizedFideId = fideId?.trim() || null;
   const normalizedNationalId = nationalId?.trim() || null;
+  const normalizedTitle = title.trim();
 
   // Strongest identity signal when available.
   if (normalizedFideId) {
@@ -444,6 +448,7 @@ export function upsertPlayer(
           name = CASE WHEN ? != '' THEN ? ELSE name END,
           federation = CASE WHEN ? != '' THEN ? ELSE federation END,
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
+          title = CASE WHEN ? != '' THEN ? ELSE title END,
           fide_id = ?,
           birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -456,6 +461,8 @@ export function upsertPlayer(
         normalizedFed,
         sex,
         sex,
+        normalizedTitle,
+        normalizedTitle,
         normalizedFideId,
         birthYear,
         birthYear,
@@ -476,6 +483,7 @@ export function upsertPlayer(
     db.prepare(`
       UPDATE players SET
         sex = CASE WHEN ? != '' THEN ? ELSE sex END,
+        title = CASE WHEN ? != '' THEN ? ELSE title END,
         fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
         birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
         national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -484,6 +492,8 @@ export function upsertPlayer(
     `).run(
       sex,
       sex,
+      normalizedTitle,
+      normalizedTitle,
       normalizedFideId,
       normalizedFideId,
       birthYear,
@@ -508,6 +518,7 @@ export function upsertPlayer(
       db.prepare(`
         UPDATE players SET
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
+          title = CASE WHEN ? != '' THEN ? ELSE title END,
           fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
           birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -516,6 +527,8 @@ export function upsertPlayer(
       `).run(
         sex,
         sex,
+        normalizedTitle,
+        normalizedTitle,
         normalizedFideId,
         normalizedFideId,
         birthYear,
@@ -537,6 +550,7 @@ export function upsertPlayer(
         UPDATE players SET
           federation = ?,
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
+          title = CASE WHEN ? != '' THEN ? ELSE title END,
           fide_id = CASE WHEN ? IS NOT NULL THEN ? ELSE fide_id END,
           birth_year = CASE WHEN ? IS NOT NULL THEN ? ELSE birth_year END,
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
@@ -546,6 +560,8 @@ export function upsertPlayer(
         normalizedFed,
         sex,
         sex,
+        normalizedTitle,
+        normalizedTitle,
         normalizedFideId,
         normalizedFideId,
         birthYear,
@@ -559,9 +575,9 @@ export function upsertPlayer(
   }
 
   const result = db.prepare(`
-    INSERT INTO players (name, federation, sex, fide_id, birth_year, national_id)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `).run(normalizedName, normalizedFed, sex, normalizedFideId, birthYear, normalizedNationalId);
+    INSERT INTO players (name, federation, sex, title, fide_id, birth_year, national_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(normalizedName, normalizedFed, sex, normalizedTitle, normalizedFideId, birthYear, normalizedNationalId);
 
   return Number(result.lastInsertRowid);
 }
@@ -772,6 +788,7 @@ export function getStandingsFromDb(tournamentId: string): {
     name: string;
     fed: string;
     sex: Sex;
+    title: string;
     rating: number;
     club: string;
     points: string;
@@ -789,6 +806,7 @@ export function getStandingsFromDb(tournamentId: string): {
   const standings: Standing[] = openRows.map((r) => ({
     rank: r.rank,
     startingNumber: r.starting_number || 0,
+    title: r.title || '',
     name: r.name,
     fed: r.fed || '',
     rating: r.rating ? String(r.rating) : '',
@@ -808,6 +826,7 @@ export function getStandingsFromDb(tournamentId: string): {
   const womenStandings: Standing[] = womenRows.map((r) => ({
     rank: r.rank,
     startingNumber: r.starting_number || 0,
+    title: r.title || '',
     name: r.name,
     fed: r.fed || '',
     rating: r.rating ? String(r.rating) : '',
@@ -887,7 +906,7 @@ export function upsertStanding(
 
 export function getStandings(tournamentId: string, type: string = 'open') {
   return db.prepare(`
-    SELECT s.rank, p.name, p.federation AS fed, p.sex,
+    SELECT s.rank, p.name, p.federation AS fed, p.sex, p.title,
            COALESCE(tp.rating, 0) AS rating,
            COALESCE(tp.club, '') AS club,
            s.points, s.tie_break_1, s.tie_break_2, s.tie_break_3,
@@ -922,6 +941,9 @@ export function persistStandings(
         s.fed,
         s.sex,
         s.fideId || null,
+        null,
+        null,
+        s.title,
       );
       linkPlayerToTournament(
         tournamentId,
@@ -981,6 +1003,22 @@ export function persistPairings(
     }
   });
   txn();
+}
+
+/** Look up titles (GM, IM, etc.) for all players in a tournament, keyed by player name. */
+export function getPlayerTitleMap(tournamentId: string): Record<string, string> {
+  const rows = db.prepare(`
+    SELECT p.name, p.title
+    FROM tournament_players tp
+    JOIN players p ON p.id = tp.player_id
+    WHERE tp.tournament_id = ? AND p.title != ''
+  `).all(tournamentId) as Array<{ name: string; title: string }>;
+
+  const map: Record<string, string> = {};
+  for (const r of rows) {
+    map[r.name] = r.title;
+  }
+  return map;
 }
 
 /** Look up national IDs (Ident-Number) for all players in a tournament, keyed by starting number. */

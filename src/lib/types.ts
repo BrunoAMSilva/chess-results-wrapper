@@ -33,6 +33,7 @@ export type Sex = 'M' | 'F' | '';
 export interface Standing {
   rank: number;
   startingNumber: number;
+  title: string;
   name: string;
   fed: string;
   rating: string;
@@ -139,6 +140,7 @@ export interface DbTournamentSummary extends DbTournament {
 export interface DbPlayer {
   id?: number;
   name: string;
+  title: string;
   fide_id: string | null;
   federation: string;
   sex: Sex;

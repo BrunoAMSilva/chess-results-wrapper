@@ -304,8 +304,8 @@ describe('End-to-end: persistStandings clears stale standings', () => {
 
     // First persist: art=4 style names (no comma)
     const art4Standings = [
-      { rank: 1, startingNumber: 5, name: 'Fontelas Diogo Rebelo', fed: 'POR', rating: '0', club: '', points: '5', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '17', tieBreak3: '5', tieBreak4: '5', tieBreak5: '2', tieBreak6: '0' },
-      { rank: 2, startingNumber: 13, name: 'Dias João Pedro Dias', fed: 'POR', rating: '0', club: '', points: '4', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '10', tieBreak3: '3', tieBreak4: '4', tieBreak5: '3', tieBreak6: '0' },
+      { rank: 1, startingNumber: 5, title: '', name: 'Fontelas Diogo Rebelo', fed: 'POR', rating: '0', club: '', points: '5', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '17', tieBreak3: '5', tieBreak4: '5', tieBreak5: '2', tieBreak6: '0' },
+      { rank: 2, startingNumber: 13, title: '', name: 'Dias João Pedro Dias', fed: 'POR', rating: '0', club: '', points: '4', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '10', tieBreak3: '3', tieBreak4: '4', tieBreak5: '3', tieBreak6: '0' },
     ];
 
     persistStandings(TOURNAMENT_ID, baseInfo, art4Standings);
@@ -315,8 +315,8 @@ describe('End-to-end: persistStandings clears stale standings', () => {
 
     // Second persist: art=1 style names (with comma)
     const art1Standings = [
-      { rank: 1, startingNumber: 5, name: 'Fontelas, Diogo Rebelo', fed: 'POR', rating: '0', club: '', points: '5', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '17', tieBreak3: '5', tieBreak4: '5', tieBreak5: '2', tieBreak6: '0' },
-      { rank: 2, startingNumber: 13, name: 'Dias, João Pedro Dias', fed: 'POR', rating: '0', club: '', points: '4', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '10', tieBreak3: '3', tieBreak4: '4', tieBreak5: '3', tieBreak6: '0' },
+      { rank: 1, startingNumber: 5, title: '', name: 'Fontelas, Diogo Rebelo', fed: 'POR', rating: '0', club: '', points: '5', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '17', tieBreak3: '5', tieBreak4: '5', tieBreak5: '2', tieBreak6: '0' },
+      { rank: 2, startingNumber: 13, title: '', name: 'Dias, João Pedro Dias', fed: 'POR', rating: '0', club: '', points: '4', sex: '' as const, fideId: '', tieBreak1: '0', tieBreak2: '10', tieBreak3: '3', tieBreak4: '4', tieBreak5: '3', tieBreak6: '0' },
     ];
 
     persistStandings(TOURNAMENT_ID, baseInfo, art1Standings);

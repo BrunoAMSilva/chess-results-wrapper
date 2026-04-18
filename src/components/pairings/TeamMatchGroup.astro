@@ -6,9 +6,10 @@ interface Props {
   teamMatch: TeamPairing;
   tid?: string;
   lang?: number;
+  titleMap?: Record<string, string>;
 }
 
-const { teamMatch, tid, lang = 1 } = Astro.props;
+const { teamMatch, tid, lang = 1, titleMap = {} } = Astro.props;
 
 // Parse team result (e.g., "3:1", "2½:1½")
 let homeScoreText = "";
@@ -54,7 +55,7 @@ const isBye = teamMatch.blackTeam === "bye";
   {teamMatch.boards.length > 0 && (
     <div class="boards-list">
       {teamMatch.boards.map((board) => (
-        <ResponsiveMatchCard match={board} tid={tid} lang={lang} />
+        <ResponsiveMatchCard match={board} tid={tid} lang={lang} titleMap={titleMap} />
       ))}
     </div>
   )}

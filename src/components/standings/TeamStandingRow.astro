@@ -1,16 +1,18 @@
 ---
 import type { TeamStanding } from "../../lib/types";
-import { reverseName, federationFlag } from "../../lib/utils";
+import { federationFlag } from "../../lib/utils";
 import { useTranslations } from "../../i18n/ui";
 import TieBreaks from "./TieBreaks.astro";
+import PlayerName from "../player/PlayerName.astro";
 
 interface Props {
   team: TeamStanding;
   index: number;
   lang: number;
+  titleMap?: Record<string, string>;
 }
 
-const { team, index, lang } = Astro.props;
+const { team, index, lang, titleMap = {} } = Astro.props;
 const t = useTranslations(lang);
 
 const isTop3 = team.rank <= 3;
@@ -56,7 +58,7 @@ const delayClass = `delay-${delayStep}`;
         <div class="player-row">
           <span class="board-num">{p.board}</span>
           <div class="player-info">
-            <span class="player-name">{reverseName(p.name)}</span>
+            <PlayerName name={p.name} title={titleMap[p.name]} />
             <span class="player-meta">
               {p.fed && <span aria-label={p.fed} title={p.fed}>{federationFlag(p.fed)}</span>}
               {p.rating && p.rating !== "0" && (

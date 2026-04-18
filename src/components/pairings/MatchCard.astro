@@ -1,16 +1,17 @@
 ---
 import type { Pairing } from "../../lib/scraper";
-import { reverseName } from "../../lib/utils";
 import { useTranslations } from "../../i18n/ui";
+import PlayerName from "../player/PlayerName.astro";
 
 interface Props {
   pairing: Pairing;
   index: number;
   lang: number;
   variant?: "list" | "card";
+  titleMap?: Record<string, string>;
 }
 
-const { pairing, index, lang, variant = "card" } = Astro.props;
+const { pairing, index, lang, variant = "card", titleMap = {} } = Astro.props;
 const t = useTranslations(lang);
 
 function resultClass(result: string): string {
@@ -41,7 +42,7 @@ const delayClass = `delay-${delayStep}`;
   ]}
 >
   <div class="player white-side">
-    <span class="player-name">{reverseName(pairing.white.name)}</span>
+    <PlayerName name={pairing.white.name} title={titleMap[pairing.white.name]} />
   </div>
 
   <span class="table-num">{pairing.table}</span>
@@ -49,7 +50,7 @@ const delayClass = `delay-${delayStep}`;
   <div class="player black-side">
     {
       pairing.black ? (
-        <span class="player-name">{reverseName(pairing.black.name)}</span>
+        <PlayerName name={pairing.black.name} title={titleMap[pairing.black.name]} />
       ) : (
         <span class="bye-label">
           {pairing.result === "1" ? t("match.bye") : t("match.notPaired")}

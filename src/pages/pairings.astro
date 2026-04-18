@@ -6,7 +6,7 @@ import TeamMatchGroup from "../components/pairings/TeamMatchGroup.astro";
 import RoundSelector from "../components/controls/RoundSelector.astro";
 import TournamentSelector from "../components/tournaments/TournamentSelector.astro";
 import { scrapePairings } from "../lib/scraper";
-import { getTournament } from "../lib/db";
+import { getTournament, getPlayerTitleMap } from "../lib/db";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
 import { getIntParam } from "../lib/request-params";
@@ -37,6 +37,9 @@ let dbName = '';
 if (!data?.info?.name) {
   try { dbName = getTournament(tid)?.name || ''; } catch (_) {}
 }
+
+let titleMap: Record<string, string> = {};
+try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
 
 const isTeamView = teamPairings && teamPairings.length > 0;
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
@@ -83,10 +86,10 @@ const recentPlayerCount = !isTeamView
   <div class:list={["pairings-list", "animate-enter", "delay-2"]}>
     {isTeamView ? (
       teamPairings!.map((teamMatch) => (
-        <TeamMatchGroup teamMatch={teamMatch} tid={tid} lang={lang} />
+        <TeamMatchGroup teamMatch={teamMatch} tid={tid} lang={lang} titleMap={titleMap} />
       ))
     ) : allPairings.length > 0 ? (
-      allPairings.map((pairing) => <ResponsiveMatchCard match={pairing} tid={tid} lang={lang} />)
+      allPairings.map((pairing) => <ResponsiveMatchCard match={pairing} tid={tid} lang={lang} titleMap={titleMap} />)
     ) : (
       <EmptyState message={t('empty.pairings')} compact />
     )}

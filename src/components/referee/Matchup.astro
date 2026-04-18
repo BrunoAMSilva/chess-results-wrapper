@@ -1,22 +1,24 @@
 ---
 import { useTranslations } from '../../i18n/ui';
 import { resolvePageLang } from '../../lib/page-lang';
-import { reverseName } from '../../lib/utils';
+import PlayerName from '../player/PlayerName.astro';
 
 type Props = {
   whiteName: string;
   blackName: string;
+  whiteTitle?: string;
+  blackTitle?: string;
 };
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const t = useTranslations(lang);
-const { whiteName, blackName } = Astro.props;
+const { whiteName, blackName, whiteTitle, blackTitle } = Astro.props;
 ---
 
 <div class="table-matchup">
   <div class="player-row">
     <span class="piece-icon white-icon">♔</span>
     <div class="player-wrapper">
-      <span class="player-name">{reverseName(whiteName)}</span>
+      <PlayerName name={whiteName} title={whiteTitle} />
       <span class="player-color">{t("player.white")}</span>
     </div>
   </div>
@@ -28,7 +30,7 @@ const { whiteName, blackName } = Astro.props;
   <div class="player-row">
     <span class="piece-icon black-icon">♚</span>
     <div class="player-wrapper">
-      <span class="player-name">{reverseName(blackName)}</span>
+      <PlayerName name={blackName} title={blackTitle} />
       <span class="player-color">{t("player.black")}</span>
     </div>
   </div>

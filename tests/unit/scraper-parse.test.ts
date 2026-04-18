@@ -269,6 +269,23 @@ describe('Scraper - Standings Parsing', () => {
     }
   });
 
+  it('should parse player title column (GM, IM, FM, etc.)', () => {
+    const html = loadFixture('ended_standings.html');
+    const data = parseStandingsHtml(html);
+
+    // The ended_standings fixture has titled players (GM, IM)
+    const titled = data.standings.filter(s => s.title !== '');
+    expect(titled.length).toBeGreaterThan(0);
+    for (const s of titled) {
+      expect(['GM', 'IM', 'FM', 'CM', 'NM', 'WGM', 'WIM', 'WFM', 'WCM']).toContain(s.title);
+    }
+
+    // All standings should have the title field as a string
+    for (const s of data.standings) {
+      expect(typeof s.title).toBe('string');
+    }
+  });
+
   it('should detect sex column and produce women standings', () => {
     const html = loadFixture('ended_standings.html');
     const data = parseStandingsHtml(html);
@@ -600,10 +617,10 @@ describe('Scraper - Tournament Type Detection', () => {
 describe('deriveWomenStandings', () => {
   it('should filter and re-rank only F players', () => {
     const standings = [
-      { rank: 1, startingNumber: 1, name: 'Male 1', fed: '', rating: '', club: '', points: '8', sex: 'M' as const, tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
-      { rank: 2, startingNumber: 2, name: 'Female 1', fed: '', rating: '', club: '', points: '7', sex: 'F' as const, tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
-      { rank: 3, startingNumber: 3, name: 'Male 2', fed: '', rating: '', club: '', points: '6', sex: 'M' as const, tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
-      { rank: 4, startingNumber: 4, name: 'Female 2', fed: '', rating: '', club: '', points: '5', sex: 'F' as const, tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
+      { rank: 1, startingNumber: 1, title: '', name: 'Male 1', fed: '', rating: '', club: '', points: '8', sex: 'M' as const, fideId: '', tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
+      { rank: 2, startingNumber: 2, title: '', name: 'Female 1', fed: '', rating: '', club: '', points: '7', sex: 'F' as const, fideId: '', tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
+      { rank: 3, startingNumber: 3, title: '', name: 'Male 2', fed: '', rating: '', club: '', points: '6', sex: 'M' as const, fideId: '', tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
+      { rank: 4, startingNumber: 4, title: '', name: 'Female 2', fed: '', rating: '', club: '', points: '5', sex: 'F' as const, fideId: '', tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
     ];
 
     const women = deriveWomenStandings(standings);
@@ -616,7 +633,7 @@ describe('deriveWomenStandings', () => {
 
   it('should return empty array when no women in standings', () => {
     const standings = [
-      { rank: 1, startingNumber: 1, name: 'Male 1', fed: '', rating: '', club: '', points: '8', sex: 'M' as const, tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
+      { rank: 1, startingNumber: 1, title: '', name: 'Male 1', fed: '', rating: '', club: '', points: '8', sex: 'M' as const, fideId: '', tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
     ];
     expect(deriveWomenStandings(standings)).toHaveLength(0);
   });

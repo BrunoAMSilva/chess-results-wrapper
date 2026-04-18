@@ -14,7 +14,7 @@ import TextInput from "../../components/controls/TextInput.astro";
 import PresenterConfigPanel from "../../components/presenter/PresenterConfigPanel.astro";
 import PresenterSidebar from "../../components/presenter/PresenterSidebar.astro";
 import { scrapePairings, scrapeStandings } from "../../lib/scraper";
-import { setTournamentConfig, getTournamentConfig } from "../../lib/db";
+import { setTournamentConfig, getTournamentConfig, getPlayerTitleMap } from "../../lib/db";
 import { useTranslations } from "../../i18n/ui";
 import { DEFAULT_TOURNAMENT, PRESENTER_PAIRINGS_PER_PAGE, CAROUSEL_INTERVAL, LANGUAGE_OPTIONS } from "../../lib/constants";
 import { paginateArray } from "../../lib/utils";
@@ -79,6 +79,9 @@ try {
 }
 
 const allPairings = data?.pairings || [];
+
+let titleMap: Record<string, string> = {};
+try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
 
 function isByePairing(p: import("../../lib/types").Pairing): boolean {
   if (p.black) return false;
@@ -291,7 +294,7 @@ const autoRefresh = isTournamentLive(data?.info.date);
             <div class:list={["carousel-page", "pairings-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
               {page.map((pairing, i) => (
                 <div class="pairings-item" data-carousel-item>
-                  <PresenterPairingCard pairing={pairing} index={i} lang={lang} />
+                  <PresenterPairingCard pairing={pairing} index={i} lang={lang} titleMap={titleMap} />
                 </div>
               ))}
             </div>

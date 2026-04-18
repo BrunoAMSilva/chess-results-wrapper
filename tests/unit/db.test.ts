@@ -720,12 +720,14 @@ describe('Database - persistStandings', () => {
     return {
       rank: 1,
       startingNumber: 1,
+      title: '',
       name: 'Test Player',
       fed: 'POR',
       rating: '1800',
       club: 'Test Club',
       points: '7.5',
       sex: 'M',
+      fideId: '',
       tieBreak1: '45.0',
       tieBreak2: '50.0',
       tieBreak3: '38.25',
@@ -932,8 +934,8 @@ describe('Database - persistPairings', () => {
 
     // Then: standings (with federation)
     const standings: Standing[] = [
-      { rank: 1, startingNumber: 1, name: 'Silva, Bruno', fed: 'POR', rating: '1800', club: '', points: '7.0', sex: 'M', tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
-      { rank: 2, startingNumber: 2, name: 'Santos, Maria', fed: 'POR', rating: '1600', club: '', points: '6.0', sex: 'F', tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
+      { rank: 1, startingNumber: 1, title: '', name: 'Silva, Bruno', fed: 'POR', rating: '1800', club: '', points: '7.0', sex: 'M', fideId: '', tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
+      { rank: 2, startingNumber: 2, title: '', name: 'Santos, Maria', fed: 'POR', rating: '1600', club: '', points: '6.0', sex: 'F', fideId: '', tieBreak1: '', tieBreak2: '', tieBreak3: '', tieBreak4: '', tieBreak5: '', tieBreak6: '' },
     ];
     persistStandings('T001', info, standings);
 

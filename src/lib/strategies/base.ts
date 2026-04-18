@@ -244,6 +244,7 @@ export function parseStandingsTable(
   let sexIdx = -1;
   let snoIdx = -1;
   let fideIdIdx = -1;
+  let titleIdx = -1;
 
   const headerRow = $('table.CRs1 tr')
     .filter((_, row) => $(row).find('th').length > 0)
@@ -267,6 +268,15 @@ export function parseStandingsTable(
     if (text === 'FideID' || text === 'FIDE-ID' || text === 'Id FIDE') fideIdIdx = i;
   });
 
+  // Title column has an empty header and sits immediately before the Name column
+  if (nameIdx > 0) {
+    const headerCells = headerRow.find('th, td');
+    const prevText = $(headerCells[nameIdx - 1]).text().trim();
+    if (prevText === '') {
+      titleIdx = nameIdx - 1;
+    }
+  }
+
   const hasSexColumn = sexIdx !== -1;
   const standings: Standing[] = [];
 
@@ -287,6 +297,7 @@ export function parseStandingsTable(
     const club = clubIdx !== -1 && cells[clubIdx] ? $(cells[clubIdx]).text().trim() : '';
     const sex = sexIdx !== -1 && cells[sexIdx] ? parseSex($(cells[sexIdx]).text()) : '';
     const sno = snoIdx !== -1 && cells[snoIdx] ? parseInt($(cells[snoIdx]).text().trim()) || 0 : 0;
+    const title = titleIdx !== -1 && cells[titleIdx] ? $(cells[titleIdx]).text().trim() : '';
 
     // Extract FIDE ID from explicit column or from player name link
     let fideId = '';
@@ -318,6 +329,7 @@ export function parseStandingsTable(
     standings.push({
       rank,
       startingNumber: sno,
+      title,
       name,
       fed,
       rating,

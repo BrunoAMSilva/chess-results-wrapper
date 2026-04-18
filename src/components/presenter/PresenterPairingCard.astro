@@ -2,17 +2,18 @@
 import QueenPieceIcon from "../app/QueenPieceIcon.astro";
 import ChessResultScore from "../app/ChessResultScore.astro";
 import type { Pairing } from "../../lib/types";
-import { reverseName } from "../../lib/utils";
 import { useTranslations } from "../../i18n/ui";
+import PlayerName from "../player/PlayerName.astro";
 
 interface Props {
   pairing: Pairing;
   index: number;
   lang: number;
   variant?: "list" | "card";
+  titleMap?: Record<string, string>;
 }
 
-const { pairing, index, lang, variant = "card" } = Astro.props;
+const { pairing, index, lang, variant = "card", titleMap = {} } = Astro.props;
 const t = useTranslations(lang);
 
 const normalized = pairing.result.replace(/\s+/g, "").toLowerCase();
@@ -39,13 +40,13 @@ const delayClass = `delay-${delayStep}`;
 
   <div class:list={["player-row", "white", { winner: whiteWins }]}>
     <QueenPieceIcon tone="white" size="lg" />
-    <span class="player-name">{reverseName(pairing.white.name)}</span>
+    <PlayerName name={pairing.white.name} title={titleMap[pairing.white.name]} />
   </div>
   <div class:list={["player-row", "black", { winner: blackWins }]}>
     <QueenPieceIcon tone="black" size="lg" />
     {
       pairing.black ? (
-        <span class="player-name">{reverseName(pairing.black.name)}</span>
+        <PlayerName name={pairing.black.name} title={titleMap[pairing.black.name]} />
       ) : (
         <span class="player-name unpaired">
           {pairing.result === "1" ? t("match.bye") : t("match.notPaired")}

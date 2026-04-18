@@ -6,7 +6,7 @@ import TeamStandingRow from "../components/standings/TeamStandingRow.astro";
 import SegmentedControl from "../components/controls/SegmentedControl.astro";
 import TournamentSelector from "../components/tournaments/TournamentSelector.astro";
 import { scrapeStandings } from "../lib/scraper";
-import { getTournament } from "../lib/db";
+import { getTournament, getPlayerTitleMap } from "../lib/db";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
 import { resolvePageLang } from "../lib/page-lang";
@@ -36,6 +36,11 @@ const womenStandings = data?.womenStandings || [];
 const teamStandings = data?.teamStandings || [];
 const hasWomen = womenStandings.length > 0;
 const hasTeams = teamStandings.length > 0;
+
+let titleMap: Record<string, string> = {};
+if (hasTeams) {
+  try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
+}
 const linkedTournaments = data?.info.linkedTournaments;
 const sectionTitle = data?.info.currentLabel || data?.info.name || t("site.title");
 const tournamentEyebrow = data?.info.currentLabel ? data.info.name : undefined;
@@ -90,7 +95,7 @@ const defaultActive = hasTeams ? "teams" : "open";
     hasTeams && (
       <div class="standings-list" id="teamStandingsList">
         {teamStandings.map((team, i) => (
-          <TeamStandingRow team={team} index={i} lang={lang} />
+          <TeamStandingRow team={team} index={i} lang={lang} titleMap={titleMap} />
         ))}
       </div>
     )
