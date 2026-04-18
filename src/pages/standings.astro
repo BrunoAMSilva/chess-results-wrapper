@@ -5,14 +5,17 @@ import StandingRow from "../components/standings/StandingRow.astro";
 import TeamStandingRow from "../components/standings/TeamStandingRow.astro";
 import SegmentedControl from "../components/controls/SegmentedControl.astro";
 import TournamentSelector from "../components/tournaments/TournamentSelector.astro";
+import TrackRecentTournament from "../components/tournaments/TrackRecentTournament.astro";
 import { scrapeStandings } from "../lib/scraper";
-import { getTournament, getPlayerTitleMap } from "../lib/db";
 import { useTranslations } from "../i18n/ui";
-import { DEFAULT_TOURNAMENT } from "../lib/constants";
-import { resolvePageLang } from "../lib/page-lang";
+import {
+  extractPageParams,
+  resolveTournamentDisplay,
+  resolveTournamentName,
+  loadPlayerTitleMap,
+} from "../lib/page-context";
 
-const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
-const lang = resolvePageLang(Astro.url, Astro.cookies);
+const { tid, lang } = extractPageParams(Astro.url, Astro.cookies);
 
 const t = useTranslations(lang);
 
@@ -25,11 +28,7 @@ try {
   error = e instanceof Error ? e.message : t("error.load");
 }
 
-// Fallback: get tournament name from DB when scraper fails
-let dbName = '';
-if (!data?.info?.name) {
-  try { dbName = getTournament(tid)?.name || ''; } catch (_) {}
-}
+const tournamentName = resolveTournamentName(data, tid);
 
 const allStandings = data?.standings || [];
 const womenStandings = data?.womenStandings || [];
@@ -37,13 +36,9 @@ const teamStandings = data?.teamStandings || [];
 const hasWomen = womenStandings.length > 0;
 const hasTeams = teamStandings.length > 0;
 
-let titleMap: Record<string, string> = {};
-if (hasTeams) {
-  try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
-}
+const titleMap: Record<string, string> = hasTeams ? loadPlayerTitleMap(tid) : {};
 const linkedTournaments = data?.info.linkedTournaments;
-const sectionTitle = data?.info.currentLabel || data?.info.name || t("site.title");
-const tournamentEyebrow = data?.info.currentLabel ? data.info.name : undefined;
+const { sectionTitle, eyebrow: tournamentEyebrow } = resolveTournamentDisplay(data?.info, t("site.title"));
 const recentPlayerCount = allStandings.length;
 
 // Build segments for the segmented control
@@ -181,46 +176,11 @@ const defaultActive = hasTeams ? "teams" : "open";
   document.addEventListener("astro:after-swap", initStandingsTabs);
 </script>
 
-<script
-  is:inline
-  define:vars={{
-    tid,
-    tournamentName: data?.info.name || dbName,
-    tournamentDate: data?.info.date || "",
-    tournamentLocation: data?.info.location || "",
-    tournamentType: data?.info.type || "",
-    tournamentPlayerCount: recentPlayerCount,
-  }}
->
-  (function () {
-    try {
-      if (!tid) return;
-      var key = "recentTournaments";
-      var stored = localStorage.getItem(key);
-      var recent = stored ? JSON.parse(stored) : [];
-      var existing = recent.find(function (r) {
-        return r.id === tid;
-      });
-      recent = recent.filter(function (r) {
-        return r.id !== tid;
-      });
-      recent.unshift({
-        id: tid,
-        name: tournamentName || (existing && existing.name) || ("Tournament " + tid),
-        type: tournamentType || (existing && existing.type) || "",
-        date: tournamentDate || (existing && existing.date) || "",
-        location: tournamentLocation || (existing && existing.location) || "",
-        playerCount:
-          tournamentPlayerCount > 0
-            ? tournamentPlayerCount
-            : existing && typeof existing.playerCount === "number"
-              ? existing.playerCount
-              : undefined,
-      });
-      recent = recent.slice(0, 5);
-      localStorage.setItem(key, JSON.stringify(recent));
-    } catch (e) {
-      /* localStorage unavailable */
-    }
-  })();
-</script>
+<TrackRecentTournament
+  tid={tid}
+  name={tournamentName}
+  type={data?.info.type || ""}
+  date={data?.info.date || ""}
+  location={data?.info.location || ""}
+  playerCount={recentPlayerCount}
+/>

@@ -17,8 +17,8 @@ export const GET: APIRoute = async ({ url }) => {
     });
   }
 
-  const round = parseInt(roundStr || "1", 10);
-  if (isNaN(round) || round < 1 || round > 64) {
+  const round = Number.parseInt(roundStr ?? '1', 10);
+  if (!Number.isFinite(round) || round < 1 || round > 64) {
     return new Response(JSON.stringify({ error: "Invalid round" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
@@ -74,7 +74,7 @@ export const GET: APIRoute = async ({ url }) => {
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to generate export";
     return new Response(JSON.stringify({ error: message }), {
-      status: 500,
+      status: 502,
       headers: { "Content-Type": "application/json" },
     });
   }

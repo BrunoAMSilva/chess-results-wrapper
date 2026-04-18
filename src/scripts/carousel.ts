@@ -139,7 +139,7 @@ function initDynamicPairingsPagination(
 }
 
 function initCarousel(container: HTMLElement) {
-  const interval = parseInt(container.dataset.interval || "10") * 1000;
+  const interval = Number.parseInt(container.dataset.interval || "10", 10) * 1000;
   const wrapper = container.closest("[data-carousel-group]") || container.parentElement!;
   const dotsContainer = wrapper.querySelector<HTMLElement>(".page-dots");
   const footer = wrapper.querySelector<HTMLElement>(".carousel-footer");
@@ -292,7 +292,7 @@ function initCarousel(container: HTMLElement) {
     }
 
     stop();
-    showPage(parseInt(dot.dataset.dot || "0"));
+    showPage(Number.parseInt(dot.dataset.dot || "0", 10));
     start();
   });
 
@@ -320,15 +320,73 @@ function initCarousel(container: HTMLElement) {
 }
 
 // Initialize all carousels on the page
-const carousels = document.querySelectorAll<HTMLElement>(".carousel");
 const instances = new Map<string, CarouselInstance>();
 
-carousels.forEach((el) => {
-  const instance = initCarousel(el);
-  instances.set(el.id, instance);
-});
+function initAllCarousels() {
+  // Disconnect and clear stale instances from the previous page
+  instances.forEach((inst) => inst.disconnect());
+  instances.clear();
 
-// Keyboard navigation for the visible carousel
+  document.querySelectorAll<HTMLElement>(".carousel").forEach((el) => {
+    if (el.id) {
+      instances.set(el.id, initCarousel(el));
+    }
+  });
+
+  // Tab switching for standings — supports both old standingsTabs and new TabsControl.
+  // Re-query the tab container on every init because view transitions replace the DOM.
+  const tabContainer = document.getElementById("standingsTabs") || document.querySelector('[data-tabs-control="standings"]');
+  if (tabContainer) {
+    const openSection = document.getElementById("openStandings");
+    const womenSection = document.getElementById("womenStandings");
+
+    // Listen for the new TabsControl custom event
+    tabContainer.addEventListener("tab-change", ((e: CustomEvent) => {
+      const target = e.detail.value;
+
+      if (target === "open") {
+        openSection?.classList.remove("hidden");
+        womenSection?.classList.add("hidden");
+        instances.get("womenCarousel")?.stop();
+        instances.get("carousel")?.start();
+      } else {
+        openSection?.classList.add("hidden");
+        womenSection?.classList.remove("hidden");
+        instances.get("carousel")?.stop();
+        instances.get("womenCarousel")?.start();
+      }
+    }) as EventListener);
+
+    // Also support old-style standalone tabs (fallback)
+    const oldTabs = tabContainer.querySelectorAll<HTMLElement>(".standings-tab");
+    if (oldTabs.length > 0) {
+      oldTabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const target = tab.dataset.tab;
+          oldTabs.forEach((t) => t.classList.toggle("active", t === tab));
+
+          if (target === "open") {
+            openSection?.classList.remove("hidden");
+            womenSection?.classList.add("hidden");
+            instances.get("womenCarousel")?.stop();
+            instances.get("carousel")?.start();
+          } else {
+            openSection?.classList.add("hidden");
+            womenSection?.classList.remove("hidden");
+            instances.get("carousel")?.stop();
+            instances.get("womenCarousel")?.start();
+          }
+        });
+      });
+    }
+
+    // Stop women carousel initially (it starts hidden)
+    instances.get("womenCarousel")?.stop();
+  }
+}
+
+// Keyboard navigation for the visible carousel.
+// Attached once at module level — always references the live instances Map.
 document.addEventListener("keydown", (e) => {
   if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
     // Find the currently active (visible) carousel and navigate it
@@ -336,10 +394,10 @@ document.addEventListener("keydown", (e) => {
       const el = document.getElementById(id);
       if (el && el.offsetParent !== null) {
         inst.stop();
-        const totalPages = parseInt(el.dataset.totalPages || "1");
+        const totalPages = Number.parseInt(el.dataset.totalPages || "1", 10);
         // Navigate via showPage - get current page from active class
         const activePage = el.querySelector(".carousel-page.active");
-        const currentIdx = activePage ? parseInt(activePage.getAttribute("data-page") || "0") : 0;
+        const currentIdx = activePage ? Number.parseInt(activePage.getAttribute("data-page") || "0", 10) : 0;
         if (e.key === "ArrowRight") inst.showPage((currentIdx + 1) % totalPages);
         else inst.showPage((currentIdx - 1 + totalPages) % totalPages);
         inst.start();
@@ -349,55 +407,8 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// Tab switching for standings — supports both old standingsTabs and new TabsControl
-const tabContainer = document.getElementById("standingsTabs") || document.querySelector('[data-tabs-control="standings"]');
-if (tabContainer) {
-  const openSection = document.getElementById("openStandings");
-  const womenSection = document.getElementById("womenStandings");
-
-  // Listen for the new TabsControl custom event
-  tabContainer.addEventListener("tab-change", ((e: CustomEvent) => {
-    const target = e.detail.value;
-
-    if (target === "open") {
-      openSection?.classList.remove("hidden");
-      womenSection?.classList.add("hidden");
-      instances.get("womenCarousel")?.stop();
-      instances.get("carousel")?.start();
-    } else {
-      openSection?.classList.add("hidden");
-      womenSection?.classList.remove("hidden");
-      instances.get("carousel")?.stop();
-      instances.get("womenCarousel")?.start();
-    }
-  }) as EventListener);
-
-  // Also support old-style standalone tabs (fallback)
-  const oldTabs = tabContainer.querySelectorAll<HTMLElement>(".standings-tab");
-  if (oldTabs.length > 0) {
-    oldTabs.forEach((tab) => {
-      tab.addEventListener("click", () => {
-        const target = tab.dataset.tab;
-        oldTabs.forEach((t) => t.classList.toggle("active", t === tab));
-
-        if (target === "open") {
-          openSection?.classList.remove("hidden");
-          womenSection?.classList.add("hidden");
-          instances.get("womenCarousel")?.stop();
-          instances.get("carousel")?.start();
-        } else {
-          openSection?.classList.add("hidden");
-          womenSection?.classList.remove("hidden");
-          instances.get("carousel")?.stop();
-          instances.get("womenCarousel")?.start();
-        }
-      });
-    });
-  }
-
-  // Stop women carousel initially (it starts hidden)
-  instances.get("womenCarousel")?.stop();
-}
+document.addEventListener("DOMContentLoaded", initAllCarousels);
+document.addEventListener("astro:after-swap", initAllCarousels);
 
 window.addEventListener("beforeunload", () => {
   instances.forEach((instance) => instance.disconnect());

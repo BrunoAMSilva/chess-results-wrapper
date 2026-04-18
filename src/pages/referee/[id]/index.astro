@@ -2,6 +2,7 @@
 import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
 import RoundSelector from "../../../components/controls/RoundSelector.astro";
 import RefereeSelectionTile from "../../../components/referee/RefereeSelectionTile.astro";
+import TrackRecentTournament from "../../../components/tournaments/TrackRecentTournament.astro";
 import { scrapePairings } from "../../../lib/scraper";
 import { getRefereeResults, findLatestIncompleteRound } from "../../../lib/db";
 import { useTranslations } from "../../../i18n/ui";
@@ -183,33 +184,10 @@ const roundBaseUrl = `/referee/${tid}?lang=${lang}`;
   }
 </style>
 
-<script is:inline define:vars={{ tid, tournamentName, tournamentDate, tournamentLocation, tournamentType }}>
-  (function () {
-    try {
-      if (!tid) return;
-      var key = "recentTournaments";
-      var stored = localStorage.getItem(key);
-      var recent = stored ? JSON.parse(stored) : [];
-      var existing = recent.find(function (r) {
-        return r.id === tid;
-      });
-      recent = recent.filter(function (r) {
-        return r.id !== tid;
-      });
-      recent.unshift({
-        id: tid,
-        name: tournamentName || (existing && existing.name) || ("Tournament " + tid),
-        type: tournamentType || (existing && existing.type) || "",
-        date: tournamentDate || (existing && existing.date) || "",
-        location: tournamentLocation || (existing && existing.location) || "",
-        playerCount: existing && typeof existing.playerCount === "number"
-          ? existing.playerCount
-          : undefined,
-      });
-      recent = recent.slice(0, 5);
-      localStorage.setItem(key, JSON.stringify(recent));
-    } catch (e) {
-      /* localStorage unavailable */
-    }
-  })();
-</script>
+<TrackRecentTournament
+  tid={tid}
+  name={tournamentName}
+  type={tournamentType}
+  date={tournamentDate}
+  location={tournamentLocation}
+/>

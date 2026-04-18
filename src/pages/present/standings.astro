@@ -13,13 +13,12 @@ import PresenterSidebar from "../../components/presenter/PresenterSidebar.astro"
 import { scrapeStandings } from "../../lib/scraper";
 import { setTournamentConfig, getTournamentConfig } from "../../lib/db";
 import { useTranslations } from "../../i18n/ui";
-import { DEFAULT_TOURNAMENT, ROWS_PER_PAGE, CAROUSEL_INTERVAL, LANGUAGE_OPTIONS } from "../../lib/constants";
+import { ROWS_PER_PAGE, CAROUSEL_INTERVAL, LANGUAGE_OPTIONS } from "../../lib/constants";
 import { paginateArray } from "../../lib/utils";
 import { getIntParam } from "../../lib/request-params";
-import { resolvePageLang } from "../../lib/page-lang";
+import { extractPageParams, resolveTournamentDisplay } from "../../lib/page-context";
 
-const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
-const lang = resolvePageLang(Astro.url, Astro.cookies);
+const { tid, lang } = extractPageParams(Astro.url, Astro.cookies);
 const rowsPerPage = getIntParam(Astro.url.searchParams.get("rows"), ROWS_PER_PAGE, 1, 50);
 
 // Sponsor: URL params override → DB fallback, auto-save when provided via URL
@@ -65,8 +64,7 @@ try {
 const allStandings = data?.standings || [];
 const womenStandings = data?.womenStandings || [];
 const hasWomen = womenStandings.length > 0;
-const sectionTitle = data?.info.currentLabel || data?.info.name || t('site.title');
-const tournamentEyebrow = data?.info.currentLabel ? data.info.name : undefined;
+const { sectionTitle, eyebrow: tournamentEyebrow } = resolveTournamentDisplay(data?.info, t('site.title'));
 
 // Group standings into pages
 const pages = paginateArray(allStandings, rowsPerPage);

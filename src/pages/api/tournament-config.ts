@@ -23,6 +23,8 @@ function validateConfigValue(key: string, value: string): string | null {
       if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
         return "Sponsor image must be an HTTP(S) URL";
       }
+      // Note: only the URL format is validated here; the image content-type is not
+      // verified at write time. The browser will render whatever the URL serves.
     } catch {
       return "Invalid URL";
     }

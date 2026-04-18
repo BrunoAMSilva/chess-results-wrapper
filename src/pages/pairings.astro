@@ -6,18 +6,20 @@ import TeamMatchGroup from "../components/pairings/TeamMatchGroup.astro";
 import StandingRow from "../components/standings/StandingRow.astro";
 import RoundSelector from "../components/controls/RoundSelector.astro";
 import TournamentSelector from "../components/tournaments/TournamentSelector.astro";
+import TrackRecentTournament from "../components/tournaments/TrackRecentTournament.astro";
 import { scrapePairings, scrapeStandings } from "../lib/scraper";
-import { getTournament, getPlayerTitleMap } from "../lib/db";
 import { useTranslations } from "../i18n/ui";
-import { DEFAULT_TOURNAMENT } from "../lib/constants";
-import { getIntParam } from "../lib/request-params";
-import { resolvePageLang } from "../lib/page-lang";
+import {
+  extractPageParams,
+  resolveTournamentDisplay,
+  resolveTournamentName,
+  loadPlayerTitleMap,
+} from "../lib/page-context";
+import { isRealPairing } from "../lib/pairing-utils";
 import type { Pairing, TeamPairing } from "../lib/types";
 import type { Standing } from "../lib/scraper";
 
-const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
-const round = getIntParam(Astro.url.searchParams.get("round"), 1, 1, 64);
-const lang = resolvePageLang(Astro.url, Astro.cookies);
+const { tid, lang, round } = extractPageParams(Astro.url, Astro.cookies);
 
 const t = useTranslations(lang);
 
@@ -28,7 +30,7 @@ let teamPairings: TeamPairing[] | undefined;
 
 try {
   data = await scrapePairings(tid, round);
-  allPairings = (data.pairings || []).filter((p) => p.white?.name?.trim().length > 0);
+  allPairings = (data.pairings || []).filter(isRealPairing);
   teamPairings = data.teamPairings;
 } catch (e) {
   error = e instanceof Error ? e.message : t('error.load');
@@ -43,19 +45,12 @@ if (!isTeamView && allPairings.length === 0 && !error) {
   } catch (_) { /* ignore - show empty state */ }
 }
 
-// Fallback: get tournament name from DB when scraper fails
-let dbName = '';
-if (!data?.info?.name) {
-  try { dbName = getTournament(tid)?.name || ''; } catch (_) {}
-}
-
-let titleMap: Record<string, string> = {};
-try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
+const tournamentName = resolveTournamentName(data, tid);
+const titleMap = loadPlayerTitleMap(tid);
 
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
 const linkedTournaments = data?.info.linkedTournaments;
-const sectionTitle = data?.info.currentLabel || data?.info.name || t('site.title');
-const tournamentEyebrow = data?.info.currentLabel ? data.info.name : undefined;
+const { sectionTitle, eyebrow: tournamentEyebrow } = resolveTournamentDisplay(data?.info, t('site.title'));
 const recentPlayerCount = !isTeamView
   ? new Set(
       allPairings
@@ -164,31 +159,11 @@ const recentPlayerCount = !isTeamView
   }
 </style>
 
-<script is:inline define:vars={{ tid, tournamentName: data?.info.name || dbName, tournamentDate: data?.info.date || '', tournamentLocation: data?.info.location || '', tournamentType: data?.info.type || '', tournamentPlayerCount: recentPlayerCount }}>
-  (function() {
-    try {
-      if (!tid) return;
-      var key = 'recentTournaments';
-      var stored = localStorage.getItem(key);
-      var recent = stored ? JSON.parse(stored) : [];
-      var existing = recent.find(function(r) { return r.id === tid; });
-      recent = recent.filter(function(r) { return r.id !== tid; });
-      recent.unshift({
-        id: tid,
-        name: tournamentName || (existing && existing.name) || ('Tournament ' + tid),
-        type: tournamentType || (existing && existing.type) || '',
-        date: tournamentDate || (existing && existing.date) || '',
-        location: tournamentLocation || (existing && existing.location) || '',
-        playerCount: tournamentPlayerCount > 0
-          ? tournamentPlayerCount
-          : existing && typeof existing.playerCount === 'number'
-            ? existing.playerCount
-            : undefined,
-      });
-      recent = recent.slice(0, 5);
-      localStorage.setItem(key, JSON.stringify(recent));
-    } catch(e) { /* localStorage unavailable */ }
-  })();
-</script>
-
-
+<TrackRecentTournament
+  tid={tid}
+  name={tournamentName}
+  type={data?.info.type || ''}
+  date={data?.info.date || ''}
+  location={data?.info.location || ''}
+  playerCount={recentPlayerCount}
+/>

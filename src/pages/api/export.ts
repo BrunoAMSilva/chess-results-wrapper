@@ -99,50 +99,50 @@ export const GET: APIRoute = async ({ url }) => {
           "Content-Disposition": `attachment; filename=\"${filename}\"`,
         },
       });
-    }
+    } else {
+      const data = await scrapePairings(tid, round);
+      const filename = `pairings-${tid}-r${round}.${format}`;
 
-    const data = await scrapePairings(tid, round);
-    const filename = `pairings-${tid}-r${round}.${format}`;
+      if (format === "json") {
+        return new Response(JSON.stringify(data, null, 2), {
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Disposition": `attachment; filename=\"${filename}\"`,
+          },
+        });
+      }
 
-    if (format === "json") {
-      return new Response(JSON.stringify(data, null, 2), {
+      const headers = [
+        "round",
+        "table",
+        "whiteName",
+        "whiteNo",
+        "blackName",
+        "blackNo",
+        "result",
+        "unpairedLabel",
+      ];
+
+      const rows = data.pairings.map((p) => [
+        round,
+        p.table,
+        p.white.name,
+        p.white.number,
+        p.black?.name || "",
+        p.black?.number || "",
+        p.result,
+        p.unpairedLabel || "",
+      ]);
+
+      const body = toCsv(headers, rows);
+
+      return new Response(body, {
         headers: {
-          "Content-Type": "application/json; charset=utf-8",
+          "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition": `attachment; filename=\"${filename}\"`,
         },
       });
     }
-
-    const headers = [
-      "round",
-      "table",
-      "whiteName",
-      "whiteNo",
-      "blackName",
-      "blackNo",
-      "result",
-      "unpairedLabel",
-    ];
-
-    const rows = data.pairings.map((p) => [
-      round,
-      p.table,
-      p.white.name,
-      p.white.number,
-      p.black?.name || "",
-      p.black?.number || "",
-      p.result,
-      p.unpairedLabel || "",
-    ]);
-
-    const body = toCsv(headers, rows);
-
-    return new Response(body, {
-      headers: {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename=\"${filename}\"`,
-      },
-    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Failed to export";
     return new Response(JSON.stringify({ error: message }), {

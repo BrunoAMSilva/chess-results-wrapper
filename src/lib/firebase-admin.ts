@@ -12,13 +12,29 @@ function getAdminApp(): App {
     } else {
       const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY || import.meta.env.FIREBASE_SERVICE_ACCOUNT_KEY;
       if (serviceAccount) {
-        const parsed = JSON.parse(serviceAccount);
-        app = initializeApp({ credential: cert(parsed) });
+        let parsed: object;
+        try {
+          parsed = JSON.parse(serviceAccount);
+        } catch (e) {
+          console.error("[firebase-admin] Failed to parse FIREBASE_SERVICE_ACCOUNT_KEY:", e instanceof Error ? e.message : e);
+          throw new Error("Firebase initialization failed: invalid service account JSON");
+        }
+        try {
+          app = initializeApp({ credential: cert(parsed) });
+        } catch (e) {
+          console.error("[firebase-admin] initializeApp with service account failed:", e instanceof Error ? e.message : e);
+          throw new Error("Firebase initialization failed: could not initialize with service account");
+        }
       } else {
         // Fallback: use project ID only (works with GOOGLE_APPLICATION_CREDENTIALS env)
-        app = initializeApp({
-          projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || process.env.PUBLIC_FIREBASE_PROJECT_ID || undefined,
-        });
+        try {
+          app = initializeApp({
+            projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID || process.env.PUBLIC_FIREBASE_PROJECT_ID || undefined,
+          });
+        } catch (e) {
+          console.error("[firebase-admin] initializeApp with project ID failed:", e instanceof Error ? e.message : e);
+          throw new Error("Firebase initialization failed: missing credentials (set FIREBASE_SERVICE_ACCOUNT_KEY or GOOGLE_APPLICATION_CREDENTIALS)");
+        }
       }
     }
   }

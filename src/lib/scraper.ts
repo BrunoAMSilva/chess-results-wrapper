@@ -326,7 +326,9 @@ export async function scrapeFullTournament(
   }
 
   // Persist round 1
-  try { persistPairings(tournamentId, firstData.info, 1, firstData.pairings, firstData.teamPairings); } catch (_) {}
+  try { persistPairings(tournamentId, firstData.info, 1, firstData.pairings, firstData.teamPairings); } catch (e) {
+    console.warn(`[scraper] Failed to persist pairings for ${tournamentId} round 1:`, e instanceof Error ? e.message : e);
+  }
 
   // Scrape remaining rounds
   for (let rd = 2; rd <= totalRounds; rd++) {
@@ -419,7 +421,9 @@ async function scrapePairingsFromRemote(
     }
 
     // Persist to database (best-effort)
-    try { persistPairings(tournamentId, data.info, round, data.pairings, data.teamPairings); } catch (_) {}
+    try { persistPairings(tournamentId, data.info, round, data.pairings, data.teamPairings); } catch (e) {
+      console.warn(`[scraper] Failed to persist pairings for ${tournamentId} round ${round}:`, e instanceof Error ? e.message : e);
+    }
 
     return data;
   } catch (e) {
@@ -517,6 +521,9 @@ async function scrapeStandingsFromRemote(
 const freshnessCache = new Map<string, { status: 'fresh' | 'scraped' | 'live'; timestamp: number }>();
 const FRESHNESS_CACHE_TTL = 60_000; // 1 minute
 
+/** In-flight promise map: coalesces concurrent requests for the same tournament. */
+const inFlightEnsure = new Map<string, Promise<'fresh' | 'scraped' | 'live'>>();
+
 // ─── Centralized tournament data management ───────────────────────────────────
 
 /**
@@ -529,15 +536,33 @@ const FRESHNESS_CACHE_TTL = 60_000; // 1 minute
  *    a. Remote lastUpdated ≤ DB → 'fresh' (serve from DB)
  *    b. Remote lastUpdated > DB → full scrape → 'scraped'
  * 3. Tournament in DB, still live → 'live' (caller scrapes specific data)
+ *
+ * Concurrent calls for the same tournament ID are coalesced into a single
+ * in-flight promise to prevent duplicate scrapes and DB writes.
  */
 export async function ensureTournamentData(
   tournamentId: string,
 ): Promise<'fresh' | 'scraped' | 'live'> {
+  // Fast path: freshness cache hit
   const cached = freshnessCache.get(tournamentId);
   if (cached && Date.now() - cached.timestamp < FRESHNESS_CACHE_TTL) {
     return cached.status;
   }
 
+  // Deduplicate concurrent requests for the same tournament
+  const existing = inFlightEnsure.get(tournamentId);
+  if (existing) return existing;
+
+  const promise = doEnsureTournamentData(tournamentId).finally(() => {
+    inFlightEnsure.delete(tournamentId);
+  });
+  inFlightEnsure.set(tournamentId, promise);
+  return promise;
+}
+
+async function doEnsureTournamentData(
+  tournamentId: string,
+): Promise<'fresh' | 'scraped' | 'live'> {
   const dbTournament = getTournament(tournamentId);
 
   if (!dbTournament) {
@@ -545,7 +570,8 @@ export async function ensureTournamentData(
       await scrapeFullTournament(tournamentId);
       freshnessCache.set(tournamentId, { status: 'scraped', timestamp: Date.now() });
       return 'scraped';
-    } catch (_) {
+    } catch (e) {
+      console.warn(`[scraper] Full scrape failed for new tournament ${tournamentId}, falling back to live mode:`, e instanceof Error ? e.message : e);
       return 'live'; // Full scrape failed — caller should try single-page scrape
     }
   }
@@ -577,7 +603,8 @@ export async function ensureTournamentData(
       await scrapeFullTournament(tournamentId);
       freshnessCache.set(tournamentId, { status: 'scraped', timestamp: Date.now() });
       return 'scraped';
-    } catch (_) {
+    } catch (e) {
+      console.warn(`[scraper] Full scrape failed for tournament ${tournamentId}, serving stale DB data:`, e instanceof Error ? e.message : e);
       freshnessCache.set(tournamentId, { status: 'fresh', timestamp: Date.now() });
       return 'fresh'; // Full scrape failed — serve stale DB data
     }
@@ -643,7 +670,9 @@ export async function scrapeStandings(
 
   try {
     persistStandings(tournamentId, result.info, result.standings, result.womenStandings);
-  } catch (_) { /* DB write is non-critical */ }
+  } catch (e) {
+    console.warn(`[scraper] Failed to persist standings for ${tournamentId}:`, e instanceof Error ? e.message : e);
+  }
 
   return result;
 }
@@ -668,7 +697,9 @@ export async function ensurePlayerCards(
     if (standingsData.standings.length > 0) {
       await scrapePlayerCards(tournamentId, standingsData.standings);
     }
-  } catch (_) { /* best-effort */ }
+  } catch (e) {
+    console.warn(`[scraper] Failed to ensure player cards for ${tournamentId}:`, e instanceof Error ? e.message : e);
+  }
 }
 
 /**

@@ -42,7 +42,7 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
     align-items: center;
     gap: var(--space-4);
     padding: var(--space-4) var(--space-5);
-    background: var(--surface-container-high);
+    background: var(--surface-container-low);
     border-radius: var(--radius-lg);
     text-decoration: none;
     color: var(--on-surface);
@@ -50,7 +50,7 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
   }
 
   .recent-list :global(.tournament-card:hover) {
-    background: var(--surface-container-highest);
+    background: var(--surface-container-high);
   }
 
   .recent-list :global(.tournament-card:focus-visible) {
@@ -66,7 +66,6 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
     height: var(--space-12);
     flex-shrink: 0;
     border-radius: var(--radius-md);
-    background: var(--surface-container-highest);
     color: var(--primary-container);
   }
 

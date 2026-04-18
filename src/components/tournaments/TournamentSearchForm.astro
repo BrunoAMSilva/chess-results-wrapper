@@ -100,7 +100,7 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
   </form>
 
   {hint && <p class="home-hint" id={hintId}>{hint}</p>}
-  {invalidMessage && <p class="error-hint hidden" id={errorId} data-error-hint>{invalidMessage}</p>}
+  {invalidMessage && <p class="error-hint hidden" id={errorId} data-error-hint role="alert" aria-live="assertive" aria-atomic="true">{invalidMessage}</p>}
 </div>
 
 <style>
@@ -691,7 +691,7 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
         recent = recent.slice(0, 5);
         localStorage.setItem(recentStorageKey, JSON.stringify(recent));
       } catch {
-        // localStorage unavailable.
+        // localStorage unavailable or contains corrupt JSON — start fresh.
       }
     }
   }

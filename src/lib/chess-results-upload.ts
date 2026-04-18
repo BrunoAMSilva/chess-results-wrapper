@@ -27,6 +27,18 @@ export function mapResultToUploadCode(result: string): string {
 // ── XML payload builder ──
 
 /**
+ * Escape a string value for use inside an XML attribute (double-quoted).
+ * Handles the `{`/`}` pseudo-XML format used by chess-results.com.
+ */
+function escapeXmlAttr(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/**
  * Build the XML payload for chess-results.com result upload.
  * Uses `{`/`}` instead of `<`/`>` as required by the API
  * (chess-results.com rejects `<`/`>` as a security measure).
@@ -41,7 +53,7 @@ export function buildUploadXml(
   return (
     '{?xml version="1.0" encoding="UTF-8"?}' +
     '{Pairing}' +
-    `{data sid="${sid}" Tournament="${tournament}" Round="${round}" Uid="${uid}" Result="${resultCode}" /}` +
+    `{data sid="${escapeXmlAttr(sid)}" Tournament="${escapeXmlAttr(tournament)}" Round="${round}" Uid="${uid}" Result="${escapeXmlAttr(resultCode)}" /}` +
     '{/Pairing}'
   );
 }
@@ -161,7 +173,12 @@ export async function uploadRoundResults(
 
     // Skip tables already successfully uploaded
     if (alreadyUploaded.has(table_number)) {
-      const existing = existingLog.find(l => l.table_number === table_number)!;
+      const existing = existingLog.find(l => l.table_number === table_number);
+      if (!existing) {
+        // Invariant violation: alreadyUploaded is built from existingLog, so this should never happen
+        console.warn(`[chess-results-upload] Table ${table_number} is in alreadyUploaded but not found in existingLog`);
+        continue;
+      }
       results.push({
         table_number,
         uid: existing.uid,

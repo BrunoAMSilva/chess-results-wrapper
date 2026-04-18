@@ -1067,15 +1067,14 @@ export function persistPlayerCard(
 // ── Search ──
 
 export function searchTournaments(query: string, limit = 10): DbTournamentSummary[] {
+  // Note: '?' parameter binding in SQLite safely handles LIKE wildcard characters.
   return db.prepare(`
     SELECT t.*,
-      (
-        SELECT COUNT(*)
-        FROM tournament_players tp
-        WHERE tp.tournament_id = t.id
-      ) AS player_count
+      COUNT(tp.player_id) AS player_count
     FROM tournaments t
+    LEFT JOIN tournament_players tp ON tp.tournament_id = t.id
     WHERE t.name LIKE '%' || ? || '%'
+    GROUP BY t.id
     ORDER BY datetime(t.updated_at) DESC
     LIMIT ?
   `).all(query, limit) as DbTournamentSummary[];
@@ -1084,27 +1083,24 @@ export function searchTournaments(query: string, limit = 10): DbTournamentSummar
 export function listTournaments(limit = 20, offset = 0): DbTournamentSummary[] {
   return db.prepare(`
     SELECT t.*,
-      (
-        SELECT COUNT(*)
-        FROM tournament_players tp
-        WHERE tp.tournament_id = t.id
-      ) AS player_count
+      COUNT(tp.player_id) AS player_count
     FROM tournaments t
+    LEFT JOIN tournament_players tp ON tp.tournament_id = t.id
+    GROUP BY t.id
     ORDER BY datetime(t.updated_at) DESC
     LIMIT ? OFFSET ?
   `).all(limit, offset) as DbTournamentSummary[];
 }
 
 export function searchTournamentsPaged(query: string, limit = 20, offset = 0): DbTournamentSummary[] {
+  // Note: '?' parameter binding in SQLite safely handles LIKE wildcard characters.
   return db.prepare(`
     SELECT t.*,
-      (
-        SELECT COUNT(*)
-        FROM tournament_players tp
-        WHERE tp.tournament_id = t.id
-      ) AS player_count
+      COUNT(tp.player_id) AS player_count
     FROM tournaments t
+    LEFT JOIN tournament_players tp ON tp.tournament_id = t.id
     WHERE t.name LIKE '%' || ? || '%'
+    GROUP BY t.id
     ORDER BY datetime(t.updated_at) DESC
     LIMIT ? OFFSET ?
   `).all(query, limit, offset) as DbTournamentSummary[];
