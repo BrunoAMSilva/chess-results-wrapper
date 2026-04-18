@@ -3,15 +3,17 @@ import ResponsiveLayout from "../layouts/ResponsiveLayout.astro";
 import EmptyState from "../components/app/EmptyState.astro";
 import ResponsiveMatchCard from "../components/pairings/ResponsiveMatchCard.astro";
 import TeamMatchGroup from "../components/pairings/TeamMatchGroup.astro";
+import StandingRow from "../components/standings/StandingRow.astro";
 import RoundSelector from "../components/controls/RoundSelector.astro";
 import TournamentSelector from "../components/tournaments/TournamentSelector.astro";
-import { scrapePairings } from "../lib/scraper";
+import { scrapePairings, scrapeStandings } from "../lib/scraper";
 import { getTournament, getPlayerTitleMap } from "../lib/db";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
 import { getIntParam } from "../lib/request-params";
 import { resolvePageLang } from "../lib/page-lang";
 import type { Pairing, TeamPairing } from "../lib/types";
+import type { Standing } from "../lib/scraper";
 
 const tid = Astro.url.searchParams.get("tid") || DEFAULT_TOURNAMENT;
 const round = getIntParam(Astro.url.searchParams.get("round"), 1, 1, 64);
@@ -26,10 +28,19 @@ let teamPairings: TeamPairing[] | undefined;
 
 try {
   data = await scrapePairings(tid, round);
-  allPairings = data.pairings || [];
+  allPairings = (data.pairings || []).filter((p) => p.white?.name?.trim().length > 0);
   teamPairings = data.teamPairings;
 } catch (e) {
   error = e instanceof Error ? e.message : t('error.load');
+}
+
+let playerList: Standing[] = [];
+const isTeamView = teamPairings && teamPairings.length > 0;
+if (!isTeamView && allPairings.length === 0 && !error) {
+  try {
+    const standingsData = await scrapeStandings(tid);
+    playerList = standingsData.standings;
+  } catch (_) { /* ignore - show empty state */ }
 }
 
 // Fallback: get tournament name from DB when scraper fails
@@ -41,7 +52,6 @@ if (!data?.info?.name) {
 let titleMap: Record<string, string> = {};
 try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
 
-const isTeamView = teamPairings && teamPairings.length > 0;
 const rounds = data ? Array.from({ length: data.info.totalRounds }, (_, i) => i + 1) : [];
 const linkedTournaments = data?.info.linkedTournaments;
 const sectionTitle = data?.info.currentLabel || data?.info.name || t('site.title');
@@ -90,6 +100,12 @@ const recentPlayerCount = !isTeamView
       ))
     ) : allPairings.length > 0 ? (
       allPairings.map((pairing) => <ResponsiveMatchCard match={pairing} tid={tid} lang={lang} titleMap={titleMap} />)
+    ) : playerList.length > 0 ? (
+      <div class="standings-list">
+        {playerList.map((standing, i) => (
+          <StandingRow standing={standing} index={i} lang={lang} tid={tid} hideStats />
+        ))}
+      </div>
     ) : (
       <EmptyState message={t('empty.pairings')} compact />
     )}
@@ -126,6 +142,15 @@ const recentPlayerCount = !isTeamView
     grid-template-columns: 1fr;
     gap: var(--space-4);
     padding-bottom: var(--space-8);
+  }
+
+  .standings-list {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    grid-column: 1 / -1;
   }
 
   .delay-2 {

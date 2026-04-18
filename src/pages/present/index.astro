@@ -78,7 +78,7 @@ try {
   error = e instanceof Error ? e.message : t('error.load');
 }
 
-const allPairings = data?.pairings || [];
+const allPairings = (data?.pairings || []).filter((p) => p.white?.name?.trim().length > 0);
 
 let titleMap: Record<string, string> = {};
 try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
@@ -207,16 +207,15 @@ const autoRefresh = isTournamentLive(data?.info.date);
           />
         )}
         <div id="openStandings" data-carousel-group>
-          <div class="column-headers">
+          <div class="column-headers no-stats">
             <span class="col-label col-rank">{t('standings.rank')}</span>
             <span class="col-label col-name">{t('standings.name')}</span>
-            <span class="col-label col-stats pr-8 text-right">{t('standings.pts')} / TB</span>
           </div>
           <div class="carousel" id="carousel" data-total-pages={totalPlayerPages} data-interval={CAROUSEL_INTERVAL}>
             {playerPages.map((page, pageIdx) => (
               <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
                 {page.map((standing, i) => (
-                  <StandingRow standing={standing} index={i} lang={lang} />
+                  <StandingRow standing={standing} index={i} lang={lang} hideStats />
                 ))}
               </div>
             ))}
@@ -240,16 +239,15 @@ const autoRefresh = isTournamentLive(data?.info.date);
         </div>
         {hasWomenPlayers && (
           <div id="womenStandings" class="hidden" data-carousel-group>
-            <div class="column-headers">
+            <div class="column-headers no-stats">
               <span class="col-label col-rank">{t('standings.rank')}</span>
               <span class="col-label col-name">{t('standings.name')}</span>
-              <span class="col-label col-stats pr-8 text-right">{t('standings.pts')} / TB</span>
             </div>
             <div class="carousel" id="womenCarousel" data-total-pages={totalWomenPlayerPages} data-interval={CAROUSEL_INTERVAL}>
               {womenPlayerPages.map((page, pageIdx) => (
                 <div class:list={["carousel-page", { active: pageIdx === 0 }]} data-page={pageIdx}>
                   {page.map((standing, i) => (
-                    <StandingRow standing={standing} index={i} lang={lang} />
+                    <StandingRow standing={standing} index={i} lang={lang} hideStats />
                   ))}
                 </div>
               ))}
@@ -469,6 +467,10 @@ const autoRefresh = isTournamentLive(data?.info.date);
     padding: 0;
     background: var(--bg-subtle);
     flex-shrink: 0;
+  }
+
+  .column-headers.no-stats {
+    grid-template-columns: 7.5rem 1fr 7rem;
   }
 
   .col-table {

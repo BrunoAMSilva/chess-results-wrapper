@@ -10,9 +10,10 @@ interface Props {
   index: number;
   lang: number;
   tid?: string;
+  hideStats?: boolean;
 }
 
-const { standing, index, lang, tid } = Astro.props;
+const { standing, index, lang, tid, hideStats = false } = Astro.props;
 const t = useTranslations(lang);
 
 const isTop3 = standing.rank <= 3;
@@ -24,14 +25,19 @@ const playerDisplayName = reverseName(standing.name);
 const attributes = tid
   ? {
       href: `/player?tid=${encodeURIComponent(tid)}&name=${encodeURIComponent(standing.name)}&lang=${lang}`,
-      'aria-label': playerDisplayName,
+      "aria-label": playerDisplayName,
     }
   : {};
 ---
 
 <Tag
   {...attributes}
-  class:list={["standing-row", delayClass, { "top-3": isTop3 }, rankClass]}
+  class:list={[
+    "standing-row",
+    delayClass,
+    { "top-3": isTop3 && !hideStats, "no-stats": hideStats },
+    hideStats ? "" : rankClass,
+  ]}
   data-selected-player-entry
   data-player-name={standing.name}
   data-player-federation={standing.fed}
@@ -41,34 +47,63 @@ const attributes = tid
   </div>
 
   <div class="player-info">
-    <PlayerName name={standing.name} title={standing.title} />
-    <span class="player-fed">
-      {standing.fed && <span aria-label={standing.fed} title={standing.fed}>{federationFlag(standing.fed)}</span>}
+    <span class="player-name-row">
+      <PlayerName name={standing.name} title={standing.title} />
       {
-        standing.rating && standing.rating !== "0" && (
-          <Fragment> • {standing.rating}</Fragment>
+        hideStats && standing.fed && (
+          <span
+            class="player-flag"
+            aria-label={standing.fed}
+            title={standing.fed}
+          >
+            {federationFlag(standing.fed)}
+          </span>
         )
       }
-      {standing.club && <Fragment> • {standing.club}</Fragment>}
     </span>
-  </div>
-  <div class="main-stat">
-    <span class="points">{standing.points}</span>
-    <span class="stat-label">{t("standings.pts")}</span>
-  </div>
+  </div>{
+    hideStats ? (
+      standing.club && <span class="player-club">{standing.club}</span>
+    ) : (
+      <span class="player-fed">
+        {standing.fed && (
+          <span aria-label={standing.fed} title={standing.fed}>
+            {federationFlag(standing.fed)}
+          </span>
+        )}
+        {standing.rating && standing.rating !== "0" && (
+          <Fragment> • {standing.rating}</Fragment>
+        )}
+        {standing.club && <Fragment> • {standing.club}</Fragment>}
+      </span>
+    )
+  }
+  {
+    hideStats ? (
+      standing.rating &&
+      standing.rating !== "0" && <div class="rating-col">{standing.rating}</div>
+    ) : (
+      <>
+        <div class="main-stat">
+          <span class="points">{standing.points}</span>
+          <span class="stat-label">{t("standings.pts")}</span>
+        </div>
 
-  <div class="stats-col">
-    <TieBreaks
-      values={[
-        standing.tieBreak1,
-        standing.tieBreak2,
-        standing.tieBreak3,
-        standing.tieBreak4,
-        standing.tieBreak5,
-        standing.tieBreak6,
-      ]}
-    />
-  </div>
+        <div class="stats-col">
+          <TieBreaks
+            values={[
+              standing.tieBreak1,
+              standing.tieBreak2,
+              standing.tieBreak3,
+              standing.tieBreak4,
+              standing.tieBreak5,
+              standing.tieBreak6,
+            ]}
+          />
+        </div>
+      </>
+    )
+  }
 </Tag>
 
 <style>
@@ -76,7 +111,8 @@ const attributes = tid
     --hover-opacity: 0;
     display: grid;
     grid-template-columns: var(--size-standing-rank-col-sm) minmax(0, 1fr) auto;
-    align-items: center;
+    grid-template-columns: auto auto;
+    align-items: baseline;
     background:
       linear-gradient(
         90deg,
@@ -84,7 +120,7 @@ const attributes = tid
         rgb(from var(--text-muted) r g b / var(--hover-opacity))
       ),
       linear-gradient(var(--surface), var(--surface));
-    padding: 0 var(--space-2) 0 0;
+    padding: var(--space-2) var(--space-4);
     animation: fadeInUp var(--duration-slow) ease both;
     color: var(--text);
     gap: 0;
@@ -94,9 +130,12 @@ const attributes = tid
     transition:
       box-shadow var(--duration-fast) var(--ease-in-out),
       transform var(--duration-fast) var(--ease-out);
+
+    border-block-end: solid 1px var(--border-light);
   }
 
   .standing-row:last-child {
+    border-block-end: none;
   }
 
   .standing-row.top-3 {
@@ -184,14 +223,12 @@ const attributes = tid
     color: var(--medal-bronze);
   }
 
-
   .player-info {
     display: flex;
     flex-direction: column;
     justify-content: center;
     overflow: hidden;
     min-width: 0;
-    padding-block: var(--space-3) var(--space-2);
   }
 
   .player-info :global(.player-name) {
@@ -220,6 +257,47 @@ const attributes = tid
     overflow: hidden;
     text-overflow: ellipsis;
     display: none;
+  }
+
+  .standing-row.no-stats {
+    grid-template-columns: var(--size-standing-rank-col-sm) minmax(0, 1fr) auto;
+  }
+
+  .player-name-row {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .player-flag {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .player-club {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-weight: 600;
+    grid-row: 2;
+    grid-column: 2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: var(--space-1);
+  }
+
+  .rating-col {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 var(--space-4);
+    font-size: var(--text-lg);
+    font-weight: 700;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    grid-row: span 2;
   }
 
   .stats-col {
@@ -275,15 +353,26 @@ const attributes = tid
     margin-block-end: var(--space-3);
   }
 
-
   @media (min-width: 1068px) {
     .standing-row {
-      grid-template-columns: var(--size-standing-rank-col-lg) minmax(0, 1fr) auto auto;
+      grid-template-columns:
+        var(--size-standing-rank-col-lg) minmax(0, 1fr)
+        auto auto;
       grid-template-rows: auto;
       padding: 0 var(--space-6) 0 0;
       min-height: var(--size-standing-row-min-height-lg);
     }
-    .main-stat, .rank-col {
+    .standing-row.no-stats {
+      grid-template-columns:
+        var(--size-standing-rank-col-lg) minmax(0, 1fr)
+        auto;
+    }
+    .rating-col {
+      font-size: var(--text-2xl);
+      padding: 0 var(--space-6);
+    }
+    .main-stat,
+    .rank-col {
       grid-row: 1;
     }
     .rank-col,
@@ -296,6 +385,9 @@ const attributes = tid
     .player-fed {
       font-size: 0.9rem;
     }
+    .player-club {
+      font-size: 0.9rem;
+    }
     .player-info {
       padding-left: var(--space-6);
     }
@@ -303,7 +395,7 @@ const attributes = tid
       gap: 1.5rem;
       grid-row: 1;
       grid-column: 4;
-      font-size: .9rem;
+      font-size: 0.9rem;
       margin: 0;
     }
     .main-stat {
@@ -320,17 +412,39 @@ const attributes = tid
     }
   }
 
-  .delay-0 { animation-delay: 0ms; }
-  .delay-1 { animation-delay: 40ms; }
-  .delay-2 { animation-delay: 80ms; }
-  .delay-3 { animation-delay: 120ms; }
-  .delay-4 { animation-delay: 160ms; }
-  .delay-5 { animation-delay: 200ms; }
-  .delay-6 { animation-delay: 240ms; }
-  .delay-7 { animation-delay: 280ms; }
-  .delay-8 { animation-delay: 320ms; }
-  .delay-9 { animation-delay: 360ms; }
-  .delay-10 { animation-delay: 400ms; }
+  .delay-0 {
+    animation-delay: 0ms;
+  }
+  .delay-1 {
+    animation-delay: 40ms;
+  }
+  .delay-2 {
+    animation-delay: 80ms;
+  }
+  .delay-3 {
+    animation-delay: 120ms;
+  }
+  .delay-4 {
+    animation-delay: 160ms;
+  }
+  .delay-5 {
+    animation-delay: 200ms;
+  }
+  .delay-6 {
+    animation-delay: 240ms;
+  }
+  .delay-7 {
+    animation-delay: 280ms;
+  }
+  .delay-8 {
+    animation-delay: 320ms;
+  }
+  .delay-9 {
+    animation-delay: 360ms;
+  }
+  .delay-10 {
+    animation-delay: 400ms;
+  }
 
   @media (forced-colors: active) {
     .standing-row.is-selected-player {
