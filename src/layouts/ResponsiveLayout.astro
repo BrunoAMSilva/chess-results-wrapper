@@ -216,9 +216,12 @@ if (isOptions && navMode === "referee" && tid) {
 
 <script>
   import { initSelectedPlayerUi } from "../scripts/player-identity";
+  import { getFirebaseAnalytics } from "../lib/firebase-client";
 
   const pageLang = Number.parseInt(document.documentElement.dataset.appLang || "1", 10);
   initSelectedPlayerUi(Number.isFinite(pageLang) && pageLang > 0 ? pageLang : 1);
+
+  getFirebaseAnalytics();
 
   // Auth sign-out handler
   document.querySelectorAll("[data-auth-signout]").forEach((btn) => {

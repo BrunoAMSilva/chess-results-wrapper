@@ -29,6 +29,10 @@ const documentTitle = eyebrow ? `${eyebrow} - ${title}` : title;
         }, 30_000);
       </script>
     )}
+    <script>
+      import { getFirebaseAnalytics } from "../lib/firebase-client";
+      getFirebaseAnalytics();
+    </script>
   </body>
 </html>
 
