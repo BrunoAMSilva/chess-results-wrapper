@@ -12,6 +12,22 @@ const PROTECTED_API_PREFIXES = [
 
 const PUBLIC_PATHS = ["/login"];
 
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "SAMEORIGIN",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "connect-src 'self' https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com",
+    "frame-src https://accounts.google.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+  ].join("; "),
+};
+
 function isProtectedRoute(pathname: string): boolean {
   for (const prefix of PROTECTED_PAGE_PREFIXES) {
     if (pathname === prefix || pathname.startsWith(prefix + "/")) return true;
@@ -33,13 +49,20 @@ function isApiRoute(pathname: string): boolean {
   return pathname.startsWith("/api/");
 }
 
+function addSecurityHeaders(response: Response): Response {
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value);
+  }
+  return response;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const { url, cookies } = context;
   const pathname = url.pathname;
 
   // Skip auth check for public and non-protected routes
   if (isPublicPath(pathname) || !isProtectedRoute(pathname)) {
-    return next();
+    return addSecurityHeaders(await next());
   }
 
   // Check for auth token in cookie
@@ -75,5 +98,5 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Store user in locals for pages/endpoints
   context.locals.user = user;
 
-  return next();
+  return addSecurityHeaders(await next());
 });

@@ -949,7 +949,7 @@ export function persistStandings(
         tournamentId,
         playerId,
         s.startingNumber,
-        s.rating ? parseInt(s.rating) || null : null,
+        s.rating ? Number.parseInt(s.rating, 10) || null : null,
         s.club,
       );
       upsertStanding(tournamentId, playerId, type, s.rank, s.points, s.tieBreak1, s.tieBreak2, s.tieBreak3, s.tieBreak4, s.tieBreak5, s.tieBreak6);

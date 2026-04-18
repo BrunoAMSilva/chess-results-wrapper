@@ -12,8 +12,8 @@ export const GET: APIRoute = async ({ url }) => {
     });
   }
 
-  const round = parseInt(roundStr || "1", 10);
-  if (isNaN(round) || round < 1 || round > 64) {
+  const round = Number.parseInt(roundStr || "1", 10);
+  if (!Number.isFinite(round) || round < 1 || round > 64) {
     return new Response(JSON.stringify({ error: "Invalid round" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },

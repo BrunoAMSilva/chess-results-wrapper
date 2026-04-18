@@ -28,7 +28,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       path: "/",
       httpOnly: true,
       secure: import.meta.env.PROD,
-      sameSite: "lax",
+      sameSite: "strict",
       maxAge: 60 * 60, // 1 hour
     });
 

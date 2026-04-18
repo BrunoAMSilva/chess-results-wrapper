@@ -27,7 +27,7 @@ export class RoundRobinStrategy implements TournamentStrategy {
   private extractRoundNumber(text: string): number | null {
     const m = text.match(/(?:Round|Ronda|Runde|Ronde)\s+(\d+)/i) ||
               text.match(/(\d+)\.\s*(?:Round|Ronda|Runde|Ronde)\b/i);
-    return m ? parseInt(m[1]) : null;
+    return m ? Number.parseInt(m[1], 10) : null;
   }
 
   parsePairings(
@@ -65,10 +65,10 @@ export class RoundRobinStrategy implements TournamentStrategy {
       const cells = $row.find('td');
       if (cells.length < 6) return;
 
-      const tableNum = parseInt($(cells[cols.boIdx]).text().trim());
+      const tableNum = Number.parseInt($(cells[cols.boIdx]).text().trim(), 10);
       if (isNaN(tableNum)) return;
 
-      const whiteNum = parseInt($(cells[cols.whiteNoIdx]).text().trim());
+      const whiteNum = Number.parseInt($(cells[cols.whiteNoIdx]).text().trim(), 10);
       const whiteName =
         cols.whiteIdx !== -1
           ? $(cells[cols.whiteIdx]).find('a').text().trim() || $(cells[cols.whiteIdx]).text().trim()
@@ -82,7 +82,7 @@ export class RoundRobinStrategy implements TournamentStrategy {
           : '';
       const blackNum =
         cols.blackNoIdx !== -1
-          ? parseInt($(cells[cols.blackNoIdx]).text().trim())
+          ? Number.parseInt($(cells[cols.blackNoIdx]).text().trim(), 10)
           : NaN;
 
       const blackNameLower = blackName.toLowerCase();

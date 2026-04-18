@@ -6,7 +6,9 @@ import "../styles/global.css";
 
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 const t = useTranslations(lang);
-const redirect = Astro.url.searchParams.get("redirect") || "/referee";
+const rawRedirect = Astro.url.searchParams.get("redirect") || "/referee";
+// Only allow relative paths to prevent open redirect attacks
+const redirect = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") ? rawRedirect : "/referee";
 
 // If already authenticated, redirect
 const token = Astro.cookies.get("__session")?.value;
@@ -79,7 +81,9 @@ if (token) {
       const provider = new GoogleAuthProvider();
 
       const card = document.querySelector<HTMLElement>(".login-card")!;
-      const redirectUrl = card.dataset.redirect || "/referee";
+      const rawRedirectUrl = card.dataset.redirect || "/referee";
+      // Re-validate client-side: only allow relative paths
+      const redirectUrl = rawRedirectUrl.startsWith("/") && !rawRedirectUrl.startsWith("//") ? rawRedirectUrl : "/referee";
       const btn = document.getElementById("googleSignIn") as HTMLButtonElement;
       const spinner = document.getElementById("signInSpinner")!;
       const errorEl = document.getElementById("authError")!;

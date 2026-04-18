@@ -65,7 +65,7 @@ export function parseTournamentMeta($: cheerio.CheerioAPI): Omit<TournamentInfo,
     .next()
     .text()
     .trim();
-  let totalRounds = parseInt(totalRoundsText) || 0;
+  let totalRounds = Number.parseInt(totalRoundsText, 10) || 0;
 
   // Compute max rd= from links on the page (represents actually-available rounds)
   let maxRdFromLinks = 0;
@@ -288,7 +288,7 @@ export function parseStandingsTable(
     if (cells.length < 5) return;
 
     const rankText = $(cells[0]).text().trim();
-    const rank = parseInt(rankText);
+    const rank = Number.parseInt(rankText, 10);
     if (isNaN(rank)) return;
 
     const name = $(cells[nameIdx]).text().trim();
@@ -296,7 +296,7 @@ export function parseStandingsTable(
     const rating = rtgIdx !== -1 && cells[rtgIdx] ? $(cells[rtgIdx]).text().trim() : '';
     const club = clubIdx !== -1 && cells[clubIdx] ? $(cells[clubIdx]).text().trim() : '';
     const sex = sexIdx !== -1 && cells[sexIdx] ? parseSex($(cells[sexIdx]).text()) : '';
-    const sno = snoIdx !== -1 && cells[snoIdx] ? parseInt($(cells[snoIdx]).text().trim()) || 0 : 0;
+    const sno = snoIdx !== -1 && cells[snoIdx] ? Number.parseInt($(cells[snoIdx]).text().trim(), 10) || 0 : 0;
     const title = titleIdx !== -1 && cells[titleIdx] ? $(cells[titleIdx]).text().trim() : '';
 
     // Extract FIDE ID from explicit column or from player name link
@@ -489,7 +489,7 @@ export function parseTeamPairings(
     const cells = $row.find('td');
     if (cells.length < 4) return;
 
-    const tableNum = parseInt($(cells[cols.noIdx]).text().trim());
+    const tableNum = Number.parseInt($(cells[cols.noIdx]).text().trim(), 10);
     if (isNaN(tableNum)) return;
 
     const homeTeam = $(cells[cols.homeTeamIdx]).text().trim();
@@ -589,7 +589,7 @@ export function parseTeamBoardPairings(
       const homeTeam = ths.length > 2 ? $(ths[2]).text().trim() : '';
       const awayTeam = ths.length > 6 ? $(ths[6]).text().trim() : '';
       const score = ths.length > 8 ? $(ths[8]).text().trim() : '';
-      const tableNum = ths.length > 1 ? parseInt($(ths[1]).text().trim()) || 0 : 0;
+      const tableNum = ths.length > 1 ? Number.parseInt($(ths[1]).text().trim(), 10) || 0 : 0;
 
       const isUnpaired = !awayTeam || awayTeam.toLowerCase() === 'bye' ||
         awayTeam.toLowerCase().includes('spielfrei');
@@ -618,7 +618,7 @@ export function parseTeamBoardPairings(
     // Board number format: "matchNo.boardNo" (e.g., "1.1", "1.2")
     const boardText = $(cells[0]).text().trim();
     const boardMatch = boardText.match(/\d+\.(\d+)/);
-    const boardNum = boardMatch ? parseInt(boardMatch[1]) : parseInt(boardText) || 0;
+    const boardNum = boardMatch ? Number.parseInt(boardMatch[1], 10) : Number.parseInt(boardText, 10) || 0;
     if (boardNum === 0) return;
 
     // Home player: cells[2] or cells[4] has name, cells[5] has rating
@@ -710,7 +710,7 @@ export function parseTeamStandings(
         // Save previous team
         if (currentTeam) teams.push(currentTeam);
 
-        const rank = parseInt(teamMatch[1]);
+        const rank = Number.parseInt(teamMatch[1], 10);
         const name = teamMatch[2].trim();
         const meta = teamMatch[3] || '';
 
@@ -722,7 +722,7 @@ export function parseTeamStandings(
         currentTeam = {
           rank,
           name,
-          ratingAvg: rtgAvgMatch ? parseInt(rtgAvgMatch[1]) : 0,
+          ratingAvg: rtgAvgMatch ? Number.parseInt(rtgAvgMatch[1], 10) : 0,
           captain: captainMatch ? captainMatch[1].trim() : '',
           tieBreak1: tb1Match ? tb1Match[1] : '',
           tieBreak2: tb2Match ? tb2Match[1] : '',
@@ -760,7 +760,7 @@ export function parseTeamStandings(
     if (cells.length < 4) return;
 
     const boardText = $(cells[0]).text().trim();
-    const board = parseInt(boardText) || 0;
+    const board = Number.parseInt(boardText, 10) || 0;
     if (board === 0) return;
 
     const name = nameIdx < cells.length ? $(cells[nameIdx]).text().trim() : '';
@@ -871,16 +871,16 @@ export function parsePlayerCard($: cheerio.CheerioAPI): PlayerCardData {
         card.name = value;
         break;
       case 'startingNumber':
-        card.startingNumber = parseInt(value) || 0;
+        card.startingNumber = Number.parseInt(value, 10) || 0;
         break;
       case 'rating':
-        card.rating = parseInt(value) || null;
+        card.rating = Number.parseInt(value, 10) || null;
         break;
       case 'nationalRating':
-        card.nationalRating = parseInt(value) || null;
+        card.nationalRating = Number.parseInt(value, 10) || null;
         break;
       case 'performanceRating':
-        card.performanceRating = parseInt(value) || null;
+        card.performanceRating = Number.parseInt(value, 10) || null;
         break;
       case 'ratingChange':
         card.ratingChange = value;
@@ -889,7 +889,7 @@ export function parsePlayerCard($: cheerio.CheerioAPI): PlayerCardData {
         card.points = value;
         break;
       case 'rank':
-        card.rank = parseInt(value) || 0;
+        card.rank = Number.parseInt(value, 10) || 0;
         break;
       case 'federation':
         card.federation = value;
@@ -904,7 +904,7 @@ export function parsePlayerCard($: cheerio.CheerioAPI): PlayerCardData {
         card.fideId = value === '0' ? '' : value;
         break;
       case 'birthYear':
-        card.birthYear = parseInt(value) || null;
+        card.birthYear = Number.parseInt(value, 10) || null;
         break;
     }
   });

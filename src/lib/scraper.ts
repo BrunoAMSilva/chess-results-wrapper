@@ -520,9 +520,18 @@ async function scrapeStandingsFromRemote(
 /** Short-lived in-memory cache to avoid redundant remote freshness checks. */
 const freshnessCache = new Map<string, { status: 'fresh' | 'scraped' | 'live'; timestamp: number }>();
 const FRESHNESS_CACHE_TTL = 60_000; // 1 minute
+const FRESHNESS_CACHE_MAX = 500; // evict oldest entries beyond this size
 
 /** In-flight promise map: coalesces concurrent requests for the same tournament. */
 const inFlightEnsure = new Map<string, Promise<'fresh' | 'scraped' | 'live'>>();
+
+function setFreshnessCache(tournamentId: string, status: 'fresh' | 'scraped' | 'live'): void {
+  freshnessCache.set(tournamentId, { status, timestamp: Date.now() });
+  // Evict the oldest entry once we exceed the cap
+  if (freshnessCache.size > FRESHNESS_CACHE_MAX) {
+    freshnessCache.delete(freshnessCache.keys().next().value!);
+  }
+}
 
 // ─── Centralized tournament data management ───────────────────────────────────
 
@@ -543,11 +552,16 @@ const inFlightEnsure = new Map<string, Promise<'fresh' | 'scraped' | 'live'>>();
 export async function ensureTournamentData(
   tournamentId: string,
 ): Promise<'fresh' | 'scraped' | 'live'> {
-  // Fast path: freshness cache hit
-  const cached = freshnessCache.get(tournamentId);
-  if (cached && Date.now() - cached.timestamp < FRESHNESS_CACHE_TTL) {
-    return cached.status;
+  const now = Date.now();
+
+  // Fast path: freshness cache hit — also prune expired entries on each read
+  for (const [key, entry] of freshnessCache) {
+    if (now - entry.timestamp >= FRESHNESS_CACHE_TTL) {
+      freshnessCache.delete(key);
+    }
   }
+  const cached = freshnessCache.get(tournamentId);
+  if (cached) return cached.status;
 
   // Deduplicate concurrent requests for the same tournament
   const existing = inFlightEnsure.get(tournamentId);
@@ -568,7 +582,7 @@ async function doEnsureTournamentData(
   if (!dbTournament) {
     try {
       await scrapeFullTournament(tournamentId);
-      freshnessCache.set(tournamentId, { status: 'scraped', timestamp: Date.now() });
+      setFreshnessCache(tournamentId, 'scraped');
       return 'scraped';
     } catch (e) {
       console.warn(`[scraper] Full scrape failed for new tournament ${tournamentId}, falling back to live mode:`, e instanceof Error ? e.message : e);
@@ -577,7 +591,7 @@ async function doEnsureTournamentData(
   }
 
   if (!isTournamentFinished(dbTournament.date)) {
-    freshnessCache.set(tournamentId, { status: 'live', timestamp: Date.now() });
+    setFreshnessCache(tournamentId, 'live');
     return 'live';
   }
 
@@ -594,24 +608,24 @@ async function doEnsureTournamentData(
   }
 
   if (remoteLastUpdated && dbTournament.last_updated && remoteLastUpdated <= dbTournament.last_updated) {
-    freshnessCache.set(tournamentId, { status: 'fresh', timestamp: Date.now() });
+    setFreshnessCache(tournamentId, 'fresh');
     return 'fresh';
   }
 
   if (remoteLastUpdated && (!dbTournament.last_updated || remoteLastUpdated > dbTournament.last_updated)) {
     try {
       await scrapeFullTournament(tournamentId);
-      freshnessCache.set(tournamentId, { status: 'scraped', timestamp: Date.now() });
+      setFreshnessCache(tournamentId, 'scraped');
       return 'scraped';
     } catch (e) {
       console.warn(`[scraper] Full scrape failed for tournament ${tournamentId}, serving stale DB data:`, e instanceof Error ? e.message : e);
-      freshnessCache.set(tournamentId, { status: 'fresh', timestamp: Date.now() });
+      setFreshnessCache(tournamentId, 'fresh');
       return 'fresh'; // Full scrape failed — serve stale DB data
     }
   }
 
   // Couldn't determine remote freshness — serve from DB
-  freshnessCache.set(tournamentId, { status: 'fresh', timestamp: Date.now() });
+  setFreshnessCache(tournamentId, 'fresh');
   return 'fresh';
 }
 
