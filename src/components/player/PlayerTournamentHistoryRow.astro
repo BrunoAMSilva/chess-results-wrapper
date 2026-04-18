@@ -106,30 +106,30 @@ const tournamentType = entry.type.replaceAll("-", " ");
 
 <style>
   .history-row {
-    background: var(--surface);
-    border-radius: var(--radius-lg);
-    padding: var(--space-4);
-    box-shadow: var(--shadow-card);
+    background: var(--surface-container-low);
+    border-radius: var(--radius-xl);
+    padding: var(--space-5) var(--space-6);
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-4);
+    border-left: 4px solid var(--surface-container-highest);
+    margin-bottom: var(--space-3);
   }
 
   .history-row.podium {
-    border-color: var(--accent);
-    background: linear-gradient(90deg, var(--accent-subtle), var(--surface));
+    border-left-color: var(--accent);
   }
 
   .history-row.rank-1 {
-    border-color: var(--medal-gold);
+    border-left-color: var(--medal-gold);
   }
 
   .history-row.rank-2 {
-    border-color: var(--medal-silver);
+    border-left-color: var(--medal-silver);
   }
 
   .history-row.rank-3 {
-    border-color: var(--medal-bronze);
+    border-left-color: var(--medal-bronze);
   }
 
   .head {
@@ -146,15 +146,16 @@ const tournamentType = entry.type.replaceAll("-", " ");
 
   .title {
     margin: 0;
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-extrabold);
     line-height: var(--leading-tight);
     color: var(--text);
   }
 
   .meta {
     margin: var(--space-1) 0 0;
-    color: var(--text-dim);
+    color: var(--text-secondary);
     font-size: var(--text-sm);
     white-space: nowrap;
     overflow: hidden;
@@ -167,23 +168,25 @@ const tournamentType = entry.type.replaceAll("-", " ");
     align-items: center;
     justify-content: center;
     min-width: var(--space-12);
-    padding: var(--space-2);
-    border-radius: var(--radius-md);
-    background: var(--surface-hover);
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-lg);
+    background: var(--primary-container);
   }
 
   .rank-value {
+    font-family: var(--font-display);
     font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
+    font-weight: var(--weight-extrabold);
     line-height: var(--leading-none);
-    color: var(--text);
+    color: var(--on-primary-fixed);
   }
 
   .rank-label {
     font-size: var(--text-xs);
-    color: var(--text-dim);
+    color: var(--on-primary-fixed);
+    opacity: 0.7;
     text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
+    letter-spacing: var(--tracking-widest);
   }
 
   .stats-grid {
@@ -197,28 +200,25 @@ const tournamentType = entry.type.replaceAll("-", " ");
     flex-direction: column;
     align-items: center;
     gap: var(--space-1);
-    padding: var(--space-2);
-    border-radius: var(--radius-sm);
-    background: var(--bg-subtle);
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    background: var(--surface-container-highest);
+    border-left: 3px solid var(--primary-container);
   }
 
   .stat-value {
-    font-size: var(--text-base);
-    font-weight: var(--weight-semibold);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-extrabold);
     color: var(--text);
   }
 
   .stat-label {
     font-size: var(--text-xs);
-    color: var(--text-dim);
+    color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
-  }
-
-  .actions {
-    display: flex;
-    gap: var(--space-2);
-    flex-wrap: wrap;
+    letter-spacing: var(--tracking-widest);
+    font-family: var(--font-sans);
   }
 
   .detail-grid {
@@ -230,17 +230,18 @@ const tournamentType = entry.type.replaceAll("-", " ");
   .detail-item {
     display: flex;
     flex-direction: column;
-    padding: var(--space-2);
-    border-radius: var(--radius-sm);
-    background: var(--surface-hover);
+    padding: var(--space-3);
+    border-radius: var(--radius-lg);
+    background: var(--surface-container-highest);
     min-width: 0;
   }
 
   .detail-label {
     font-size: var(--text-xs);
-    color: var(--text-dim);
+    color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
+    letter-spacing: var(--tracking-widest);
+    font-family: var(--font-sans);
   }
 
   .detail-value {
@@ -250,23 +251,27 @@ const tournamentType = entry.type.replaceAll("-", " ");
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    margin-top: var(--space-1);
+  }
+
+  .actions {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding-top: var(--space-1);
   }
 
   .link-btn {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
     text-decoration: none;
-    border-radius: var(--radius-md);
-    color: var(--text);
-    padding: var(--space-2) var(--space-3);
+    color: var(--accent-text);
     font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
-    transition: background-color var(--duration-fast) var(--ease-in-out), border-color var(--duration-fast) var(--ease-in-out);
   }
 
   .link-btn:hover {
-    background: var(--surface-hover);
+    opacity: 0.75;
   }
 
   @media (max-width: 480px) {

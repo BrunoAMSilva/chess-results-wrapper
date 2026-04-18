@@ -188,7 +188,6 @@ try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
         </h2>
         <div class="hero-actions">
           <a class="profile-link-modern" href={profileHref}>{t("player.profile.openProfile")}</a>
-          <PlayerIdentityActions playerName={canonicalPlayerName} federation={playerFed} lang={lang} />
         </div>
         
         {/* Performance Bento Grid */}
@@ -211,6 +210,12 @@ try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
         )}
       </div>
     </section>
+  )}
+
+  {!error && (
+    <div class="identity-actions-bar">
+      <PlayerIdentityActions playerName={canonicalPlayerName} federation={playerFed} lang={lang} />
+    </div>
   )}
 
   {!error && (
@@ -406,6 +411,11 @@ try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
     background: var(--surface-container-low);
     border-radius: var(--radius-xl);
     display: inline-flex;
+  }
+
+  /* Identity Actions Bar */
+  .identity-actions-bar {
+    margin-bottom: var(--space-8);
   }
 
   /* Rounds Section */

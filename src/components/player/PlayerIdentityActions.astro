@@ -55,25 +55,10 @@ const t = useTranslations(lang);
 <style is:global>
   .identity-actions {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-4);
-    border-radius: var(--radius-lg);
-    background: var(--surface-container-low);
-    transition: all var(--duration-fast) var(--ease-in-out);
-  }
-
-  .identity-actions.is-selected-player-control {
     flex-direction: row;
     align-items: center;
-    background: transparent;
-    padding: 0;
-    gap: var(--space-2);
-    box-shadow: none;
-  }
-
-  .identity-actions.is-selected-player-control .identity-copy {
-    display: none;
+    gap: var(--space-3);
+    flex-wrap: wrap;
   }
 
   .identity-copy {
@@ -81,27 +66,21 @@ const t = useTranslations(lang);
     color: var(--text-secondary);
     font-size: var(--text-sm);
     line-height: var(--leading-normal);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .identity-actions.is-selected-player-control .identity-copy {
+    display: none;
   }
 
   .identity-actions-row {
     display: flex;
-    flex-wrap: wrap;
     gap: var(--space-2);
+    flex-shrink: 0;
   }
 
   .identity-button[hidden] {
     display: none !important;
-  }
-
-  @media (forced-colors: active) {
-    .identity-actions {
-      border: 1px solid ButtonBorder;
-      background: Canvas;
-      box-shadow: none;
-    }
-
-    .identity-actions.is-selected-player-control {
-      border-color: Highlight;
-    }
   }
 </style>

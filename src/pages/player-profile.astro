@@ -1,7 +1,6 @@
 ---
 import MobileLayout from "../layouts/ResponsiveLayout.astro";
 import EmptyState from "../components/app/EmptyState.astro";
-import MetricTile from "../components/app/MetricTile.astro";
 import PlayerIdentityActions from "../components/player/PlayerIdentityActions.astro";
 import PlayerName from "../components/player/PlayerName.astro";
 import PlayerTournamentHistoryRow from "../components/player/PlayerTournamentHistoryRow.astro";
@@ -96,10 +95,50 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
   )}
 
   {player && (
-    <section class="identity-card">
-      <div class="identity-head">
-        <h2 class="name"><PlayerName name={player.name} title={player.title} /></h2>
-        <p class="subtitle">{t("player.profile.identity")}</p>
+    <section class="hero-section">
+      <div class="hero-image-container">
+        <img class="hero-image" alt="Player Identity Avatar" src="/images/avatar-placeholder.png" />
+        <div class="hero-image-gradient">
+          <span class="hero-tag">
+            {player.federation
+              ? <>{federationFlag(player.federation)} {player.federation}</>
+              : t("player.profile.identity")}
+          </span>
+        </div>
+      </div>
+
+      <div class="hero-content">
+        <h2 class="hero-name">
+          <PlayerName name={player.name} title={player.title} />
+        </h2>
+
+        <div class="bento-grid">
+          <div class="bento-card">
+            <span class="bento-label">{t("player.profile.total")}</span>
+            <span class="bento-val">{history.length}</span>
+          </div>
+          <div class="bento-card">
+            <span class="bento-label">{t("player.profile.bestRank")} / {t("player.profile.avgRank")}</span>
+            <span class="bento-val">{bestRank}<span class="bento-val-sub">~{averageRank}</span></span>
+          </div>
+          <div class="bento-card bento-card--wide">
+            <span class="bento-label">{t("player.profile.record")} (W-D-L)</span>
+            <span class="bento-val bento-val--record">{totalWins}<span class="bento-val-sep">-</span>{totalDraws}<span class="bento-val-sep">-</span>{totalLosses}</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  )}
+
+  {player && (
+    <section class="identity-section">
+      <div class="section-header">
+        <h3 class="section-title">{t("player.profile.identity")}</h3>
+        <div class="section-dots">
+          <span class="dot dot-primary"></span>
+          <span class="dot dot-highest"></span>
+          <span class="dot dot-highest"></span>
+        </div>
       </div>
 
       <dl class="identity-grid">
@@ -128,21 +167,26 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
           <dd>{latestSeen || "-"}</dd>
         </div>
       </dl>
-
-      <PlayerIdentityActions playerName={player.name} federation={player.federation} lang={lang} />
-
-      <div class="summary-grid">
-        <MetricTile label={t("player.profile.total")} value={history.length} tone="accent" size="large" />
-        <MetricTile label={t("player.profile.avgRank")} value={averageRank} tone="accent" size="large" />
-        <MetricTile label={t("player.profile.bestRank")} value={bestRank} tone="accent" size="large" />
-        <MetricTile label={t("player.profile.record")} value={`${totalWins}-${totalDraws}-${totalLosses}`} tone="accent" size="large" />
-      </div>
     </section>
   )}
 
   {player && (
+    <div class="identity-actions-bar">
+      <PlayerIdentityActions playerName={player.name} federation={player.federation} lang={lang} />
+    </div>
+  )}
+
+  {player && (
     <section class="history-section">
-      <h3 class="section-title">{t("player.profile.tournaments")}</h3>
+      <div class="section-header">
+        <h3 class="section-title">{t("player.profile.tournaments")}</h3>
+        <div class="section-dots">
+          <span class="dot dot-primary"></span>
+          <span class="dot dot-highest"></span>
+          <span class="dot dot-highest"></span>
+        </div>
+      </div>
+
       {history.length > 0 ? (
         <div class="history-list">
           {history.map((entry) => (
@@ -163,58 +207,221 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
   )}
 </MobileLayout>
 
-<style>
-  .identity-card {
-    background: var(--surface);
+<style is:global>
+  /* Hero Layout */
+  .hero-section {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+    margin-bottom: var(--space-12);
+  }
+
+  @media (min-width: 768px) {
+    .hero-section {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+  }
+
+  /* Image Container */
+  .hero-image-container {
+    aspect-ratio: 1 / 1;
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-card);
+    overflow: hidden;
+    background: var(--surface-container-high);
+    position: relative;
+  }
+
+  @media (min-width: 768px) {
+    .hero-image-container {
+      grid-column: span 4 / span 4;
+    }
+  }
+
+  .hero-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hero-image-gradient {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
     padding: var(--space-4);
-    margin-bottom: var(--space-4);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
+    background: linear-gradient(to top, var(--bg) 0%, transparent 100%);
   }
 
-  .identity-head {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
+  .hero-tag {
+    display: inline-block;
+    padding: var(--space-1) var(--space-3);
+    border-radius: var(--radius-full);
+    background: var(--primary-container);
+    color: var(--on-primary-fixed);
+    font-size: 10px;
+    font-weight: var(--weight-bold);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-widest);
   }
 
-  .name {
-    margin: 0;
-    font-size: var(--text-2xl);
+  /* Content */
+  .hero-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+
+  @media (min-width: 768px) {
+    .hero-content {
+      grid-column: span 8 / span 8;
+    }
+  }
+
+  .hero-name {
+    font-family: var(--font-display);
     font-weight: var(--weight-extrabold);
-    line-height: var(--leading-tight);
+    font-size: var(--text-4xl);
     color: var(--text);
+    margin-bottom: var(--space-4);
+    letter-spacing: var(--tracking-tight);
+    line-height: var(--leading-none);
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
   }
 
-  .subtitle {
+  @media (min-width: 768px) {
+    .hero-name {
+      font-size: var(--text-6xl);
+    }
+  }
+
+  /* Bento Grid */
+  .bento-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+
+  .bento-card {
+    background: var(--surface-container-low);
+    padding: var(--space-6);
+    border-radius: var(--radius-xl);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-left: 4px solid var(--primary-container);
+  }
+
+  .bento-card--wide {
+    grid-column: span 2;
+  }
+
+  .bento-label {
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-widest);
+  }
+
+  .bento-val {
+    font-family: var(--font-display);
+    font-weight: var(--weight-extrabold);
+    font-size: var(--text-5xl);
+    color: var(--text);
+    margin-top: var(--space-2);
+  }
+
+  .bento-val--record {
+    font-size: var(--text-4xl);
+  }
+
+  .bento-val-sub {
+    font-size: var(--text-lg);
+    opacity: 0.5;
+    margin-left: var(--space-2);
+  }
+
+  .bento-val-sep {
+    font-size: var(--text-2xl);
+    opacity: 0.35;
+    margin: 0 var(--space-1);
+  }
+
+  /* Identity Actions Bar */
+  .identity-actions-bar {
+    margin-bottom: var(--space-8);
+  }
+
+  /* Section header with dots */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-6);
+  }
+
+  .section-title {
+    font-family: var(--font-display);
+    font-weight: var(--weight-bold);
+    font-size: var(--text-2xl);
+    color: var(--text);
     margin: 0;
-    color: var(--text-dim);
-    font-size: var(--text-sm);
+  }
+
+  .section-dots {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  .dot {
+    height: 8px;
+    width: 8px;
+    border-radius: var(--radius-full);
+  }
+
+  .dot-primary {
+    background: var(--primary-container);
+  }
+
+  .dot-highest {
+    background: var(--surface-container-highest);
+  }
+
+  /* Identity Grid */
+  .identity-section {
+    margin-bottom: var(--space-10);
   }
 
   .identity-grid {
     margin: 0;
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
+    gap: var(--space-3);
+  }
+
+  @media (min-width: 640px) {
+    .identity-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
   }
 
   .identity-item {
-    margin: 0;
-    padding: var(--space-2);
-    border-radius: var(--radius-md);
-    background: var(--bg-subtle);
+    background: var(--surface-container-low);
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-xl);
+    border-left: 4px solid var(--surface-container-highest);
   }
 
   .identity-item dt {
     margin: 0;
     font-size: var(--text-xs);
-    color: var(--text-dim);
+    color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: var(--tracking-wide);
+    letter-spacing: var(--tracking-widest);
+    font-family: var(--font-sans);
   }
 
   .identity-item dd {
@@ -225,35 +432,15 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
     word-break: break-word;
   }
 
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-  }
-
+  /* History Section */
   .history-section {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
     padding-bottom: var(--space-8);
-  }
-
-  .section-title {
-    margin: 0;
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-    color: var(--text);
   }
 
   .history-list {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
-  }
-
-  @media (max-width: 480px) {
-    .identity-grid {
-      grid-template-columns: 1fr;
-    }
   }
 </style>
