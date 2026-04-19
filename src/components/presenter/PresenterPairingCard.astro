@@ -36,17 +36,27 @@ const delayClass = `delay-${delayStep}`;
     { bye: isBye, draw, "white-wins": whiteWins, "black-wins": blackWins },
   ]}
 >
+  <div class="color-strip white-strip">
+    <QueenPieceIcon tone="white" size="lg" />
+  </div>
+  <div class="color-strip black-strip">
+    <QueenPieceIcon tone="black" size="lg" />
+  </div>
   <span class="board-label">{pairing.table.toString().padStart(2, "0")}</span>
 
   <div class:list={["player-row", "white", { winner: whiteWins }]}>
-    <QueenPieceIcon tone="white" size="lg" />
-    <PlayerName name={pairing.white.name} title={titleMap[pairing.white.name]} />
+    <PlayerName
+      name={pairing.white.name}
+      title={titleMap[pairing.white.name]}
+    />
   </div>
   <div class:list={["player-row", "black", { winner: blackWins }]}>
-    <QueenPieceIcon tone="black" size="lg" />
     {
       pairing.black ? (
-        <PlayerName name={pairing.black.name} title={titleMap[pairing.black.name]} />
+        <PlayerName
+          name={pairing.black.name}
+          title={titleMap[pairing.black.name]}
+        />
       ) : (
         <span class="player-name unpaired">
           {pairing.result === "1" ? t("match.bye") : t("match.notPaired")}
@@ -71,24 +81,47 @@ const delayClass = `delay-${delayStep}`;
     animation: fadeInUp var(--duration-slow) ease both;
   }
 
+  /* Color strips — left column with piece color background + icon */
+  .color-strip {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-inline: var(--space-4);
+  }
+
+  .white-strip {
+    grid-row: 1;
+    background: #ffffff;
+  }
+
+  .black-strip {
+    grid-row: 2;
+    background: #1a1a1a;
+  }
+
   .board-label {
-    font-size: var(--text-6xl);
+    font-size: var(--text-3xl);
     font-weight: var(--weight-extrabold);
+    grid-column: 1;
+    grid-row: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: center;
+    align-self: center;
+    z-index: 2;
+    background-color: var(--accent);
+    color: var(--on-accent);
+    padding: var(--space-1) var(--space-3);
+    border-radius: 999px;
+    line-height: 1.2;
     font-family: var(--font-display);
     letter-spacing: var(--tracking-tight);
-    grid-column: 2 / 4;
-    grid-row: 1 / -1;
-    justify-self: end;
-    align-self: end;
-    padding-inline-end: var(--space-6);
-    transform-origin: center center;
-    transform: scale(2);
-    opacity: 0.15;
-    mix-blend-mode: normal;
-    color: var(--text);
   }
 
   .player-row {
+    grid-column: 2;
     display: flex;
     align-items: center;
     gap: var(--space-5);
@@ -100,15 +133,12 @@ const delayClass = `delay-${delayStep}`;
   }
 
   .player-row.white {
-    grid-column: 2;
     grid-row: 1;
     justify-content: flex-start;
     text-align: left;
-    
   }
 
   .player-row.black {
-    grid-column: 2;
     grid-row: 2;
     justify-content: flex-start;
     text-align: left;
@@ -146,16 +176,14 @@ const delayClass = `delay-${delayStep}`;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding-inline: var(--space-3);
-    color: var(--text-dim);
     justify-self: end;
-    background-color: var(--bg-subtle);
     align-self: center;
+    z-index: 1;
+    background-color: var(--bg-subtle);
     color: var(--accent-text);
     padding: var(--space-2) var(--space-6);
     margin-inline-end: var(--space-6);
     border-radius: 999px;
-    transform: scale(1)
   }
 
   .delay-0 {
