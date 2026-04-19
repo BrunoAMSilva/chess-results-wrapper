@@ -6,8 +6,19 @@ import SelectInput from "../../components/controls/SelectInput.astro";
 import ActionButton from "../../components/controls/ActionButton.astro";
 import { resolvePageLang } from "../../lib/page-lang";
 import { FIDE_FEDERATIONS } from "../../lib/federations";
+import { generateCsrfToken } from "../../lib/csrf";
 
 const lang = resolvePageLang(Astro.url, Astro.cookies);
+const csrfToken = generateCsrfToken();
+
+// Set CSRF token as a secure, httpOnly cookie
+Astro.cookies.set("csrf-token", csrfToken, {
+  secure: true,
+  httpOnly: true,
+  sameSite: "strict",
+  maxAge: 3600, // 1 hour
+  path: "/",
+});
 ---
 
 <ResponsiveLayout title="Admin – Player Photos" lang={lang} navMode="none">
@@ -25,7 +36,7 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
       </p>
     </header>
 
-    <form id="upload-form" class="upload-form" novalidate>
+    <form id="upload-form" class="upload-form" novalidate data-csrf-token={csrfToken}>
       <div class="field-row">
         <FormField label="Identifier type" forId="id-type">
           <SelectInput id="id-type" name="id_type">
@@ -96,6 +107,7 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
 
   <script>
     const form = document.getElementById("upload-form") as HTMLFormElement;
+    const csrfToken = form.getAttribute("data-csrf-token") || "";
     const idType = document.getElementById("id-type") as HTMLSelectElement;
     const idValue = document.getElementById("id-value") as HTMLInputElement;
     const federationInput = document.getElementById("federation") as HTMLInputElement;
@@ -179,7 +191,11 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
       fd.append("photo", file);
 
       try {
-        const res = await fetch("/api/admin/player-photo", { method: "POST", body: fd });
+        const res = await fetch("/api/admin/player-photo", {
+          method: "POST",
+          headers: { "X-CSRF-Token": csrfToken },
+          body: fd,
+        });
         const data = await res.json();
         if (res.ok) {
           showStatus(`Photo saved for player #${data.player_id}.`, "success");
@@ -210,7 +226,10 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
         if (useNationalId) body.federation = fed;
         const res = await fetch("/api/admin/player-photo", {
           method: "DELETE",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRF-Token": csrfToken,
+          },
           body: JSON.stringify(body),
         });
         const data = await res.json();

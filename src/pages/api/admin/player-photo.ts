@@ -6,6 +6,7 @@ import {
   findPlayerByFideIdExact,
   updatePlayerPhoto,
 } from "../../../lib/db";
+import { validateCsrfToken } from "../../../lib/csrf";
 
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const EXT_MAP: Record<string, string> = {
@@ -24,7 +25,17 @@ function getPhotosDir(): string {
   return dir;
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, cookies }) => {
+  const csrfToken = request.headers.get("x-csrf-token");
+  const csrfCookie = cookies.get("csrf-token")?.value;
+
+  if (!validateCsrfToken(csrfCookie, csrfToken || undefined)) {
+    return new Response(
+      JSON.stringify({ error: "Invalid CSRF token" }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   const contentType = request.headers.get("content-type") || "";
   if (!contentType.includes("multipart/form-data")) {
     return new Response(JSON.stringify({ error: "multipart/form-data required" }), {
@@ -119,7 +130,17 @@ export const POST: APIRoute = async ({ request }) => {
   );
 };
 
-export const DELETE: APIRoute = async ({ request }) => {
+export const DELETE: APIRoute = async ({ request, cookies }) => {
+  const csrfToken = request.headers.get("x-csrf-token");
+  const csrfCookie = cookies.get("csrf-token")?.value;
+
+  if (!validateCsrfToken(csrfCookie, csrfToken || undefined)) {
+    return new Response(
+      JSON.stringify({ error: "Invalid CSRF token" }),
+      { status: 403, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
   let body: { national_id?: string; federation?: string; fide_id?: string };
   try {
     body = await request.json();
