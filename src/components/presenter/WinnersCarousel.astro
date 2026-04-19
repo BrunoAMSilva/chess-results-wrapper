@@ -185,6 +185,14 @@ const {
   /* ── Sponsor billboard ──
      Wide white panel that dominates the viewport.
      Fixed height prevents layout shift when image loads. */
+
+  .wc-sponsor-stage {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .wc-intro-sponsor-wrap {
     position: relative;
     display: flex;
@@ -245,6 +253,63 @@ const {
     0%   { left: -100%; }
     100% { left: 200%; }
   }
+
+  /* ── Sponsor edge particles ──
+     Gold sparkles that float around the card perimeter. */
+  .wc-sponsor-particles {
+    position: absolute;
+    inset: -3rem;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .wc-sp {
+    position: absolute;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px 2px rgba(252, 211, 77, 0.6);
+    opacity: 0;
+  }
+
+  .wc-intro.in .wc-sp {
+    animation: sp-drift 3s ease-in-out infinite;
+  }
+
+  /* Top edge */
+  .wc-sp:nth-child(1)  { width: 8px;  height: 8px;  top: 0;    left: 12%;  animation-delay: 0.5s; }
+  .wc-sp:nth-child(2)  { width: 6px;  height: 6px;  top: -6px; left: 42%;  animation-delay: 1.8s; }
+  .wc-sp:nth-child(3)  { width: 7px;  height: 7px;  top: 2px;  left: 75%;  animation-delay: 3.1s; }
+
+  /* Right edge */
+  .wc-sp:nth-child(4)  { width: 7px;  height: 7px;  top: 18%;  right: 0;    animation-delay: 0.9s; }
+  .wc-sp:nth-child(5)  { width: 6px;  height: 6px;  top: 58%;  right: -5px; animation-delay: 2.4s; }
+
+  /* Bottom edge */
+  .wc-sp:nth-child(6)  { width: 8px;  height: 8px;  bottom: 0;    left: 22%;  animation-delay: 1.2s; }
+  .wc-sp:nth-child(7)  { width: 6px;  height: 6px;  bottom: -4px; left: 52%;  animation-delay: 2.8s; }
+  .wc-sp:nth-child(8)  { width: 7px;  height: 7px;  bottom: 3px;  left: 82%;  animation-delay: 0.3s; }
+
+  /* Left edge */
+  .wc-sp:nth-child(9)  { width: 6px;  height: 6px;  top: 22%;  left: -4px; animation-delay: 1.6s; }
+  .wc-sp:nth-child(10) { width: 7px;  height: 7px;  top: 62%;  left: 0;    animation-delay: 3.5s; }
+
+  /* Corners */
+  .wc-sp:nth-child(11) { width: 10px; height: 10px; top: -5px;    left: -5px;  animation-delay: 2.0s; }
+  .wc-sp:nth-child(12) { width: 10px; height: 10px; bottom: -5px; right: -5px; animation-delay: 0.7s; }
+
+  @keyframes sp-drift {
+    0%   { opacity: 0;   transform: translate(0, 0) scale(0); }
+    15%  { opacity: 1;   transform: translate(var(--dx, 4px), var(--dy, -6px)) scale(1.2); }
+    50%  { opacity: 0.7; transform: translate(var(--dx2, -3px), var(--dy2, 8px)) scale(1); }
+    85%  { opacity: 0.9; transform: translate(var(--dx, 4px), var(--dy, -6px)) scale(0.8); }
+    100% { opacity: 0;   transform: translate(0, 0) scale(0); }
+  }
+
+  /* Per-particle drift direction variety */
+  .wc-sp:nth-child(odd)  { --dx: 8px;  --dy: -12px; --dx2: -6px;  --dy2: 14px; }
+  .wc-sp:nth-child(even) { --dx: -7px; --dy: -14px; --dx2: 10px;  --dy2: 8px; }
+  .wc-sp:nth-child(3n)   { --dx: 5px;  --dy: 14px;  --dx2: -12px; --dy2: -7px; }
+  .wc-sp:nth-child(4n)   { --dx: -12px; --dy: -6px; --dx2: 8px;   --dy2: 16px; }
 
   /* Sponsor logo inside the billboard */
   .wc-intro-sponsor {

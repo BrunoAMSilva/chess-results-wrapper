@@ -29,7 +29,8 @@ const isOptions = currentPath === "/options";
 const isReferee = currentPath.startsWith("/referee") || navMode === "referee";
 const isRefereeResults = /^\/referee\/[^\/]+\/results$/.test(currentPath);
 const isRefereeSettings = /^\/referee\/[^\/]+\/settings$/.test(currentPath);
-const isRefereeTables = !!refereeTid && !isRefereeResults && !isRefereeSettings && !isOptions;
+const isRefereePlayers = /^\/referee\/[^\/]+\/players$/.test(currentPath);
+const isRefereeTables = !!refereeTid && !isRefereeResults && !isRefereeSettings && !isRefereePlayers && !isOptions;
 
 // Contextual back URL for referee pages: go one path level up
 const round = Astro.url.searchParams.get("round");
@@ -148,6 +149,14 @@ if (isOptions && navMode === "referee" && tid) {
           >
             <Icon name="file-text" size={22} />
             <span>{t('referee.results')}</span>
+          </a>
+          <a
+            href={tid ? `/referee/${tid}/players?lang=${lang}` : `/referee?lang=${lang}`}
+            class:list={["nav-item", { active: isRefereePlayers }]}
+            aria-current={isRefereePlayers ? "page" : undefined}
+          >
+            <Icon name="users" size={22} />
+            <span>{t('referee.players')}</span>
           </a>
           <a
             href={tid ? `/referee/${tid}/settings?lang=${lang}` : `/referee?lang=${lang}`}

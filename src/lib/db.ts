@@ -1532,6 +1532,29 @@ export function upsertPlayerUid(tournamentId: string, startingNumber: number, ui
   `).run(tournamentId, startingNumber, uid);
 }
 
+export interface TournamentPlayerRow {
+  player_id: number;
+  starting_number: number;
+  name: string;
+  federation: string;
+  fide_id: string | null;
+  national_id: string | null;
+  photo_url: string | null;
+  rating: number | null;
+}
+
+export function getTournamentPlayers(tournamentId: string): TournamentPlayerRow[] {
+  return db.prepare(`
+    SELECT p.id AS player_id, tp.starting_number, p.name, p.federation,
+           p.fide_id, p.national_id, p.photo_url,
+           COALESCE(tp.rating, 0) AS rating
+    FROM tournament_players tp
+    JOIN players p ON p.id = tp.player_id
+    WHERE tp.tournament_id = ?
+    ORDER BY tp.starting_number
+  `).all(tournamentId) as TournamentPlayerRow[];
+}
+
 export function getPlayerUidMap(tournamentId: string): Record<number, number> {
   const rows = db.prepare(`
     SELECT starting_number, uid FROM player_uids WHERE tournament_id = ?

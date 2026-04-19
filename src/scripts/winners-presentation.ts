@@ -160,8 +160,18 @@ function buildIntro(): string {
   const noSponsorClass = hasSponsor ? "" : " wc-intro--no-sponsor";
 
   const sponsorHTML = hasSponsor
-    ? `<div class="wc-intro-sponsor-wrap">
-        <img class="wc-intro-sponsor" src="${sponsorImage}" alt="${sponsorAlt}" />
+    ? `<div class="wc-sponsor-stage">
+        <div class="wc-sponsor-particles">
+          <span class="wc-sp"></span><span class="wc-sp"></span>
+          <span class="wc-sp"></span><span class="wc-sp"></span>
+          <span class="wc-sp"></span><span class="wc-sp"></span>
+          <span class="wc-sp"></span><span class="wc-sp"></span>
+          <span class="wc-sp"></span><span class="wc-sp"></span>
+          <span class="wc-sp"></span><span class="wc-sp"></span>
+        </div>
+        <div class="wc-intro-sponsor-wrap">
+          <img class="wc-intro-sponsor" src="${sponsorImage}" alt="${sponsorAlt}" />
+        </div>
       </div>
       <div class="wc-intro-divider"></div>`
     : `<div class="wc-intro-divider"></div>`;
