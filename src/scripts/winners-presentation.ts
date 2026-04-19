@@ -26,6 +26,7 @@ let sponsorAlt = "";
 let lang = "0";
 let busy = false;
 let introActive = true; // starts with intro visible
+let stopParticles: (() => void) | null = null;
 
 /* ------------------------------------------------------------------ */
 /*  Bootstrap                                                          */
@@ -137,10 +138,15 @@ function showIntro(): void {
   if (intro) {
     requestAnimationFrame(() => intro.classList.add("in"));
   }
+
+  // Start canvas particles around sponsor card
+  stopParticles = startSponsorParticles();
 }
 
 function exitIntro(): Promise<void> {
   return new Promise((resolve) => {
+    if (stopParticles) { stopParticles(); stopParticles = null; }
+
     const slot = document.getElementById("playerSlot");
     const intro = slot?.querySelector(".wc-intro") as HTMLElement | null;
     if (!intro) { resolve(); return; }
@@ -161,14 +167,7 @@ function buildIntro(): string {
 
   const sponsorHTML = hasSponsor
     ? `<div class="wc-sponsor-stage">
-        <div class="wc-sponsor-particles">
-          <span class="wc-sp"></span><span class="wc-sp"></span>
-          <span class="wc-sp"></span><span class="wc-sp"></span>
-          <span class="wc-sp"></span><span class="wc-sp"></span>
-          <span class="wc-sp"></span><span class="wc-sp"></span>
-          <span class="wc-sp"></span><span class="wc-sp"></span>
-          <span class="wc-sp"></span><span class="wc-sp"></span>
-        </div>
+        <canvas class="wc-sponsor-canvas" id="sponsorCanvas"></canvas>
         <div class="wc-intro-sponsor-wrap">
           <img class="wc-intro-sponsor" src="${sponsorImage}" alt="${sponsorAlt}" />
         </div>
