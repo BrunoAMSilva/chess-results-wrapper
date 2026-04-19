@@ -6,18 +6,25 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
 const prefillTid = Astro.url.searchParams.get("tid") ?? "";
 ---
 
-<ResponsiveLayout title="Admin – Rescrape Tournament" lang={lang} navMode="none">
-  <div class="admin-container">
-    <h2 class="admin-title">Refresh Tournament Player Data</h2>
-    <p class="admin-subtitle">
-      Fetches the starting rank list (<code>art=0</code>) and player cards (<code>art=9</code>)
-      from chess-results.com to fill in missing FIDE IDs, national IDs, ratings, and birth years.
-      Safe to run at any time — only updates players, never overwrites standings.
-    </p>
+<ResponsiveLayout title="Admin – Refresh Tournament" lang={lang} navMode="none">
+  <div class="admin-shell">
+    <header class="admin-header">
+      <a href="/admin" class="back-link">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        Admin
+      </a>
+      <p class="admin-eyebrow">Tournament Management</p>
+      <h1 class="admin-title">Refresh Tournament</h1>
+      <p class="admin-desc">
+        Fetches the starting rank list (<code>art=0</code>) and player cards (<code>art=9</code>)
+        from chess-results.com to fill in missing FIDE IDs, national IDs, ratings, and birth years.
+        Safe to run at any time — only updates players, never overwrites standings.
+      </p>
+    </header>
 
     <form id="rescrape-form" class="rescrape-form" novalidate>
-      <label class="field-label">
-        <span>Tournament ID</span>
+      <div class="field">
+        <label class="field-label" for="tid">Tournament ID</label>
         <input
           type="text"
           id="tid"
@@ -29,11 +36,13 @@ const prefillTid = Astro.url.searchParams.get("tid") ?? "";
           inputmode="numeric"
           required
         />
-      </label>
+      </div>
 
       <div id="status-msg" class="status-msg" role="status" aria-live="polite"></div>
 
-      <button type="submit" id="submit-btn" class="btn-primary">Refresh players</button>
+      <div class="form-actions">
+        <button type="submit" id="submit-btn" class="btn-primary">Refresh players</button>
+      </div>
     </form>
 
     <p class="admin-hint">
@@ -82,91 +91,149 @@ const prefillTid = Astro.url.searchParams.get("tid") ?? "";
 </ResponsiveLayout>
 
 <style>
-  .admin-container {
-    max-width: 480px;
-    margin: 2rem auto;
-    padding: 0 1rem;
+  .admin-shell {
+    max-width: 520px;
+    margin: var(--space-12) auto;
+    padding: 0 var(--space-4);
+  }
+
+  .admin-header {
+    margin-bottom: var(--space-10);
+  }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    color: var(--text-dim);
+    text-decoration: none;
+    margin-bottom: var(--space-6);
+    transition: color var(--duration-fast);
+  }
+
+  .back-link:hover { color: var(--accent-text); }
+
+  .admin-eyebrow {
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wider);
+    color: var(--accent-text);
+    margin: 0 0 var(--space-2);
   }
 
   .admin-title {
-    font-size: var(--text-xl, 1.5rem);
-    font-weight: 700;
-    margin-bottom: 0.25rem;
+    font-family: var(--font-display);
+    font-size: var(--text-4xl);
+    font-weight: var(--weight-extrabold);
+    color: var(--text);
+    margin: 0 0 var(--space-3);
+    letter-spacing: var(--tracking-tight);
+    line-height: var(--leading-tight);
   }
 
-  .admin-subtitle {
-    font-size: var(--text-sm, 0.875rem);
-    color: var(--text-secondary, #6b7280);
-    margin-bottom: 1.5rem;
-    line-height: 1.5;
-  }
-
-  .admin-hint {
-    margin-top: 1rem;
-    font-size: var(--text-xs, 0.75rem);
-    color: var(--text-secondary, #6b7280);
+  .admin-desc {
+    font-size: var(--text-sm);
+    color: var(--text-dim);
+    line-height: var(--leading-normal);
+    margin: 0;
   }
 
   code {
-    background: var(--surface-elevated, #f3f4f6);
-    padding: 0.1em 0.3em;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
+    background: var(--surface-container-high);
+    color: var(--accent-text);
+    padding: 0.1em 0.4em;
+    border-radius: var(--radius-sm);
+    font-size: 0.85em;
+    font-family: var(--font-mono);
   }
 
   .rescrape-form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-5);
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
   }
 
   .field-label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    font-size: var(--text-sm, 0.875rem);
-    font-weight: 500;
+    font-family: var(--font-sans);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    color: var(--text-secondary);
   }
 
   .field-input {
-    padding: 0.5rem 0.75rem;
-    border: 1px solid var(--border, #d1d5db);
-    border-radius: 0.5rem;
-    background: var(--surface-elevated, #fff);
-    color: var(--text-primary, #111);
-    font-size: var(--text-sm, 0.875rem);
-    outline: none;
-    transition: border-color 0.15s;
+    background: var(--input-bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    border: none;
+    outline: 1px solid var(--outline-variant);
+    transition: outline-color var(--duration-fast), box-shadow var(--duration-fast);
+    width: 100%;
+    box-sizing: border-box;
   }
 
-  .field-input:focus { border-color: var(--primary, #4f46e5); }
+  .field-input:focus {
+    outline-color: var(--input-focus);
+    box-shadow: 0 0 0 3px var(--input-focus-ring);
+  }
 
   .status-msg {
+    font-size: var(--text-sm);
+    border-radius: var(--radius-md);
+    padding: var(--space-3) var(--space-4);
     min-height: 1.25rem;
-    font-size: var(--text-sm, 0.875rem);
-    border-radius: 0.375rem;
-    padding: 0.5rem 0.75rem;
+    font-family: var(--font-sans);
   }
 
   .status-msg:empty { padding: 0; }
 
-  .status-msg--success { background: var(--success-surface, #d1fae5); color: var(--success-text, #065f46); }
-  .status-msg--error   { background: var(--error-surface, #fee2e2);   color: var(--error-text, #991b1b); }
-  .status-msg--info    { background: var(--info-surface, #e0f2fe);    color: var(--info-text, #075985); }
+  .status-msg--success { background: var(--win-subtle); color: var(--win); }
+  .status-msg--error   { background: var(--loss-subtle); color: var(--loss); }
+  .status-msg--info    { background: var(--accent-subtle); color: var(--accent-text); }
 
-  .btn-primary {
-    padding: 0.5rem 1.25rem;
-    border-radius: 0.5rem;
-    font-size: var(--text-sm, 0.875rem);
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    background: var(--primary, #4f46e5);
-    color: #fff;
-    transition: opacity 0.15s;
-    align-self: flex-start;
+  .form-actions {
+    display: flex;
+    gap: var(--space-3);
   }
 
-  .btn-primary:hover:not(:disabled) { opacity: 0.9; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.75rem;
+    padding: 0 var(--space-6);
+    border-radius: var(--radius-lg);
+    font-family: var(--font-sans);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-bold);
+    border: none;
+    cursor: pointer;
+    background: linear-gradient(135deg, var(--primary-fixed-dim), var(--primary-container));
+    color: var(--on-primary-fixed);
+    transition: opacity var(--duration-fast);
+  }
+
+  .btn-primary:hover:not(:disabled) { opacity: 0.88; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .admin-hint {
+    margin-top: var(--space-6);
+    font-size: var(--text-xs);
+    color: var(--text-muted);
+    font-family: var(--font-sans);
+  }
 </style>

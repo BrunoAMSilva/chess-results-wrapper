@@ -161,6 +161,7 @@ if (!playerParam) {
 }
 
 const pageTitle = playerName || t("player.progress");
+const isAdmin = !!Astro.locals.user;
 const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerName)}${playerFed ? `&fed=${encodeURIComponent(playerFed)}` : ""}&lang=${lang}`;
 
 let titleMap: Record<string, string> = {};
@@ -186,6 +187,22 @@ try {
         <img class="hero-image" alt="Player Identity Avatar" src={playerPhotoUrl} />
         <div class="hero-image-gradient">
           <span class="hero-tag">{playerClub || playerFed || "Player Profile"}</span>
+          {isAdmin && (
+            <button
+              class="admin-photo-btn"
+              id="admin-photo-btn"
+              aria-label="Upload player photo"
+              data-fide-id={dbPlayer?.fide_id ?? ""}
+              data-player-name={canonicalPlayerName}
+              data-federation={playerFed ?? ""}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                <circle cx="12" cy="13" r="4"/>
+              </svg>
+              <span id="admin-photo-label">Change photo</span>
+            </button>
+          )}
         </div>
       </div>
       <div class="hero-content">
@@ -258,6 +275,58 @@ try {
   )}
 </MobileLayout>
 
+<script>
+  const btn = document.getElementById("admin-photo-btn") as HTMLButtonElement | null;
+  if (btn) {
+    const label = document.getElementById("admin-photo-label") as HTMLSpanElement;
+    const heroImg = document.querySelector(".hero-image") as HTMLImageElement;
+
+    btn.addEventListener("click", () => {
+      const fideId = btn.dataset.fideId;
+      if (!fideId) {
+        const name = encodeURIComponent(btn.dataset.playerName ?? "");
+        const fed = encodeURIComponent(btn.dataset.federation ?? "");
+        window.location.href = `/admin/player-photos?name=${name}&fed=${fed}`;
+        return;
+      }
+
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/jpeg,image/png,image/webp";
+      input.addEventListener("change", async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+
+        btn.disabled = true;
+        label.textContent = "Uploading…";
+
+        const fd = new FormData();
+        fd.append("fide_id", fideId);
+        fd.append("photo", file);
+
+        try {
+          const res = await fetch("/api/admin/player-photo", { method: "POST", body: fd });
+          if (res.ok) {
+            label.textContent = "Done!";
+            if (heroImg) heroImg.src = heroImg.src.replace(/\?.*$/, "") + "?t=" + Date.now();
+            setTimeout(() => { label.textContent = "Change photo"; }, 2000);
+          } else {
+            const data = await res.json();
+            label.textContent = data.error ?? "Failed";
+            setTimeout(() => { label.textContent = "Change photo"; }, 3000);
+          }
+        } catch {
+          label.textContent = "Network error";
+          setTimeout(() => { label.textContent = "Change photo"; }, 3000);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+      input.click();
+    });
+  }
+</script>
+
 <style is:global>
   /* Base Hero Layout */
   .hero-section {
@@ -301,7 +370,32 @@ try {
     right: 0;
     padding: var(--space-4);
     background: linear-gradient(to top, var(--bg) 0%, transparent 100%);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-2);
   }
+
+  .admin-photo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: var(--radius-full);
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    backdrop-filter: blur(4px);
+    transition: background 0.15s, opacity 0.15s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .admin-photo-btn:hover:not(:disabled) { background: rgba(0, 0, 0, 0.75); }
+  .admin-photo-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
   .hero-tag {
     display: inline-block;
