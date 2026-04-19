@@ -6,7 +6,7 @@ export default defineToolbarApp({
 
     win.innerHTML = `
       <h2 style="margin: 0 0 12px; font-size: 14px; font-weight: 600;">
-        Chess Results — Full Fetch
+        ViteChess — Full Fetch
       </h2>
       <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
         <input id="cr-tid" type="text" placeholder="Tournament ID"

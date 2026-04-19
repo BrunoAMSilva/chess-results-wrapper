@@ -1,6 +1,6 @@
 {
-  "name": "Chess Results",
-  "short_name": "Chess Results",
+  "name": "ViteChess",
+  "short_name": "ViteChess",
   "description": "Live chess tournament pairings and standings",
   "start_url": "/",
   "display": "standalone",

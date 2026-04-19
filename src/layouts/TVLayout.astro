@@ -12,7 +12,7 @@ interface Props {
 
 const { title, eyebrow, lang = 1, autoRefresh = true } = Astro.props;
 const langCode = languages[lang as keyof typeof languages] || 'en';
-const documentTitle = eyebrow ? `${eyebrow} - ${title}` : title;
+const documentTitle = eyebrow ? `${eyebrow} - ${title} | ViteChess` : `${title} | ViteChess`;
 ---
 
 <!doctype html>

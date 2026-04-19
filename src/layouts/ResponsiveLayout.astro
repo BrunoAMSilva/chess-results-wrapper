@@ -14,7 +14,7 @@ interface Props {
 const { title, eyebrow, lang = 1, navMode = "default" } = Astro.props;
 const t = useTranslations(lang);
 const langCode = languages[lang as keyof typeof languages] || "en";
-const documentTitle = eyebrow ? `${eyebrow} - ${title}` : title;
+const documentTitle = eyebrow ? `${eyebrow} - ${title} | ViteChess` : `${title} | ViteChess`;
 const currentPath = Astro.url.pathname;
 const authUser = Astro.locals.user;
 let tid = Astro.url.searchParams.get("tid") || "";
