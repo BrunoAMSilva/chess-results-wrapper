@@ -168,8 +168,9 @@ let titleMap: Record<string, string> = {};
 try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
 
 let playerPhotoUrl = "/images/avatar-placeholder.png";
+let dbPlayer: ReturnType<typeof findPlayerByIdentity> | undefined;
 try {
-  const dbPlayer = findPlayerByIdentity(canonicalPlayerName, playerFed);
+  dbPlayer = findPlayerByIdentity(canonicalPlayerName, playerFed);
   if (dbPlayer?.photo_url) playerPhotoUrl = dbPlayer.photo_url;
 } catch (_) {}
 ---
