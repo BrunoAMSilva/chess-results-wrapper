@@ -161,6 +161,185 @@ function exitIntro(): Promise<void> {
   });
 }
 
+/* ------------------------------------------------------------------ */
+/*  Canvas particle system for sponsor card                            */
+/* ------------------------------------------------------------------ */
+
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  life: number;
+  maxLife: number;
+  phase: number;     // sine wobble phase offset
+  freq: number;      // sine wobble frequency
+  wobbleAmp: number; // sine wobble amplitude
+}
+
+function startSponsorParticles(): (() => void) | null {
+  const canvas = document.getElementById("sponsorCanvas") as HTMLCanvasElement | null;
+  if (!canvas) return null;
+
+  const stage = canvas.parentElement;
+  if (!stage) return null;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+
+  // Size canvas to match stage + margin (CSS inset: -3rem ≈ 48px each side)
+  const dpr = window.devicePixelRatio || 1;
+  const margin = 48;
+
+  function resize() {
+    const rect = stage!.getBoundingClientRect();
+    const w = rect.width + margin * 2;
+    const h = rect.height + margin * 2;
+    canvas!.width = w * dpr;
+    canvas!.height = h * dpr;
+    canvas!.style.width = `${w}px`;
+    canvas!.style.height = `${h}px`;
+    ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+
+  const PARTICLE_COUNT = 30;
+  const GOLD_R = 252, GOLD_G = 211, GOLD_B = 77;
+  const particles: Particle[] = [];
+
+  function canvasW() { return canvas!.width / dpr; }
+  function canvasH() { return canvas!.height / dpr; }
+
+  // Spawn a particle along one of the four edges of the card area
+  function spawnParticle(): Particle {
+    const w = canvasW();
+    const h = canvasH();
+    const edgeBand = 20; // how far from the card edge particles spawn
+
+    // Card bounds within the canvas (card is centered, margin on each side)
+    const cardLeft = margin;
+    const cardRight = w - margin;
+    const cardTop = margin;
+    const cardBottom = h - margin;
+
+    // Pick a random edge: 0=top, 1=right, 2=bottom, 3=left
+    const edge = Math.floor(Math.random() * 4);
+    let x: number, y: number;
+
+    switch (edge) {
+      case 0: // top
+        x = cardLeft + Math.random() * (cardRight - cardLeft);
+        y = cardTop - Math.random() * edgeBand;
+        break;
+      case 1: // right
+        x = cardRight + Math.random() * edgeBand;
+        y = cardTop + Math.random() * (cardBottom - cardTop);
+        break;
+      case 2: // bottom
+        x = cardLeft + Math.random() * (cardRight - cardLeft);
+        y = cardBottom + Math.random() * edgeBand;
+        break;
+      default: // left
+        x = cardLeft - Math.random() * edgeBand;
+        y = cardTop + Math.random() * (cardBottom - cardTop);
+        break;
+    }
+
+    // Gentle outward drift from card center
+    const cx = w / 2, cy = h / 2;
+    const angle = Math.atan2(y - cy, x - cx) + (Math.random() - 0.5) * 1.2;
+    const speed = 0.15 + Math.random() * 0.35;
+
+    return {
+      x,
+      y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size: 3 + Math.random() * 6,
+      life: 0,
+      maxLife: 120 + Math.random() * 180, // 2–5s at 60fps
+      phase: Math.random() * Math.PI * 2,
+      freq: 0.02 + Math.random() * 0.03,
+      wobbleAmp: 0.3 + Math.random() * 0.7,
+    };
+  }
+
+  // Initialize all particles with staggered life so they don't all appear at once
+  for (let i = 0; i < PARTICLE_COUNT; i++) {
+    const p = spawnParticle();
+    p.life = Math.floor(Math.random() * p.maxLife);
+    particles.push(p);
+  }
+
+  let rafId = 0;
+  let running = true;
+
+  function draw() {
+    if (!running) return;
+
+    const w = canvasW();
+    const h = canvasH();
+    ctx!.clearRect(0, 0, w, h);
+
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.life++;
+
+      // Respawn if expired
+      if (p.life >= p.maxLife) {
+        Object.assign(p, spawnParticle());
+        continue;
+      }
+
+      // Lifecycle opacity: smooth fade in → hold → fade out
+      const t = p.life / p.maxLife;
+      let alpha: number;
+      if (t < 0.15) {
+        alpha = t / 0.15;           // fade in
+      } else if (t > 0.75) {
+        alpha = (1 - t) / 0.25;    // fade out
+      } else {
+        alpha = 1;                  // hold
+      }
+      // Add subtle flicker
+      alpha *= 0.6 + 0.4 * Math.sin(p.life * 0.08 + p.phase);
+
+      // Sine wobble perpendicular to travel direction
+      const wobbleX = Math.sin(p.life * p.freq + p.phase) * p.wobbleAmp;
+      const wobbleY = Math.cos(p.life * p.freq * 0.7 + p.phase) * p.wobbleAmp;
+
+      p.x += p.vx + wobbleX;
+      p.y += p.vy + wobbleY;
+
+      // Size pulse
+      const sizeScale = 0.85 + 0.15 * Math.sin(p.life * 0.04 + p.phase);
+      const r = p.size * sizeScale * 0.5;
+
+      // Draw glowing circle
+      ctx!.save();
+      ctx!.globalAlpha = Math.max(0, Math.min(1, alpha));
+      ctx!.shadowColor = `rgba(${GOLD_R}, ${GOLD_G}, ${GOLD_B}, 0.8)`;
+      ctx!.shadowBlur = r * 3;
+      ctx!.fillStyle = `rgba(${GOLD_R}, ${GOLD_G}, ${GOLD_B}, 1)`;
+      ctx!.beginPath();
+      ctx!.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx!.fill();
+      ctx!.restore();
+    }
+
+    rafId = requestAnimationFrame(draw);
+  }
+
+  rafId = requestAnimationFrame(draw);
+
+  // Return cleanup function
+  return () => {
+    running = false;
+    cancelAnimationFrame(rafId);
+  };
+}
+
 function buildIntro(): string {
   const hasSponsor = !!sponsorImage;
   const noSponsorClass = hasSponsor ? "" : " wc-intro--no-sponsor";
