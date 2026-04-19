@@ -29,35 +29,47 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   const csrfToken = request.headers.get("x-csrf-token");
   const csrfCookie = cookies.get("csrf-token")?.value;
 
+  // Debug logging
+  console.log("[CSRF] POST request debug:", {
+    csrfTokenHeader: csrfToken ? "present" : "missing",
+    csrfCookie: csrfCookie ? "present" : "missing",
+    match: csrfToken && csrfCookie ? csrfToken === csrfCookie : "N/A",
+    origin: request.headers.get("origin"),
+    referer: request.headers.get("referer"),
+  });
+
   if (!validateCsrfToken(csrfCookie, csrfToken || undefined)) {
+    console.log("[CSRF] Validation failed");
     return new Response(
       JSON.stringify({ error: "Invalid CSRF token" }),
       { status: 403, headers: { "Content-Type": "application/json" } },
     );
   }
 
-  const contentType = request.headers.get("content-type") || "";
-  if (!contentType.includes("multipart/form-data")) {
-    return new Response(JSON.stringify({ error: "multipart/form-data required" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  let body: {
+    national_id?: string;
+    fide_id?: string;
+    federation?: string;
+    photo?: string;
+    photoType?: string;
+    photoName?: string;
+  };
 
-  let formData: FormData;
   try {
-    formData = await request.formData();
+    body = await request.json();
   } catch {
-    return new Response(JSON.stringify({ error: "Failed to parse form data" }), {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  const nationalId = (formData.get("national_id") as string | null)?.trim() || "";
-  const federation = (formData.get("federation") as string | null)?.trim() || "";
-  const fideId = (formData.get("fide_id") as string | null)?.trim() || "";
-  const photoFile = formData.get("photo");
+  const nationalId = (body.national_id || "").trim();
+  const federation = (body.federation || "").trim();
+  const fideId = (body.fide_id || "").trim();
+  const photo = body.photo; // base64 string
+  const photoType = body.photoType || "image/jpeg";
+  const photoName = body.photoName || "photo.jpg";
 
   if (!nationalId && !fideId) {
     return new Response(
@@ -73,21 +85,33 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     );
   }
 
-  if (!(photoFile instanceof File) || photoFile.size === 0) {
-    return new Response(JSON.stringify({ error: "No photo file uploaded" }), {
+  if (!photo || typeof photo !== "string") {
+    return new Response(JSON.stringify({ error: "No photo data provided" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  if (!ALLOWED_MIME_TYPES.has(photoFile.type)) {
+  // Validate MIME type
+  if (!ALLOWED_MIME_TYPES.has(photoType)) {
     return new Response(
       JSON.stringify({ error: "Only JPEG, PNG and WebP images are allowed" }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
 
-  if (photoFile.size > MAX_SIZE_BYTES) {
+  // Decode base64 and check size
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(photo, "base64");
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid base64 data" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (buffer.length === 0 || buffer.length > MAX_SIZE_BYTES) {
     return new Response(JSON.stringify({ error: "File exceeds 5 MB limit" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
@@ -105,7 +129,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     });
   }
 
-  const ext = EXT_MAP[photoFile.type];
+  const ext = EXT_MAP[photoType];
   const filename = `player_${player.id}.${ext}`;
   const photosDir = getPhotosDir();
   const filePath = path.join(photosDir, filename);
@@ -114,11 +138,12 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   for (const existingExt of Object.values(EXT_MAP)) {
     const old = path.join(photosDir, `player_${player.id}.${existingExt}`);
     if (old !== filePath) {
-      try { fs.unlinkSync(old); } catch (_) {}
+      try {
+        fs.unlinkSync(old);
+      } catch (_) {}
     }
   }
 
-  const buffer = Buffer.from(await photoFile.arrayBuffer());
   fs.writeFileSync(filePath, buffer);
 
   const photoUrl = `/api/player-photo/${filename}`;
@@ -126,7 +151,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
 
   return new Response(
     JSON.stringify({ ok: true, player_id: player.id, photo_url: photoUrl }),
-    { status: 200, headers: { "Content-Type": "application/json" } },
+    {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Content-Type-Options": "nosniff",
+      },
+    },
   );
 };
 

@@ -1,0 +1,75 @@
+---
+import Layout from "../../layouts/TVLayout.astro";
+import WinnersCarousel from "../../components/presenter/WinnersCarousel.astro";
+import ErrorCard from "../../components/app/ErrorCard.astro";
+import EmptyState from "../../components/app/EmptyState.astro";
+import Icon from "../../components/app/Icon.astro";
+import { scrapeStandings } from "../../lib/scraper";
+import { getTournamentConfig } from "../../lib/db";
+import { useTranslations } from "../../i18n/ui";
+import { extractPageParams, resolveTournamentDisplay } from "../../lib/page-context";
+import { WINNERS_PRESENTATION_START_RANK_DEFAULT } from "../../lib/constants";
+
+const { tid, lang } = extractPageParams(Astro.url, Astro.cookies);
+
+// Get start rank from URL param or tournament config
+const startRankParam = Astro.url.searchParams.get("startRank");
+let startRank = startRankParam ? parseInt(startRankParam) : null;
+
+if (!startRank || startRank < 1) {
+  const configRank = getTournamentConfig(tid, "winners_presentation_start_rank");
+  startRank = configRank ? parseInt(configRank) : WINNERS_PRESENTATION_START_RANK_DEFAULT;
+}
+
+const t = useTranslations(lang);
+
+let data;
+let error: string | null = null;
+
+try {
+  data = await scrapeStandings(tid);
+} catch (e) {
+  error = e instanceof Error ? e.message : t('error.load');
+}
+
+// Filter standings: include only those with rank >= startRank, sorted ascending (lowest rank first)
+const allStandings = data?.standings || [];
+const filteredStandings = allStandings
+  .filter((s) => s.rank >= startRank)
+  .sort((a, b) => a.rank - b.rank);
+
+const { sectionTitle, eyebrow: tournamentEyebrow } = resolveTournamentDisplay(
+  data?.info,
+  t('site.title')
+);
+---
+
+<Layout title={sectionTitle} eyebrow={tournamentEyebrow} lang={lang}>
+  <div class="container">
+    {error && <ErrorCard hint={t('error.hint')}><p>{error}</p></ErrorCard>}
+
+    {data && filteredStandings.length === 0 && (
+      <EmptyState message={`No players from rank ${startRank} onwards`}>
+        <Icon slot="icon" name="info" size={24} />
+      </EmptyState>
+    )}
+
+    {data && filteredStandings.length > 0 && (
+      <WinnersCarousel
+        standings={filteredStandings}
+        tournamentId={tid}
+        lang={lang}
+      />
+    )}
+  </div>
+</Layout>
+
+<style>
+  .container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>

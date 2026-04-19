@@ -1,0 +1,340 @@
+---
+import type { Standing } from "../../lib/types";
+import { useTranslations } from "../../i18n/ui";
+
+interface Props {
+  standing: Standing;
+  rank: number;
+  lang: number;
+  isEntering?: boolean;
+  isExiting?: boolean;
+}
+
+const { standing, rank, lang, isEntering = true, isExiting = false } = Astro.props;
+const t = useTranslations(lang);
+
+// Get medal color for rank
+function getMedalColor(rank: number): string {
+  if (rank === 1) return "gold";
+  if (rank === 2) return "silver";
+  if (rank === 3) return "bronze";
+  return "accent";
+}
+
+// Get rank label (1st Place, 2nd Place, etc.)
+function getRankLabel(rank: number): string {
+  if (rank === 1) return t('winners.first') || "1st Place";
+  if (rank === 2) return t('winners.second') || "2nd Place";
+  if (rank === 3) return t('winners.third') || "3rd Place";
+  return `${rank}th Place`;
+}
+
+const medalColor = getMedalColor(rank);
+const photoUrl = standing.fideId
+  ? `/api/player-photo/fide_${standing.fideId}.jpg`
+  : undefined;
+---
+
+<div class:list={[
+  "player-card",
+  { "is-entering": isEntering, "is-exiting": isExiting }
+]}>
+  <!-- Left: Photo -->
+  <div class="photo-container">
+    <div class="photo-wrapper">
+      {photoUrl && (
+        <img src={photoUrl} alt={standing.name} class="player-photo" />
+      )}
+      {!photoUrl && (
+        <div class="photo-fallback">
+          <span class="initials">
+            {standing.name.split(" ").slice(0, 2).map(n => n[0]).join("")}
+          </span>
+        </div>
+      )}
+      <div class:list={["rank-badge", medalColor]}>
+        <span class="rank-number">{rank}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Info Card -->
+  <div class="info-container">
+    <div class="info-card">
+      <!-- Title -->
+      {standing.title && (
+        <div class="info-section" style={`--delay: 0ms`}>
+          <p class="title-label">{standing.title}</p>
+        </div>
+      )}
+
+      <!-- Name -->
+      <div class="info-section" style={`--delay: ${standing.title ? 40 : 0}ms`}>
+        <h1 class="player-name">{standing.name}</h1>
+      </div>
+
+      <!-- Rank / Medal -->
+      <div class="info-section" style={`--delay: ${standing.title ? 80 : 40}ms`}>
+        <p class="rank-label">{getRankLabel(rank)}</p>
+      </div>
+
+      <!-- Federation -->
+      {standing.fed && (
+        <div class="info-section" style={`--delay: ${standing.title ? 120 : 80}ms`}>
+          <p class="federation">
+            <span class="label">Federation:</span>
+            <span class="value">{standing.fed}</span>
+          </p>
+        </div>
+      )}
+
+      <!-- Club -->
+      {standing.club && (
+        <div class="info-section" style={`--delay: ${standing.title ? 160 : 120}ms`}>
+          <p class="club">
+            <span class="label">Club:</span>
+            <span class="value">{standing.club}</span>
+          </p>
+        </div>
+      )}
+    </div>
+  </div>
+</div>
+
+<style>
+  .player-card {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-12);
+    padding: var(--space-10);
+    background: var(--bg);
+  }
+
+  .photo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .photo-wrapper {
+    position: relative;
+    width: 100%;
+    max-width: 500px;
+    aspect-ratio: 1;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    box-shadow: var(--shadow-elevated);
+    border: 3px solid var(--accent);
+    animation: photoEnter var(--duration-slow) var(--ease-out);
+  }
+
+  .player-card.is-exiting .photo-wrapper {
+    animation: photoExit calc(var(--duration-slow) - 100ms) var(--ease-out);
+  }
+
+  .player-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .photo-fallback {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, var(--accent-subtle), var(--accent-glow));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-display);
+  }
+
+  .initials {
+    font-size: var(--text-5xl);
+    font-weight: var(--weight-extrabold);
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .rank-badge {
+    position: absolute;
+    top: var(--space-4);
+    left: var(--space-4);
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--weight-extrabold);
+    font-size: var(--text-3xl);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .rank-badge.gold {
+    background: var(--medal-gold);
+    color: #333;
+  }
+
+  .rank-badge.silver {
+    background: var(--medal-silver);
+    color: #333;
+  }
+
+  .rank-badge.bronze {
+    background: var(--medal-bronze);
+    color: #fff;
+  }
+
+  .rank-badge.accent {
+    background: var(--accent);
+    color: var(--on-accent);
+  }
+
+  .info-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .info-card {
+    width: 100%;
+    max-width: 400px;
+    background: var(--surface-raised);
+    border-radius: var(--radius-xl);
+    border: 2px solid var(--accent);
+    padding: var(--space-10);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    box-shadow: var(--shadow-elevated);
+    animation: infoEnter var(--duration-slow) var(--ease-out) 50ms both;
+  }
+
+  .player-card.is-exiting .info-card {
+    animation: infoExit calc(var(--duration-slow) - 100ms) var(--ease-out);
+  }
+
+  .info-section {
+    animation: bladeItem var(--duration-slow) var(--ease-out) var(--delay, 0ms) both;
+  }
+
+  .title-label {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: var(--tracking-wide);
+    color: var(--accent);
+    margin: 0;
+  }
+
+  .player-name {
+    font-family: var(--font-display);
+    font-size: var(--text-4xl);
+    font-weight: var(--weight-extrabold);
+    color: var(--text);
+    margin: 0;
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-tight);
+  }
+
+  .rank-label {
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+    color: var(--accent);
+    margin: 0;
+  }
+
+  .federation,
+  .club {
+    font-size: var(--text-lg);
+    color: var(--text-secondary);
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-2);
+  }
+
+  .label {
+    font-weight: var(--weight-semibold);
+    color: var(--text-dim);
+  }
+
+  .value {
+    color: var(--text-secondary);
+  }
+
+  @keyframes photoEnter {
+    from {
+      opacity: 0;
+      transform: translateX(-60px) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  @keyframes photoExit {
+    from {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(-60px) scale(0.9);
+    }
+  }
+
+  @keyframes infoEnter {
+    from {
+      opacity: 0;
+      transform: translateX(60px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes infoExit {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(60px);
+    }
+  }
+
+  @keyframes bladeItem {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (max-width: 1024px) {
+    .player-card {
+      grid-template-columns: 1fr;
+      gap: var(--space-8);
+      padding: var(--space-6);
+    }
+
+    .player-name {
+      font-size: var(--text-3xl);
+    }
+
+    .rank-badge {
+      width: 56px;
+      height: 56px;
+      font-size: var(--text-2xl);
+    }
+  }
+</style>

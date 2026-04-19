@@ -191,20 +191,36 @@ Astro.cookies.set("csrf-token", csrfToken, {
       fd.append("photo", file);
 
       try {
-        const res = await fetch("/api/admin/player-photo", {
-          method: "POST",
-          headers: { "X-CSRF-Token": csrfToken },
-          body: fd,
-        });
-        const data = await res.json();
-        if (res.ok) {
-          showStatus(`Photo saved for player #${data.player_id}.`, "success");
-        } else {
-          showStatus(data.error ?? "Upload failed.", "error");
-        }
+        // Convert file to base64 to avoid multipart form data issues with Caddy
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const base64Data = (reader.result as string).split(',')[1];
+          const res = await fetch("/api/admin/player-photo", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-CSRF-Token": csrfToken,
+            },
+            body: JSON.stringify({
+              [idType.value]: value,
+              ...(useNationalId && { federation: fed }),
+              photo: base64Data,
+              photoType: file.type,
+              photoName: file.name,
+            }),
+          });
+          const data = await res.json();
+          if (res.ok) {
+            showStatus(`Photo saved for player #${data.player_id}.`, "success");
+          } else {
+            showStatus(data.error ?? "Upload failed.", "error");
+          }
+          submitBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+        return;
       } catch {
         showStatus("Network error.", "error");
-      } finally {
         submitBtn.disabled = false;
       }
     });

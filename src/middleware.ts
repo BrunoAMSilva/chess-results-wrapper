@@ -59,8 +59,17 @@ function addSecurityHeaders(response: Response): Response {
 }
 
 export const onRequest = defineMiddleware(async (context, next) => {
-  const { url, cookies } = context;
+  const { url, cookies, request } = context;
   const pathname = url.pathname;
+
+  // Debug: log all POST requests to admin endpoints
+  if (request.method === "POST" && pathname.startsWith("/api/admin")) {
+    console.log("[MIDDLEWARE] POST to admin endpoint:", {
+      pathname,
+      contentType: request.headers.get("content-type"),
+      hasXCsrfToken: !!request.headers.get("x-csrf-token"),
+    });
+  }
 
   // Skip auth check for public and non-protected routes
   if (isPublicPath(pathname) || !isProtectedRoute(pathname)) {
