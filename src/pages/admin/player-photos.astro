@@ -1,0 +1,353 @@
+---
+import ResponsiveLayout from "../../layouts/ResponsiveLayout.astro";
+import { resolvePageLang } from "../../lib/page-lang";
+
+const lang = resolvePageLang(Astro.url, Astro.cookies);
+
+// POST form submission handled client-side via fetch for preview UX.
+---
+
+<ResponsiveLayout title="Admin – Player Photos" lang={lang} navMode="none">
+  <div class="admin-container">
+    <h2 class="admin-title">Player Photo Upload</h2>
+    <p class="admin-subtitle">
+      Upload a photo for a player by their <strong>National ID</strong> or <strong>FIDE ID</strong>.
+      Accepted formats: JPEG, PNG, WebP · Max size: 5 MB.
+    </p>
+
+    <form id="upload-form" class="upload-form" novalidate>
+      <div class="field-group">
+        <label class="field-label">
+          <span>Identifier type</span>
+          <select name="id_type" id="id-type" class="field-select">
+            <option value="national_id">National ID</option>
+            <option value="fide_id">FIDE ID</option>
+          </select>
+        </label>
+
+        <label class="field-label">
+          <span>Identifier value</span>
+          <input
+            type="text"
+            name="id_value"
+            id="id-value"
+            class="field-input"
+            placeholder="e.g. 1234567"
+            autocomplete="off"
+            required
+          />
+        </label>
+      </div>
+
+      <label class="drop-zone" id="drop-zone">
+        <input
+          type="file"
+          id="photo-input"
+          name="photo"
+          accept="image/jpeg,image/png,image/webp"
+          class="drop-zone-input"
+          required
+        />
+        <div class="drop-zone-content" id="drop-zone-content">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span>Click or drag a photo here</span>
+        </div>
+        <img id="preview-img" class="preview-img hidden" alt="Photo preview" />
+      </label>
+
+      <div id="status-msg" class="status-msg" role="status" aria-live="polite"></div>
+
+      <div class="form-actions">
+        <button type="submit" id="submit-btn" class="btn-primary">Upload photo</button>
+        <button type="button" id="delete-btn" class="btn-danger">Remove photo</button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById("upload-form") as HTMLFormElement;
+    const idType = document.getElementById("id-type") as HTMLSelectElement;
+    const idValue = document.getElementById("id-value") as HTMLInputElement;
+    const photoInput = document.getElementById("photo-input") as HTMLInputElement;
+    const dropZone = document.getElementById("drop-zone") as HTMLLabelElement;
+    const dropContent = document.getElementById("drop-zone-content") as HTMLDivElement;
+    const previewImg = document.getElementById("preview-img") as HTMLImageElement;
+    const statusMsg = document.getElementById("status-msg") as HTMLDivElement;
+    const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+    const deleteBtn = document.getElementById("delete-btn") as HTMLButtonElement;
+
+    function showStatus(msg: string, kind: "success" | "error" | "info") {
+      statusMsg.textContent = msg;
+      statusMsg.className = `status-msg status-msg--${kind}`;
+    }
+
+    function showPreview(file: File) {
+      const url = URL.createObjectURL(file);
+      previewImg.src = url;
+      previewImg.classList.remove("hidden");
+      dropContent.classList.add("hidden");
+    }
+
+    function clearPreview() {
+      if (previewImg.src) URL.revokeObjectURL(previewImg.src);
+      previewImg.src = "";
+      previewImg.classList.add("hidden");
+      dropContent.classList.remove("hidden");
+    }
+
+    photoInput.addEventListener("change", () => {
+      const file = photoInput.files?.[0];
+      if (file) showPreview(file);
+      else clearPreview();
+    });
+
+    // Drag-and-drop support
+    dropZone.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      dropZone.classList.add("drop-zone--active");
+    });
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drop-zone--active"));
+    dropZone.addEventListener("drop", (e) => {
+      e.preventDefault();
+      dropZone.classList.remove("drop-zone--active");
+      const file = e.dataTransfer?.files[0];
+      if (file) {
+        // Replace the input's file list (DataTransfer trick)
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        photoInput.files = dt.files;
+        showPreview(file);
+      }
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const value = idValue.value.trim();
+      if (!value) { showStatus("Please enter an identifier value.", "error"); return; }
+      const file = photoInput.files?.[0];
+      if (!file) { showStatus("Please select a photo.", "error"); return; }
+
+      submitBtn.disabled = true;
+      showStatus("Uploading…", "info");
+
+      const fd = new FormData();
+      fd.append(idType.value, value);
+      fd.append("photo", file);
+
+      try {
+        const res = await fetch("/api/admin/player-photo", { method: "POST", body: fd });
+        const data = await res.json();
+        if (res.ok) {
+          showStatus(`Photo saved for player #${data.player_id}.`, "success");
+        } else {
+          showStatus(data.error ?? "Upload failed.", "error");
+        }
+      } catch {
+        showStatus("Network error.", "error");
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    deleteBtn.addEventListener("click", async () => {
+      const value = idValue.value.trim();
+      if (!value) { showStatus("Please enter an identifier value.", "error"); return; }
+
+      deleteBtn.disabled = true;
+      showStatus("Removing…", "info");
+
+      try {
+        const body: Record<string, string> = {};
+        body[idType.value] = value;
+        const res = await fetch("/api/admin/player-photo", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          clearPreview();
+          photoInput.value = "";
+          showStatus("Photo removed.", "success");
+        } else {
+          showStatus(data.error ?? "Removal failed.", "error");
+        }
+      } catch {
+        showStatus("Network error.", "error");
+      } finally {
+        deleteBtn.disabled = false;
+      }
+    });
+  </script>
+</ResponsiveLayout>
+
+<style>
+  .admin-container {
+    max-width: 540px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+
+  .admin-title {
+    font-size: var(--text-xl, 1.5rem);
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .admin-subtitle {
+    font-size: var(--text-sm, 0.875rem);
+    color: var(--text-secondary, #6b7280);
+    margin-bottom: 2rem;
+  }
+
+  .upload-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  @media (max-width: 480px) {
+    .field-group { grid-template-columns: 1fr; }
+  }
+
+  .field-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 500;
+  }
+
+  .field-select,
+  .field-input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border, #d1d5db);
+    border-radius: 0.5rem;
+    background: var(--surface-elevated, #fff);
+    color: var(--text-primary, #111);
+    font-size: var(--text-sm, 0.875rem);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field-select:focus,
+  .field-input:focus {
+    border-color: var(--primary, #4f46e5);
+  }
+
+  .drop-zone {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px dashed var(--border, #d1d5db);
+    border-radius: 0.75rem;
+    padding: 2rem;
+    cursor: pointer;
+    position: relative;
+    transition: border-color 0.15s, background 0.15s;
+    min-height: 160px;
+    overflow: hidden;
+  }
+
+  .drop-zone:hover,
+  .drop-zone--active {
+    border-color: var(--primary, #4f46e5);
+    background: var(--surface-hover, rgba(79,70,229,0.04));
+  }
+
+  .drop-zone-input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-zone-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-secondary, #6b7280);
+    font-size: var(--text-sm, 0.875rem);
+    pointer-events: none;
+  }
+
+  .preview-img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 0.5rem;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  .hidden { display: none; }
+
+  .status-msg {
+    min-height: 1.25rem;
+    font-size: var(--text-sm, 0.875rem);
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .status-msg:empty { padding: 0; }
+
+  .status-msg--success {
+    background: var(--success-surface, #d1fae5);
+    color: var(--success-text, #065f46);
+  }
+
+  .status-msg--error {
+    background: var(--error-surface, #fee2e2);
+    color: var(--error-text, #991b1b);
+  }
+
+  .status-msg--info {
+    background: var(--info-surface, #e0f2fe);
+    color: var(--info-text, #075985);
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .btn-primary,
+  .btn-danger {
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .btn-primary:disabled,
+  .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .btn-primary {
+    background: var(--primary, #4f46e5);
+    color: #fff;
+  }
+
+  .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+
+  .btn-danger {
+    background: var(--error-surface, #fee2e2);
+    color: var(--error-text, #991b1b);
+  }
+
+  .btn-danger:hover:not(:disabled) { opacity: 0.8; }
+</style>

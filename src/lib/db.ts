@@ -216,6 +216,7 @@ if (!standingsCols.some(c => c.name === 'type')) {
 try { db.exec('ALTER TABLE players ADD COLUMN birth_year INTEGER'); } catch (_) {}
 try { db.exec('ALTER TABLE players ADD COLUMN national_id TEXT'); } catch (_) {}
 try { db.exec("ALTER TABLE players ADD COLUMN title TEXT NOT NULL DEFAULT ''"); } catch (_) {}
+try { db.exec('ALTER TABLE players ADD COLUMN photo_url TEXT'); } catch (_) {}
 try { db.exec('ALTER TABLE tournament_players ADD COLUMN national_rating INTEGER'); } catch (_) {}
 try { db.exec('ALTER TABLE tournament_players ADD COLUMN performance_rating INTEGER'); } catch (_) {}
 try { db.exec("ALTER TABLE tournament_players ADD COLUMN rating_change TEXT"); } catch (_) {}
@@ -1120,6 +1121,22 @@ export function countTournaments(query = ''): number {
 
 export function getPlayerById(playerId: number): DbPlayer | undefined {
   return db.prepare('SELECT * FROM players WHERE id = ?').get(playerId) as DbPlayer | undefined;
+}
+
+export function findPlayerByNationalId(nationalId: string): DbPlayer | undefined {
+  const normalized = nationalId.trim();
+  if (!normalized) return undefined;
+  return db.prepare('SELECT * FROM players WHERE national_id = ? LIMIT 1').get(normalized) as DbPlayer | undefined;
+}
+
+export function findPlayerByFideIdExact(fideId: string): DbPlayer | undefined {
+  const normalized = fideId.trim();
+  if (!normalized) return undefined;
+  return db.prepare('SELECT * FROM players WHERE fide_id = ? LIMIT 1').get(normalized) as DbPlayer | undefined;
+}
+
+export function updatePlayerPhoto(playerId: number, photoUrl: string | null): void {
+  db.prepare("UPDATE players SET photo_url = ?, updated_at = datetime('now') WHERE id = ?").run(photoUrl, playerId);
 }
 
 export function findPlayerByIdentity(name: string, federation = ''): DbPlayer | undefined {

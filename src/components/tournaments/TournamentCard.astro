@@ -14,67 +14,103 @@ interface Props {
 
 const { name, href, date, location, type, playerCount } = Astro.props;
 
-const TOURNAMENT_TYPE_ICONS: Record<TournamentType, IconName> = {
-  [TournamentType.Swiss]: "swiss",
-  [TournamentType.RoundRobin]: "round-robin",
-  [TournamentType.TeamSwiss]: "team-swiss",
-  [TournamentType.TeamRoundRobin]: "team-round-robin",
+const TYPE_CONFIG: Record<TournamentType, { icon: IconName; label: string }> = {
+  [TournamentType.Swiss]:          { icon: "swiss",          label: "Swiss" },
+  [TournamentType.RoundRobin]:     { icon: "round-robin",    label: "Round Robin" },
+  [TournamentType.TeamSwiss]:      { icon: "team-swiss",     label: "Team Swiss" },
+  [TournamentType.TeamRoundRobin]: { icon: "team-round-robin", label: "Team RR" },
 };
 
 const tournamentType = type ?? TournamentType.Swiss;
-const iconName = TOURNAMENT_TYPE_ICONS[tournamentType];
+const { icon: iconName, label: typeLabel } = TYPE_CONFIG[tournamentType];
 ---
 
-<a class="tournament-card" href={href}>
-  <span
-    class="card-icon"
-    data-tournament-type={tournamentType}
-    aria-hidden="true"
-  >
-    <Icon name={iconName} size={24} />
+<a class="tournament-card" href={href} data-type={tournamentType}>
+  <!-- Decorative watermark icon -->
+  <span class="card-watermark" aria-hidden="true">
+    <Icon name={iconName} size={72} />
   </span>
-  <span class="card-body">
-    <span class="card-name">{name}</span>
-    {(date || location || playerCount) && (
-      <span class="card-meta">
-        {date && (
-          <span class="card-meta-item">
-            <Icon name="calendar" size={14} class="meta-icon" />
-            {date}
-          </span>
-        )}
-        {playerCount && playerCount > 0 && (
-          <span class="card-meta-item">
-            <Icon name="users" size={14} class="meta-icon" />
-            {playerCount} players
-          </span>
-        )}
-        {location && (
-          <span class="card-meta-item">
-            <Icon name="map-pin" size={14} class="meta-icon" />
-            {location}
-          </span>
-        )}
-      </span>
-    )}
-  </span>
+
+  <!-- Top row: type chip + date -->
+  <div class="card-header">
+    <span class="card-type-chip">
+      <Icon name={iconName} size={10} />
+      {typeLabel}
+    </span>
+    {date && <span class="card-date">{date}</span>}
+  </div>
+
+  <!-- Tournament name -->
+  <p class="card-name">{name}</p>
+
+  <!-- Footer: player count + location -->
+  {(playerCount || location) && (
+    <div class="card-footer">
+      {playerCount && playerCount > 0 && (
+        <span class="card-players">
+          <Icon name="users" size={11} />
+          {playerCount}
+        </span>
+      )}
+      {location && (
+        <span class="card-location">
+          <Icon name="map-pin" size={11} />
+          {location}
+        </span>
+      )}
+    </div>
+  )}
 </a>
 
 <style>
   .tournament-card {
+    position: relative;
     display: flex;
-    align-items: center;
-    gap: var(--space-4);
-    padding: var(--space-4) var(--space-5);
-    background: var(--surface-container-low);
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-4);
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: var(--radius-lg);
     text-decoration: none;
-    color: var(--on-surface);
-    transition: background var(--duration-fast) var(--ease-out);
+    color: var(--text);
+    overflow: hidden;
+    transition:
+      background var(--duration-fast) var(--ease-out),
+      border-color var(--duration-normal) var(--ease-out),
+      transform var(--duration-normal) var(--ease-out),
+      box-shadow var(--duration-normal) var(--ease-out);
+  }
+
+  /* Gold shine that sweeps in from top on hover */
+  .tournament-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 15%;
+    right: 15%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    opacity: 0;
+    transition:
+      opacity var(--duration-normal) var(--ease-out),
+      left var(--duration-normal) var(--ease-out),
+      right var(--duration-normal) var(--ease-out);
   }
 
   .tournament-card:hover {
-    background: var(--surface-container-high);
+    background: var(--surface-hover);
+    border-color: rgba(252, 211, 77, 0.18);
+    transform: translateY(-2px);
+    box-shadow:
+      0 8px 28px rgba(0, 0, 0, 0.18),
+      0 0 0 1px rgba(252, 211, 77, 0.06);
+  }
+
+  .tournament-card:hover::before {
+    opacity: 1;
+    left: 0;
+    right: 0;
   }
 
   .tournament-card:focus-visible {
@@ -82,67 +118,110 @@ const iconName = TOURNAMENT_TYPE_ICONS[tournamentType];
     outline-offset: 2px;
   }
 
-  .card-icon {
+  /* Watermark: large icon in the background, top-right */
+  .card-watermark {
+    position: absolute;
+    top: -6px;
+    right: -4px;
+    color: var(--accent);
+    opacity: 0.055;
+    transform: rotate(14deg);
+    pointer-events: none;
+    transition:
+      opacity var(--duration-normal) var(--ease-out),
+      transform var(--duration-normal) var(--ease-out);
+  }
+
+  .tournament-card:hover .card-watermark {
+    opacity: 0.09;
+    transform: rotate(8deg) scale(1.06);
+  }
+
+  /* Header row */
+  .card-header {
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: var(--space-12);
-    height: var(--space-12);
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+
+  /* Type chip */
+  .card-type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9px;
+    font-weight: var(--weight-bold);
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent-text);
+    background: var(--accent-subtle);
+    border: 1px solid rgba(252, 211, 77, 0.18);
+    border-radius: var(--radius-full);
+    padding: 2px 8px;
+    line-height: 1.6;
     flex-shrink: 0;
-    border-radius: var(--radius-md);
-    color: var(--primary-container);
   }
 
-  .card-icon[data-tournament-type="swiss"] {
-    color: var(--primary-container);
+  /* Date */
+  .card-date {
+    font-size: var(--text-2xs);
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
-  .card-icon[data-tournament-type="round-robin"] {
-    color: var(--primary-fixed-dim);
-  }
-
-  .card-icon[data-tournament-type="team-swiss"] {
-    color: var(--secondary-fixed-dim);
-  }
-
-  .card-icon[data-tournament-type="team-round-robin"] {
-    color: var(--tertiary-fixed-dim);
-  }
-
-  .card-body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    min-width: 0;
-  }
-
+  /* Tournament name */
   .card-name {
-    display: block;
     font-family: var(--font-display);
-    font-size: var(--text-base);
+    font-size: var(--text-sm);
     font-weight: var(--weight-semibold);
-    line-height: var(--leading-tight);
-    color: var(--on-surface);
-    overflow-wrap: anywhere;
+    line-height: 1.45;
+    color: var(--text);
+    margin: 0;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
-  .card-meta {
+  /* Footer */
+  .card-footer {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
+    gap: var(--space-2);
     flex-wrap: wrap;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--border-light);
+    margin-top: auto;
   }
 
-  .card-meta-item {
-    display: flex;
+  /* Player count badge (pill) */
+  .card-players {
+    display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
+    gap: 4px;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-medium);
+    color: var(--text-secondary);
+    background: var(--surface-raised);
+    border-radius: var(--radius-full);
+    padding: 2px 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Location */
+  .card-location {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: var(--text-xs);
     color: var(--text-dim);
-  }
-
-  .meta-icon {
-    flex-shrink: 0;
-    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
 </style>

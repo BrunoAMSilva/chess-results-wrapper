@@ -97,7 +97,7 @@ const latestSeen = history.length > 0 ? history[0].updated_at : "-";
   {player && (
     <section class="hero-section">
       <div class="hero-image-container">
-        <img class="hero-image" alt="Player Identity Avatar" src="/images/avatar-placeholder.png" />
+        <img class="hero-image" alt="Player Identity Avatar" src={player.photo_url ?? "/images/avatar-placeholder.png"} />
         <div class="hero-image-gradient">
           <span class="hero-tag">
             {player.federation

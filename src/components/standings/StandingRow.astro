@@ -360,12 +360,14 @@ const attributes = tid
         auto auto;
       grid-template-rows: auto;
       padding: 0 var(--space-6) 0 0;
-      min-height: var(--size-standing-row-min-height-lg);
     }
     .standing-row.no-stats {
       grid-template-columns:
         var(--size-standing-rank-col-lg) minmax(0, 1fr)
         auto;
+      grid-template-rows: min-content min-content;
+      align-items: center;
+      padding-block: var(--space-3);
     }
     .rating-col {
       font-size: var(--text-2xl);
@@ -373,7 +375,8 @@ const attributes = tid
     }
     .main-stat,
     .rank-col {
-      grid-row: 1;
+      grid-row: 1 / -1;
+      align-self: center;
     }
     .rank-col,
     .points {
@@ -386,11 +389,12 @@ const attributes = tid
       font-size: 0.9rem;
     }
     .player-club {
+      grid-row: 2;
       font-size: 0.9rem;
     }
-    .player-info {
+    /* .player-info {
       padding-left: var(--space-6);
-    }
+    } */
     .stats-col {
       gap: 1.5rem;
       grid-row: 1;

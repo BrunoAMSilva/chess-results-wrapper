@@ -1,13 +1,14 @@
 import { defineMiddleware } from "astro:middleware";
 import { verifySessionToken, type AuthUser } from "./lib/firebase-admin";
 
-const PROTECTED_PAGE_PREFIXES = ["/referee", "/present"];
+const PROTECTED_PAGE_PREFIXES = ["/referee", "/present", "/admin"];
 const PROTECTED_API_PREFIXES = [
   "/api/referee-result",
   "/api/referee-upload",
   "/api/referee-upload-status",
   "/api/referee-export",
   "/api/tournament-config",
+  "/api/admin",
 ];
 
 const PUBLIC_PATHS = ["/login"];

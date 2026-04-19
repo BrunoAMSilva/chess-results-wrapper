@@ -11,7 +11,7 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
 const t = useTranslations(lang);
 const langCode = languages[lang as keyof typeof languages] || "en";
 const discoverExpanded = Astro.url.searchParams.get("discover") === "all";
-const discoverLimit = discoverExpanded ? 24 : 3;
+const discoverLimit = discoverExpanded ? 24 : 6;
 const discoverOffset = 0;
 const discoverRows = listTournaments(discoverLimit, discoverOffset);
 const discoverTotal = countTournaments();
@@ -36,7 +36,7 @@ const shouldRegisterServiceWorker = import.meta.env.PROD;
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>{t("home.title")}</title>
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap"
       rel="stylesheet"
     />
     <script is:inline define:vars={{ shouldRegisterServiceWorker }}>
@@ -93,44 +93,76 @@ const shouldRegisterServiceWorker = import.meta.env.PROD;
     </script>
   </head>
   <body>
+    <!-- Decorative background layer -->
+    <div class="bg-layer" aria-hidden="true">
+      <div class="bg-grid"></div>
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+    </div>
+
     <div class="home-shell">
       <a class="skip-link" href="#maincontent">{t("a11y.skipToMain")}</a>
+
+      <!-- Hero -->
       <header class="home-header">
-        <div class="home-icon">
-          <img src="logo.svg" alt="" width="128" height="128" />
+        <div class="logo-wrap">
+          <div class="logo-aura"></div>
+          <div class="logo-aura logo-aura--outer"></div>
+          <img
+            src="logo.svg"
+            alt=""
+            width="112"
+            height="112"
+            class="logo-img"
+          />
         </div>
         <h1 class="home-heading">{t("home.heading")}</h1>
         <p class="home-subtitle">{t("home.subtitle")}</p>
       </header>
+
       <main id="maincontent" class="home-main" tabindex="-1">
-        <div class="home-content animate-enter">
-          <TournamentSearchForm
-            label={t("nav.search")}
-            placeholder={t("home.placeholder")}
-            submitLabel={t("home.submit")}
-            hint={t("home.example")}
-            invalidMessage={t("home.invalid")}
-            loadingMessage={t("home.loading")}
-            noResultsMessage={t("home.noResults")}
-            lang={String(lang)}
-          />
+        <div class="home-content">
 
-          <RecentTournaments recentLabel={t("home.recent")} />
+          <!-- Search -->
+          <div class="search-wrap">
+            <TournamentSearchForm
+              label={t("nav.search")}
+              placeholder={t("home.placeholder")}
+              submitLabel={t("home.submit")}
+              hint={t("home.example")}
+              invalidMessage={t("home.invalid")}
+              loadingMessage={t("home.loading")}
+              noResultsMessage={t("home.noResults")}
+              lang={String(lang)}
+            />
+          </div>
 
-          <section class="discover-section">
-            <h2 class="discover-title">{t("discover.title")}</h2>
+          <!-- Recent -->
+          <div class="recent-wrap reveal-section">
+            <RecentTournaments recentLabel={t("home.recent")} />
+          </div>
+
+          <!-- Discover -->
+          <section class="discover-section reveal-section">
+            <h2 class="discover-title">
+              <span class="title-dot" aria-hidden="true"></span>
+              {t("discover.title")}
+            </h2>
             {
               discoverRows.length > 0 ? (
                 <div class="discover-list">
-                  {discoverRows.map((item) => (
-                    <TournamentCard
-                      name={item.name}
-                      href={`/standings?tid=${item.id}&lang=${lang}`}
-                      date={item.date || undefined}
-                      location={item.location || undefined}
-                      type={item.type}
-                      playerCount={item.player_count}
-                    />
+                  {discoverRows.map((item, i) => (
+                    <div class="card-reveal" style={`--card-i: ${i}`}>
+                      <TournamentCard
+                        name={item.name}
+                        href={`/standings?tid=${item.id}&lang=${lang}`}
+                        date={item.date || undefined}
+                        location={item.location || undefined}
+                        type={item.type}
+                        playerCount={item.player_count}
+                      />
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -157,35 +189,211 @@ const shouldRegisterServiceWorker = import.meta.env.PROD;
         </div>
       </main>
     </div>
+
+    <script>
+      // Scroll-reveal with stagger for cards
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-visible");
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
+      );
+
+      document.querySelectorAll(".reveal-section").forEach((el) => {
+        observer.observe(el);
+      });
+    </script>
   </body>
 </html>
 
 <style>
+  /* ── Background layer ──────────────────────────────────────── */
+  .bg-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  .bg-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 40%, black 0%, transparent 100%);
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+    animation: orbDrift 14s ease-in-out infinite;
+  }
+
+  .orb-1 {
+    width: 700px;
+    height: 500px;
+    top: -180px;
+    left: -120px;
+    background: radial-gradient(circle, var(--ambient-a) 0%, transparent 70%);
+    animation-duration: 16s;
+  }
+
+  .orb-2 {
+    width: 500px;
+    height: 400px;
+    bottom: -120px;
+    right: -80px;
+    background: radial-gradient(circle, var(--ambient-b) 0%, transparent 70%);
+    animation-duration: 20s;
+    animation-delay: -6s;
+    animation-direction: reverse;
+  }
+
+  .orb-3 {
+    width: 300px;
+    height: 300px;
+    top: 50%;
+    left: 60%;
+    background: radial-gradient(circle, rgba(252, 211, 77, 0.04) 0%, transparent 70%);
+    animation-duration: 24s;
+    animation-delay: -10s;
+  }
+
+  @keyframes orbDrift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25%  { transform: translate(40px, -30px) scale(1.06); }
+    50%  { transform: translate(-20px, 40px) scale(0.94); }
+    75%  { transform: translate(30px, 20px) scale(1.03); }
+  }
+
+  /* ── Shell ─────────────────────────────────────────────────── */
   .home-shell {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
     min-height: 100vh;
     position: relative;
-    padding: var(--space-8) var(--space-4);
+    z-index: 1;
+    padding: var(--space-8) var(--space-4) var(--space-12);
   }
 
+  /* ── Hero ──────────────────────────────────────────────────── */
   .home-header {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--space-4);
-    padding-block: var(--space-12);
+    gap: var(--space-5);
+    padding-block: var(--space-12) var(--space-10);
     text-align: center;
   }
 
+  /* Logo */
+  .logo-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: heroLand 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  .logo-aura {
+    position: absolute;
+    width: 148px;
+    height: 148px;
+    border-radius: 50%;
+    border: 1.5px solid var(--accent);
+    opacity: 0.25;
+    animation: auraBreath 4s ease-in-out infinite;
+  }
+
+  .logo-aura--outer {
+    width: 176px;
+    height: 176px;
+    opacity: 0.1;
+    animation: auraBreath 4s ease-in-out infinite;
+    animation-delay: 0.8s;
+    animation-direction: reverse;
+  }
+
+  @keyframes auraBreath {
+    0%, 100% { transform: scale(1); opacity: 0.25; }
+    50%       { transform: scale(1.08); opacity: 0.07; }
+  }
+
+  .logo-img {
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 0 24px var(--accent-glow)) drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+  }
+
+  @keyframes heroLand {
+    from { opacity: 0; transform: scale(0.55) translateY(-30px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* Heading */
+  .home-heading {
+    font-family: var(--font-display);
+    font-size: clamp(var(--text-4xl), 6vw, var(--text-6xl));
+    font-weight: var(--weight-extrabold);
+    letter-spacing: var(--tracking-tight);
+    line-height: var(--leading-none);
+    color: var(--text);
+    animation: slideUp 0.7s var(--ease-out) 0.18s both;
+  }
+
+  /* Gold gradient shimmer in dark mode */
+  :root:not([data-theme="light"]) .home-heading,
+  [data-theme="dark"] .home-heading {
+    background: linear-gradient(
+      120deg,
+      var(--text) 0%,
+      var(--gold-300) 40%,
+      var(--gold-400) 55%,
+      var(--text) 100%
+    );
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation:
+      slideUp 0.7s var(--ease-out) 0.18s both,
+      textShimmer 14s ease-in-out 1.2s infinite;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes textShimmer {
+    0%, 100% { background-position: 0% 50%; }
+    50%       { background-position: 100% 50%; }
+  }
+
+  /* Subtitle */
+  .home-subtitle {
+    font-size: var(--text-lg);
+    color: var(--text-dim);
+    line-height: var(--leading-normal);
+    max-width: 400px;
+    animation: slideUp 0.7s var(--ease-out) 0.32s both;
+  }
+
+  /* ── Main content ──────────────────────────────────────────── */
   .home-main {
     display: flex;
-    align-items: flex-start;
     justify-content: center;
     width: 100%;
-    padding: 0;
     z-index: 1;
   }
 
@@ -193,102 +401,160 @@ const shouldRegisterServiceWorker = import.meta.env.PROD;
     display: flex;
     flex-direction: column;
     align-items: center;
-    max-width: 520px;
     width: 100%;
+    max-width: 680px;
     gap: var(--space-2);
   }
 
-  .home-icon {
-    margin-bottom: var(--space-1);
-    color: var(--accent);
-  }
-
-  .home-heading {
-    font-size: var(--text-3xl);
-    font-weight: var(--weight-extrabold);
-    letter-spacing: var(--tracking-tight);
-    line-height: var(--leading-tight);
-    color: var(--text);
-    text-align: center;
-  }
-
-  .home-subtitle {
-    font-size: var(--text-base);
-    color: var(--text-dim);
-    line-height: var(--leading-normal);
-    max-width: 460px;
-    text-align: center;
-  }
-
-  .discover-section {
+  /* ── Search wrap ───────────────────────────────────────────── */
+  .search-wrap {
     width: 100%;
-    margin-top: var(--space-5);
-    padding-top: var(--space-4);
-    text-align: left;
+    animation: slideUp 0.7s var(--ease-out) 0.46s both;
+  }
+
+  /* ── Recent ────────────────────────────────────────────────── */
+  .recent-wrap {
+    width: 100%;
+    margin-top: var(--space-3);
+  }
+
+  /* ── Scroll reveal ─────────────────────────────────────────── */
+  .reveal-section {
+    width: 100%;
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 0.6s var(--ease-out),
+      transform 0.6s var(--ease-out);
+  }
+
+  .reveal-section.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── Discover section ──────────────────────────────────────── */
+  .discover-section {
+    margin-top: var(--space-6);
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border-light);
   }
 
   .discover-title {
-    font-size: var(--text-xl);
-    color: var(--text);
-    font-weight: var(--weight-semibold);
-    text-align: left;
-    margin-bottom: var(--space-3);
-  }
-
-  .discover-form {
     display: flex;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
-  }
-
-  .discover-input {
-    flex: 1;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--outline-variant);
-    background: var(--input-bg);
+    align-items: center;
+    gap: var(--space-3);
+    font-family: var(--font-display);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
     color: var(--text);
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
-  }
-
-  .discover-btn {
-    border-radius: var(--radius-md);
-    background: var(--surface);
-    color: var(--text);
-    padding: var(--space-2) var(--space-3);
-    font-size: var(--text-sm);
-    cursor: pointer;
-  }
-
-  .discover-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--space-2);
     margin-bottom: var(--space-4);
   }
 
-  .discover-list :global(.tournament-card) {
-    min-width: 0;
-    align-self: stretch;
+  .title-dot {
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    box-shadow: 0 0 8px var(--accent-glow);
+    animation: dotPulse 2.5s ease-in-out infinite;
   }
 
+  @keyframes dotPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50%       { transform: scale(1.5); opacity: 0.6; }
+  }
+
+  /* ── Card stagger wrapper ──────────────────────────────────── */
+  .discover-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: var(--space-3);
+    margin-bottom: var(--space-5);
+  }
+
+  .card-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 0.5s var(--ease-out),
+      transform 0.5s var(--ease-out);
+    transition-delay: calc(var(--card-i, 0) * 60ms + 120ms);
+  }
+
+  .reveal-section.is-visible .card-reveal {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* Enhanced card hover via :global() */
+  .discover-list :global(.tournament-card) {
+    height: 100%;
+    transition:
+      background var(--duration-fast) var(--ease-out),
+      transform var(--duration-normal) var(--ease-out),
+      box-shadow var(--duration-normal) var(--ease-out),
+      border-color var(--duration-normal) var(--ease-out);
+    border: 1px solid transparent;
+  }
+
+  .discover-list :global(.tournament-card:hover) {
+    transform: translateY(-3px) scale(1.01);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--accent-glow);
+    border-color: var(--accent-glow);
+  }
+
+  /* ── Discover empty / more ─────────────────────────────────── */
   .discover-empty {
     color: var(--text-dim);
     text-align: center;
-    padding: var(--space-6);
+    padding: var(--space-8);
   }
 
   .discover-more-row {
     display: flex;
     justify-content: center;
+    padding-top: var(--space-2);
   }
 
   .discover-more-link {
-    border-radius: var(--radius-sm);
-    padding: var(--space-2) var(--space-4);
-    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    border-radius: var(--radius-md);
+    padding: var(--space-2) var(--space-6);
+    color: var(--text-secondary);
     background: var(--surface);
+    border: 1px solid var(--border);
     text-decoration: none;
     font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    transition:
+      background var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
+  }
+
+  .discover-more-link:hover {
+    background: var(--surface-hover);
+    border-color: var(--border-strong);
+    color: var(--text);
+  }
+
+  /* ── Light theme overrides ─────────────────────────────────── */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme]) .bg-grid {
+      background-image:
+        linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+    }
+  }
+
+  [data-theme="light"] .bg-grid {
+    background-image:
+      linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
   }
 </style>

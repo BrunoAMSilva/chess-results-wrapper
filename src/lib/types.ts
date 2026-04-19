@@ -148,6 +148,7 @@ export interface DbPlayer {
   rating: number | null;
   birth_year: number | null;
   national_id: string | null;
+  photo_url: string | null;
   created_at?: string;
   updated_at?: string;
 }
