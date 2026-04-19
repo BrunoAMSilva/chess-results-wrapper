@@ -1,202 +1,357 @@
+/**
+ * Winners Presentation — client-side controller.
+ *
+ * Flow:
+ *   1. Page loads → show cinematic intro (tournament name + sponsor)
+ *   2. Space / Enter / click → exit intro, reveal first player
+ *   3. Subsequent interactions → advance through players
+ *   4. After last player → navigate to /present/standings
+ */
+
 import type { Standing } from "../lib/types";
 
-let currentIndex = 0;
-let standings: Standing[] = [];
-let tournamentId: string = "";
-let isNavigating = false;
-let debounceTimer: number | null = null;
+/* ------------------------------------------------------------------ */
+/*  State                                                              */
+/* ------------------------------------------------------------------ */
 
-function initWinnersPresentation(): void {
-  // Get standings data from script tag
-  const dataElement = document.getElementById("standings-data");
-  if (!dataElement) {
-    console.error("Winners presentation: standings data not found");
-    return;
-  }
+let standings: Standing[] = [];
+let currentIndex = -1; // -1 = nothing shown yet
+let tournamentId = "";
+let tournamentName = "";
+let sponsorImage = "";
+let sponsorAlt = "";
+let lang = "0";
+let busy = false;
+let introActive = true; // starts with intro visible
+
+/* ------------------------------------------------------------------ */
+/*  Bootstrap                                                          */
+/* ------------------------------------------------------------------ */
+
+function init(): void {
+  const dataEl = document.getElementById("standings-data");
+  if (!dataEl?.textContent) return;
 
   try {
-    standings = JSON.parse(dataElement.textContent || "[]");
-  } catch (e) {
-    console.error("Winners presentation: failed to parse standings", e);
+    standings = JSON.parse(dataEl.textContent);
+  } catch {
     return;
   }
 
-  // Get tournament ID from carousel container
-  const carousel = document.querySelector(".winners-carousel");
-  if (!carousel) {
-    console.error("Winners presentation: carousel element not found");
-    return;
-  }
+  const stage = document.getElementById("winnersStage");
+  if (!stage) return;
 
-  tournamentId = carousel.getAttribute("data-tournament-id") || "";
-  if (!tournamentId) {
-    console.error("Winners presentation: tournament ID not found");
-    return;
-  }
+  tournamentId = stage.dataset.tournamentId ?? "";
+  tournamentName = stage.dataset.tournamentName ?? "";
+  sponsorImage = stage.dataset.sponsorImage ?? "";
+  sponsorAlt = stage.dataset.sponsorAlt ?? "Sponsor";
+  lang = stage.dataset.lang ?? "0";
 
-  // Set up event listeners
-  setupEventListeners();
+  document.addEventListener("keydown", onKey);
+  document.addEventListener("click", onClick);
+
+  // Show intro
+  showIntro();
 }
 
-function setupEventListeners(): void {
-  // Keyboard events: Space or Enter
-  document.addEventListener("keydown", (e: KeyboardEvent) => {
-    if (e.code === "Space" || e.code === "Enter") {
-      e.preventDefault();
-      handleAdvance();
+/* ------------------------------------------------------------------ */
+/*  Event handlers                                                     */
+/* ------------------------------------------------------------------ */
+
+function onKey(e: KeyboardEvent): void {
+  if (e.code === "Space" || e.code === "Enter") {
+    e.preventDefault();
+    advance();
+  }
+}
+
+function onClick(e: MouseEvent): void {
+  const t = e.target as HTMLElement;
+  if (t.closest("a, button, kbd")) return;
+  advance();
+}
+
+/* ------------------------------------------------------------------ */
+/*  Advance: intro → players → standings redirect                      */
+/* ------------------------------------------------------------------ */
+
+async function advance(): Promise<void> {
+  if (busy) return;
+
+  if (introActive) {
+    busy = true;
+    await exitIntro();
+    introActive = false;
+    // Show nav hint for player cards
+    const hint = document.getElementById("navHint");
+    if (hint) {
+      hint.classList.remove("hidden");
+      setTimeout(() => hint.classList.add("hidden"), 4000);
     }
-  });
-
-  // Click anywhere on the page
-  document.addEventListener("click", () => {
-    handleAdvance();
-  });
-}
-
-function handleAdvance(): void {
-  // Debounce to prevent multiple rapid clicks
-  if (debounceTimer !== null) {
+    // Show first player
+    await showPlayer(0);
+    busy = false;
     return;
   }
 
-  if (isNavigating) {
+  const nextIndex = currentIndex + 1;
+
+  // Past the last player → navigate to standings
+  if (nextIndex >= standings.length) {
+    busy = true;
+    await exitCurrent();
+    window.location.href = `/present/standings?tid=${tournamentId}&lang=${lang}`;
     return;
   }
 
-  debounceTimer = window.setTimeout(() => {
-    debounceTimer = null;
-  }, 300);
+  busy = true;
 
-  if (currentIndex === 0) {
-    // First player: redirect to standings
-    const currentLang = new URLSearchParams(window.location.search).get("lang") || "0";
-    isNavigating = true;
-    window.location.href = `/present/standings?tid=${tournamentId}&lang=${currentLang}`;
-  } else {
-    // Advance to next player (if not already at the end)
-    if (currentIndex < standings.length - 1) {
-      advanceToNextPlayer();
-    }
+  // Exit current card (if any)
+  if (currentIndex >= 0) {
+    await exitCurrent();
+  }
+
+  await showPlayer(nextIndex);
+  busy = false;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Intro                                                              */
+/* ------------------------------------------------------------------ */
+
+function showIntro(): void {
+  const slot = document.getElementById("playerSlot");
+  if (!slot) return;
+
+  slot.innerHTML = buildIntro();
+
+  // Force reflow
+  slot.offsetHeight;
+
+  const intro = slot.querySelector(".wc-intro") as HTMLElement | null;
+  if (intro) {
+    requestAnimationFrame(() => intro.classList.add("in"));
   }
 }
 
-async function advanceToNextPlayer(): Promise<void> {
-  const oldIndex = currentIndex;
-  currentIndex++;
+function exitIntro(): Promise<void> {
+  return new Promise((resolve) => {
+    const slot = document.getElementById("playerSlot");
+    const intro = slot?.querySelector(".wc-intro") as HTMLElement | null;
+    if (!intro) { resolve(); return; }
 
-  const oldStanding = standings[oldIndex];
-  const newStanding = standings[currentIndex];
+    intro.classList.remove("in");
+    intro.classList.add("out");
 
-  const display = document.getElementById("playerDisplay");
-  if (!display) return;
-
-  // Trigger exit animation on old card
-  display.classList.add("is-exiting");
-
-  // Wait for exit animation to complete
-  await new Promise((resolve) => setTimeout(resolve, 200));
-
-  // Update DOM with new player
-  // Since we're using Astro SSR, we need to manually update the DOM
-  display.innerHTML = await renderNewCard(newStanding);
-  display.classList.remove("is-exiting");
-  display.classList.add("is-entering");
-
-  // Trigger enter animation
-  await new Promise((resolve) => setTimeout(resolve, 50));
-  display.classList.add("is-animating");
+    setTimeout(() => {
+      intro.remove();
+      resolve();
+    }, 500);
+  });
 }
 
-async function renderNewCard(standing: Standing): Promise<string> {
-  const getMedalColor = (rank: number): string => {
-    if (rank === 1) return "gold";
-    if (rank === 2) return "silver";
-    if (rank === 3) return "bronze";
-    return "accent";
-  };
+function buildIntro(): string {
+  const hasSponsor = !!sponsorImage;
+  const noSponsorClass = hasSponsor ? "" : " wc-intro--no-sponsor";
 
-  const getRankLabel = (rank: number): string => {
-    if (rank === 1) return "1st Place";
-    if (rank === 2) return "2nd Place";
-    if (rank === 3) return "3rd Place";
-    return `${rank}th Place`;
-  };
-
-  const medal = getMedalColor(standing.rank);
-  const rankLabel = getRankLabel(standing.rank);
-  const photoUrl = standing.fideId
-    ? `/api/player-photo/fide_${standing.fideId}.jpg`
-    : undefined;
-
-  let photoHtml = "";
-  if (photoUrl) {
-    photoHtml = `<img src="${photoUrl}" alt="${standing.name}" class="player-photo" />`;
-  } else {
-    const initials = standing.name
-      .split(" ")
-      .slice(0, 2)
-      .map((n) => n[0])
-      .join("");
-    photoHtml = `
-      <div class="photo-fallback">
-        <span class="initials">${initials}</span>
+  const sponsorHTML = hasSponsor
+    ? `<div class="wc-intro-sponsor-wrap">
+        <img class="wc-intro-sponsor" src="${sponsorImage}" alt="${sponsorAlt}" />
       </div>
-    `;
-  }
-
-  const titleHtml = standing.title
-    ? `<div class="info-section" style="--delay: 0ms"><p class="title-label">${standing.title}</p></div>`
-    : "";
-
-  const federationHtml = standing.fed
-    ? `<div class="info-section" style="--delay: ${standing.title ? 120 : 80}ms"><p class="federation"><span class="label">Federation:</span><span class="value">${standing.fed}</span></p></div>`
-    : "";
-
-  const clubHtml = standing.club
-    ? `<div class="info-section" style="--delay: ${standing.title ? 160 : 120}ms"><p class="club"><span class="label">Club:</span><span class="value">${standing.club}</span></p></div>`
-    : "";
-
-  const delay1 = standing.title ? 40 : 0;
-  const delay2 = standing.title ? 80 : 40;
+      <div class="wc-intro-divider"></div>`
+    : `<div class="wc-intro-divider"></div>`;
 
   return `
-    <div class="player-card is-entering">
-      <div class="photo-container">
-        <div class="photo-wrapper">
-          ${photoHtml}
-          <div class="rank-badge ${medal}">
-            <span class="rank-number">${standing.rank}</span>
-          </div>
-        </div>
+<div class="wc-intro${noSponsorClass}">
+  <div class="wc-intro-glow"></div>
+
+  <div class="wc-intro-particles">
+    <div class="wc-intro-particle"></div>
+    <div class="wc-intro-particle"></div>
+    <div class="wc-intro-particle"></div>
+    <div class="wc-intro-particle"></div>
+    <div class="wc-intro-particle"></div>
+    <div class="wc-intro-particle"></div>
+    <div class="wc-intro-particle"></div>
+    <div class="wc-intro-particle"></div>
+  </div>
+
+  <div class="wc-intro-corner wc-intro-corner--tl"></div>
+  <div class="wc-intro-corner wc-intro-corner--tr"></div>
+  <div class="wc-intro-corner wc-intro-corner--bl"></div>
+  <div class="wc-intro-corner wc-intro-corner--br"></div>
+
+  <div class="wc-intro-content">
+    ${sponsorHTML}
+    <h1 class="wc-intro-title">${tournamentName}</h1>
+    <p class="wc-intro-subtitle">Winners Ceremony</p>
+  </div>
+
+  <div class="wc-intro-hint">Press <kbd>Space</kbd> to begin</div>
+</div>`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Show a player card                                                 */
+/* ------------------------------------------------------------------ */
+
+async function showPlayer(index: number): Promise<void> {
+  currentIndex = index;
+  const standing = standings[currentIndex];
+
+  const slot = document.getElementById("playerSlot");
+  if (!slot) return;
+
+  slot.innerHTML = buildCard(standing);
+
+  // Force reflow
+  slot.offsetHeight;
+
+  const card = slot.querySelector(".wc") as HTMLElement | null;
+  if (card) {
+    return new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        card.classList.add("in");
+        setTimeout(resolve, 900);
+      });
+    });
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Exit animation                                                     */
+/* ------------------------------------------------------------------ */
+
+function exitCurrent(): Promise<void> {
+  return new Promise((resolve) => {
+    const slot = document.getElementById("playerSlot");
+    const card = slot?.querySelector(".wc") as HTMLElement | null;
+    if (!card) { resolve(); return; }
+
+    card.classList.remove("in");
+    card.classList.add("out");
+
+    setTimeout(() => {
+      card.remove();
+      resolve();
+    }, 500);
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/*  Build card HTML                                                    */
+/* ------------------------------------------------------------------ */
+
+function buildCard(s: Standing): string {
+  const rank = s.rank;
+
+  // Medal config
+  const medalConfig = getMedalConfig(rank);
+
+  // Photo
+  const photoUrl = s.fideId ? `/api/player-photo/fide_${s.fideId}.jpg` : "";
+  const initials = s.name.split(" ").slice(0, 2).map((w) => w[0]).join("");
+
+  const photoHTML = photoUrl
+    ? `<img class="wc-photo-img" src="${photoUrl}" alt="" />`
+    : `<div class="wc-photo-fallback"><span>${initials}</span></div>`;
+
+  const titleHTML = s.title
+    ? `<span class="wc-title-badge">${s.title}</span>`
+    : "";
+
+  const clubHTML = s.club
+    ? `<div class="wc-meta-row"><span class="wc-meta-label">Club</span><span class="wc-meta-value">${s.club}</span></div>`
+    : "";
+
+  const fedHTML = s.fed
+    ? `<span class="wc-fed">${s.fed}</span>`
+    : "";
+
+  return `
+<div class="wc">
+  <!-- Photo (left) -->
+  <div class="wc-photo">
+    ${photoHTML}
+  </div>
+
+  <!-- Blades -->
+  <div class="wc-blade wc-blade-1"></div>
+  <div class="wc-blade wc-blade-2"></div>
+
+  <!-- Info (right) -->
+  <div class="wc-info">
+    <div class="wc-info-inner">
+      <div class="wc-medal ${medalConfig.cssClass}">
+        ${medalConfig.iconHTML}
+        <span class="wc-medal-label">${medalConfig.label}</span>
       </div>
 
-      <div class="info-container">
-        <div class="info-card">
-          ${titleHtml}
-          <div class="info-section" style="--delay: ${delay1}ms">
-            <h1 class="player-name">${standing.name}</h1>
-          </div>
-          <div class="info-section" style="--delay: ${delay2}ms">
-            <p class="rank-label">${rankLabel}</p>
-          </div>
-          ${federationHtml}
-          ${clubHtml}
-        </div>
+      ${titleHTML}
+
+      <h1 class="wc-name">${s.name}</h1>
+
+      <div class="wc-meta">
+        ${clubHTML}
+        ${fedHTML}
       </div>
     </div>
-  `;
+  </div>
+</div>`;
 }
 
-// Initialize when DOM is ready
+/* ------------------------------------------------------------------ */
+/*  Medal helpers                                                      */
+/* ------------------------------------------------------------------ */
+
+interface MedalConfig {
+  cssClass: string;
+  iconHTML: string;
+  label: string;
+}
+
+function getMedalConfig(rank: number): MedalConfig {
+  switch (rank) {
+    case 1:
+      return {
+        cssClass: "wc-medal--gold",
+        iconHTML: `<span class="wc-medal-icon">\u{1F947}</span>`,
+        label: "1st Place",
+      };
+    case 2:
+      return {
+        cssClass: "wc-medal--silver",
+        iconHTML: `<span class="wc-medal-icon">\u{1F948}</span>`,
+        label: "2nd Place",
+      };
+    case 3:
+      return {
+        cssClass: "wc-medal--bronze",
+        iconHTML: `<span class="wc-medal-icon">\u{1F949}</span>`,
+        label: "3rd Place",
+      };
+    default:
+      return {
+        cssClass: "",
+        iconHTML: `<span class="wc-medal-badge">${rank}</span>`,
+        label: `${rank}th Place`,
+      };
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Lifecycle                                                          */
+/* ------------------------------------------------------------------ */
+
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initWinnersPresentation);
+  document.addEventListener("DOMContentLoaded", init);
 } else {
-  initWinnersPresentation();
+  init();
 }
 
-// Re-initialize on Astro navigation
 document.addEventListener("astro:after-swap", () => {
-  currentIndex = 0;
-  isNavigating = false;
-  initWinnersPresentation();
+  currentIndex = -1;
+  busy = false;
+  introActive = true;
+  init();
 });

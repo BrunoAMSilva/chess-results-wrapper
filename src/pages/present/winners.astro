@@ -1,18 +1,16 @@
 ---
-import Layout from "../../layouts/TVLayout.astro";
 import WinnersCarousel from "../../components/presenter/WinnersCarousel.astro";
 import ErrorCard from "../../components/app/ErrorCard.astro";
-import EmptyState from "../../components/app/EmptyState.astro";
-import Icon from "../../components/app/Icon.astro";
+import BaseHead from "../../components/app/BaseHead.astro";
 import { scrapeStandings } from "../../lib/scraper";
 import { getTournamentConfig } from "../../lib/db";
-import { useTranslations } from "../../i18n/ui";
-import { extractPageParams, resolveTournamentDisplay } from "../../lib/page-context";
+import { useTranslations, languages } from "../../i18n/ui";
+import { extractPageParams, resolveTournamentDisplay, resolveSponsorConfig } from "../../lib/page-context";
 import { WINNERS_PRESENTATION_START_RANK_DEFAULT } from "../../lib/constants";
+import "../../styles/global.css";
 
 const { tid, lang } = extractPageParams(Astro.url, Astro.cookies);
 
-// Get start rank from URL param or tournament config
 const startRankParam = Astro.url.searchParams.get("startRank");
 let startRank = startRankParam ? parseInt(startRankParam) : null;
 
@@ -22,6 +20,7 @@ if (!startRank || startRank < 1) {
 }
 
 const t = useTranslations(lang);
+const langCode = languages[lang as keyof typeof languages] || 'en';
 
 let data;
 let error: string | null = null;
@@ -32,44 +31,51 @@ try {
   error = e instanceof Error ? e.message : t('error.load');
 }
 
-// Filter standings: include only those with rank >= startRank, sorted ascending (lowest rank first)
 const allStandings = data?.standings || [];
+// Filter to top N, then reverse so we go from lowest (e.g. 3rd) down to 1st
 const filteredStandings = allStandings
-  .filter((s) => s.rank >= startRank)
-  .sort((a, b) => a.rank - b.rank);
+  .filter((s) => s.rank >= 1 && s.rank <= startRank!)
+  .sort((a, b) => b.rank - a.rank); // 3, 2, 1
 
 const { sectionTitle, eyebrow: tournamentEyebrow } = resolveTournamentDisplay(
   data?.info,
   t('site.title')
 );
+
+const { sponsorImage, sponsorAlt } = resolveSponsorConfig(Astro.url, tid);
 ---
 
-<Layout title={sectionTitle} eyebrow={tournamentEyebrow} lang={lang}>
-  <div class="container">
-    {error && <ErrorCard hint={t('error.hint')}><p>{error}</p></ErrorCard>}
-
-    {data && filteredStandings.length === 0 && (
-      <EmptyState message={`No players from rank ${startRank} onwards`}>
-        <Icon slot="icon" name="info" size={24} />
-      </EmptyState>
-    )}
-
-    {data && filteredStandings.length > 0 && (
+<!doctype html>
+<html lang={langCode}>
+  <head>
+    <BaseHead title={`${sectionTitle} | ViteChess`} />
+    <style is:global>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); }
+    </style>
+  </head>
+  <body>
+    {error ? (
+      <div style="display:flex;align-items:center;justify-content:center;height:100vh;">
+        <ErrorCard hint={t('error.hint')}><p>{error}</p></ErrorCard>
+      </div>
+    ) : filteredStandings.length === 0 ? (
+      <div style="display:flex;align-items:center;justify-content:center;height:100vh;color:var(--text-dim);">
+        <p>No standings data available.</p>
+      </div>
+    ) : (
       <WinnersCarousel
         standings={filteredStandings}
         tournamentId={tid}
         lang={lang}
+        tournamentName={sectionTitle}
+        sponsorImage={sponsorImage}
+        sponsorAlt={sponsorAlt}
       />
     )}
-  </div>
-</Layout>
-
-<style>
-  .container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-</style>
+    <script>
+      import { getFirebaseAnalytics } from "../../lib/firebase-client";
+      getFirebaseAnalytics();
+    </script>
+  </body>
+</html>

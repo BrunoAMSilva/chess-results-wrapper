@@ -1,4 +1,4 @@
-export const DEFAULT_TOURNAMENT = "1361358";
+export const DEFAULT_TOURNAMENT = "1356759";
 export const ROWS_PER_PAGE = 9;
 export const PRESENTER_PAIRINGS_PER_PAGE = 16;
 export const CAROUSEL_INTERVAL = 10; // seconds
