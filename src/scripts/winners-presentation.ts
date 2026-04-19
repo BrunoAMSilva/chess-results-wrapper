@@ -18,6 +18,8 @@ let standings: Standing[] = [];
 let currentIndex = -1; // -1 = nothing shown yet
 let tournamentId = "";
 let tournamentName = "";
+let tournamentDate = "";
+let tournamentLocation = "";
 let sponsorImage = "";
 let sponsorAlt = "";
 let lang = "0";
@@ -43,6 +45,8 @@ function init(): void {
 
   tournamentId = stage.dataset.tournamentId ?? "";
   tournamentName = stage.dataset.tournamentName ?? "";
+  tournamentDate = stage.dataset.tournamentDate ?? "";
+  tournamentLocation = stage.dataset.tournamentLocation ?? "";
   sponsorImage = stage.dataset.sponsorImage ?? "";
   sponsorAlt = stage.dataset.sponsorAlt ?? "Sponsor";
   lang = stage.dataset.lang ?? "0";
@@ -161,6 +165,14 @@ function buildIntro(): string {
       <div class="wc-intro-divider"></div>`
     : `<div class="wc-intro-divider"></div>`;
 
+  const dateHTML = tournamentDate
+    ? `<p class="wc-intro-date">${tournamentDate}</p>`
+    : "";
+
+  const locationHTML = tournamentLocation
+    ? `<p class="wc-intro-location">${tournamentLocation}</p>`
+    : "";
+
   return `
 <div class="wc-intro${noSponsorClass}">
   <div class="wc-intro-glow"></div>
@@ -183,7 +195,11 @@ function buildIntro(): string {
 
   <div class="wc-intro-content">
     ${sponsorHTML}
-    <h1 class="wc-intro-title">${tournamentName}</h1>
+    <div class="wc-intro-title-block">
+      <h1 class="wc-intro-title">${tournamentName}</h1>
+      ${dateHTML}
+      ${locationHTML}
+    </div>
     <p class="wc-intro-subtitle">Winners Ceremony</p>
   </div>
 
@@ -261,7 +277,7 @@ function buildCard(s: Standing): string {
     : "";
 
   const clubHTML = s.club
-    ? `<div class="wc-meta-row"><span class="wc-meta-label">Club</span><span class="wc-meta-value">${s.club}</span></div>`
+    ? `<div class="wc-meta-row"><span class="wc-meta-value">${s.club}</span></div>`
     : "";
 
   const fedHTML = s.fed

@@ -42,6 +42,9 @@ const { sectionTitle, eyebrow: tournamentEyebrow } = resolveTournamentDisplay(
   t('site.title')
 );
 
+const tournamentDate = data?.info?.date || "";
+const tournamentLocation = data?.info?.location || "";
+
 const { sponsorImage, sponsorAlt } = resolveSponsorConfig(Astro.url, tid);
 ---
 
@@ -69,6 +72,8 @@ const { sponsorImage, sponsorAlt } = resolveSponsorConfig(Astro.url, tid);
         tournamentId={tid}
         lang={lang}
         tournamentName={sectionTitle}
+        tournamentDate={tournamentDate}
+        tournamentLocation={tournamentLocation}
         sponsorImage={sponsorImage}
         sponsorAlt={sponsorAlt}
       />
