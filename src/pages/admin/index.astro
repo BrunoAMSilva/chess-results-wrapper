@@ -72,6 +72,15 @@ const user = Astro.locals.user;
               placeholder="e.g. 1356759"
               required
             />
+            <label class="tool-label" for="winners-rank">From rank</label>
+            <input
+              class="tool-input tool-input--narrow"
+              type="number"
+              id="winners-rank"
+              name="startRank"
+              value="3"
+              min="1"
+            />
             <input type="hidden" name="lang" value="1" />
             <button type="submit" class="tool-btn">Launch</button>
           </div>
@@ -218,6 +227,11 @@ const user = Astro.locals.user;
 
   .tool-input:focus {
     border-color: var(--accent);
+  }
+
+  .tool-input--narrow {
+    flex: 0 0 3.5rem;
+    text-align: center;
   }
 
   .tool-btn {

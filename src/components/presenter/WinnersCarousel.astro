@@ -8,6 +8,8 @@ interface Props {
   tournamentName: string;
   tournamentDate?: string;
   tournamentLocation?: string;
+  startRank: number;
+  totalPlayers: number;
   sponsorImage?: string;
   sponsorAlt?: string;
 }
@@ -15,6 +17,7 @@ interface Props {
 const {
   standings, tournamentId, lang, tournamentName,
   tournamentDate = "", tournamentLocation = "",
+  startRank, totalPlayers,
   sponsorImage = "", sponsorAlt = "Sponsor",
 } = Astro.props;
 ---
@@ -29,6 +32,8 @@ const {
   data-tournament-location={tournamentLocation}
   data-sponsor-image={sponsorImage}
   data-sponsor-alt={sponsorAlt}
+  data-start-rank={String(startRank)}
+  data-total-players={String(totalPlayers)}
 >
   <script type="application/json" id="standings-data" set:html={JSON.stringify(standings)} />
 
@@ -347,6 +352,62 @@ const {
     transform: translateY(0);
   }
 
+  /* Rank picker — bottom of intro, above the hint */
+  .wc-intro-rank-picker {
+    position: absolute;
+    bottom: 5.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.6s ease 1.8s;
+  }
+
+  .wc-intro.in .wc-intro-rank-picker {
+    opacity: 1;
+  }
+
+  .wc-intro-rank-picker label {
+    font-size: var(--text-sm);
+    color: var(--text-muted);
+    font-weight: var(--weight-medium);
+    white-space: nowrap;
+  }
+
+  .wc-rank-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text);
+    font-size: 1.1rem;
+    font-weight: var(--weight-bold);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    line-height: 1;
+  }
+
+  .wc-rank-btn:hover {
+    background: rgba(252, 211, 77, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .wc-rank-value {
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    font-weight: var(--weight-bold);
+    color: var(--accent);
+    min-width: 2rem;
+    text-align: center;
+  }
+
   /* Intro hint */
   .wc-intro-hint {
     position: absolute;
@@ -387,6 +448,7 @@ const {
   .wc-intro.out .wc-intro-date,
   .wc-intro.out .wc-intro-location,
   .wc-intro.out .wc-intro-subtitle,
+  .wc-intro.out .wc-intro-rank-picker,
   .wc-intro.out .wc-intro-hint {
     opacity: 0;
     transform: scale(0.92);

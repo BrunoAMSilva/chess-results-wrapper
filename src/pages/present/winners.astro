@@ -74,6 +74,8 @@ const { sponsorImage, sponsorAlt } = resolveSponsorConfig(Astro.url, tid);
         tournamentName={sectionTitle}
         tournamentDate={tournamentDate}
         tournamentLocation={tournamentLocation}
+        startRank={startRank!}
+        totalPlayers={allStandings.length}
         sponsorImage={sponsorImage}
         sponsorAlt={sponsorAlt}
       />
