@@ -9,6 +9,9 @@ import {
   getTournament,
   getPairingsFromDb,
   getStandingsFromDb,
+  upsertPlayer,
+  linkPlayerToTournament,
+  upsertTournament,
 } from './db';
 import db from './db';
 
@@ -370,6 +373,56 @@ import type { Standing } from './types';
  * Scrape art=9 player card pages for all players in a tournament.
  * Extracts birth year, national ID, performance rating, rating change, national rating.
  */
+/**
+ * Scrape the starting rank list (art=0) for a tournament.
+ * Upserts players and their tournament links with FIDE IDs, ratings, etc.
+ * Does NOT write to the standings table — only populates player data.
+ * Also fetches art=9 player cards for national IDs and birth years.
+ * Returns the number of players processed.
+ */
+export async function scrapeStartingRank(
+  tournamentId: string,
+): Promise<number> {
+  const url = `${BASE_URL}/tnr${tournamentId}.aspx?lan=${SCRAPE_LANG}&art=0&turdet=YES`;
+  const html = await fetchTournamentHtml(url, tournamentId);
+
+  const data = parseStandingsHtml(html);
+  if (data.standings.length === 0) return 0;
+
+  upsertTournament(data.info, tournamentId);
+
+  for (const s of data.standings) {
+    // For art=0, startingNumber may be 0 because the header is "No." not "SNo".
+    // Use rank (= starting position) as the fallback starting number.
+    const sno = s.startingNumber || s.rank;
+    const playerId = upsertPlayer(
+      s.name,
+      s.fed,
+      s.sex,
+      s.fideId || null,
+      null,
+      null,
+      s.title,
+    );
+    linkPlayerToTournament(
+      tournamentId,
+      playerId,
+      sno,
+      s.rating ? Number.parseInt(s.rating, 10) || null : null,
+      s.club,
+    );
+  }
+
+  // Backfill player cards (national ID, birth year, performance rating, etc.)
+  const standingsWithSno = data.standings.map(s => ({
+    ...s,
+    startingNumber: s.startingNumber || s.rank,
+  }));
+  await scrapePlayerCards(tournamentId, standingsWithSno);
+
+  return data.standings.length;
+}
+
 async function scrapePlayerCards(
   tournamentId: string,
   standings: Standing[],
@@ -460,6 +513,15 @@ async function scrapeStandingsFromRemote(
 
   if (!result) {
     throw new Error(`No standings found for tournament ${tournamentId}`);
+  }
+
+  // If standings are still empty (e.g. Round 0 / pre-tournament), fall back to
+  // the starting rank list (art=0) to at least populate players with FIDE IDs.
+  // We do NOT write to the standings table for this — only player rows.
+  if (result.standings.length === 0) {
+    try {
+      await scrapeStartingRank(tournamentId);
+    } catch (_) { /* non-critical */ }
   }
 
   // Crosstables (art=4) lack the sex column, team standings, and sometimes startingNumbers.

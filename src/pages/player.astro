@@ -6,7 +6,7 @@ import PlayerName from "../components/player/PlayerName.astro";
 import PlayerRoundRow from "../components/player/PlayerRoundRow.astro";
 import TieBreaks from "../components/standings/TieBreaks.astro";
 import { scrapePairings, scrapeStandings } from "../lib/scraper";
-import { getPlayerTitleMap } from "../lib/db";
+import { getPlayerTitleMap, findPlayerByIdentity } from "../lib/db";
 import { reverseName } from "../lib/utils";
 import { useTranslations } from "../i18n/ui";
 import { DEFAULT_TOURNAMENT } from "../lib/constants";
@@ -165,6 +165,12 @@ const profileHref = `/player-profile?name=${encodeURIComponent(canonicalPlayerNa
 
 let titleMap: Record<string, string> = {};
 try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
+
+let playerPhotoUrl = "/images/avatar-placeholder.png";
+try {
+  const dbPlayer = findPlayerByIdentity(canonicalPlayerName, playerFed);
+  if (dbPlayer?.photo_url) playerPhotoUrl = dbPlayer.photo_url;
+} catch (_) {}
 ---
 
 <MobileLayout title={pageTitle} lang={lang}>
@@ -177,7 +183,7 @@ try { titleMap = getPlayerTitleMap(tid); } catch (_) {}
   {playerName && (
     <section class="hero-section">
       <div class="hero-image-container">
-        <img class="hero-image" alt="Player Identity Avatar" src="/images/avatar-placeholder.png" />
+        <img class="hero-image" alt="Player Identity Avatar" src={playerPhotoUrl} />
         <div class="hero-image-gradient">
           <span class="hero-tag">{playerClub || playerFed || "Player Profile"}</span>
         </div>

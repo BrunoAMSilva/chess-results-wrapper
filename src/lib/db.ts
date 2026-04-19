@@ -1123,10 +1123,13 @@ export function getPlayerById(playerId: number): DbPlayer | undefined {
   return db.prepare('SELECT * FROM players WHERE id = ?').get(playerId) as DbPlayer | undefined;
 }
 
-export function findPlayerByNationalId(nationalId: string): DbPlayer | undefined {
-  const normalized = nationalId.trim();
-  if (!normalized) return undefined;
-  return db.prepare('SELECT * FROM players WHERE national_id = ? LIMIT 1').get(normalized) as DbPlayer | undefined;
+export function findPlayerByNationalId(nationalId: string, federation: string): DbPlayer | undefined {
+  const normalizedId = nationalId.trim();
+  const normalizedFed = federation.trim();
+  if (!normalizedId || !normalizedFed) return undefined;
+  return db.prepare(
+    'SELECT * FROM players WHERE national_id = ? AND federation = ? LIMIT 1',
+  ).get(normalizedId, normalizedFed) as DbPlayer | undefined;
 }
 
 export function findPlayerByFideIdExact(fideId: string): DbPlayer | undefined {

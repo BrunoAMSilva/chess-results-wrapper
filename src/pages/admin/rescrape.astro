@@ -1,0 +1,172 @@
+---
+import ResponsiveLayout from "../../layouts/ResponsiveLayout.astro";
+import { resolvePageLang } from "../../lib/page-lang";
+
+const lang = resolvePageLang(Astro.url, Astro.cookies);
+const prefillTid = Astro.url.searchParams.get("tid") ?? "";
+---
+
+<ResponsiveLayout title="Admin – Rescrape Tournament" lang={lang} navMode="none">
+  <div class="admin-container">
+    <h2 class="admin-title">Refresh Tournament Player Data</h2>
+    <p class="admin-subtitle">
+      Fetches the starting rank list (<code>art=0</code>) and player cards (<code>art=9</code>)
+      from chess-results.com to fill in missing FIDE IDs, national IDs, ratings, and birth years.
+      Safe to run at any time — only updates players, never overwrites standings.
+    </p>
+
+    <form id="rescrape-form" class="rescrape-form" novalidate>
+      <label class="field-label">
+        <span>Tournament ID</span>
+        <input
+          type="text"
+          id="tid"
+          name="tid"
+          class="field-input"
+          placeholder="e.g. 1356759"
+          value={prefillTid}
+          autocomplete="off"
+          inputmode="numeric"
+          required
+        />
+      </label>
+
+      <div id="status-msg" class="status-msg" role="status" aria-live="polite"></div>
+
+      <button type="submit" id="submit-btn" class="btn-primary">Refresh players</button>
+    </form>
+
+    <p class="admin-hint">
+      Also runs automatically the first time a round-0 tournament page is visited.
+    </p>
+  </div>
+
+  <script>
+    const form = document.getElementById("rescrape-form") as HTMLFormElement;
+    const tidInput = document.getElementById("tid") as HTMLInputElement;
+    const statusMsg = document.getElementById("status-msg") as HTMLDivElement;
+    const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
+
+    function showStatus(msg: string, kind: "success" | "error" | "info") {
+      statusMsg.textContent = msg;
+      statusMsg.className = `status-msg status-msg--${kind}`;
+    }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const tid = tidInput.value.trim();
+      if (!tid) { showStatus("Please enter a tournament ID.", "error"); return; }
+
+      submitBtn.disabled = true;
+      showStatus("Scraping… this may take a moment.", "info");
+
+      try {
+        const res = await fetch("/api/admin/rescrape-tournament", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tid }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showStatus(`Done — ${data.players_updated} player(s) refreshed.`, "success");
+        } else {
+          showStatus(data.error ?? "Scrape failed.", "error");
+        }
+      } catch {
+        showStatus("Network error.", "error");
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</ResponsiveLayout>
+
+<style>
+  .admin-container {
+    max-width: 480px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+
+  .admin-title {
+    font-size: var(--text-xl, 1.5rem);
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+  }
+
+  .admin-subtitle {
+    font-size: var(--text-sm, 0.875rem);
+    color: var(--text-secondary, #6b7280);
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
+
+  .admin-hint {
+    margin-top: 1rem;
+    font-size: var(--text-xs, 0.75rem);
+    color: var(--text-secondary, #6b7280);
+  }
+
+  code {
+    background: var(--surface-elevated, #f3f4f6);
+    padding: 0.1em 0.3em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+
+  .rescrape-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .field-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 500;
+  }
+
+  .field-input {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border, #d1d5db);
+    border-radius: 0.5rem;
+    background: var(--surface-elevated, #fff);
+    color: var(--text-primary, #111);
+    font-size: var(--text-sm, 0.875rem);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .field-input:focus { border-color: var(--primary, #4f46e5); }
+
+  .status-msg {
+    min-height: 1.25rem;
+    font-size: var(--text-sm, 0.875rem);
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .status-msg:empty { padding: 0; }
+
+  .status-msg--success { background: var(--success-surface, #d1fae5); color: var(--success-text, #065f46); }
+  .status-msg--error   { background: var(--error-surface, #fee2e2);   color: var(--error-text, #991b1b); }
+  .status-msg--info    { background: var(--info-surface, #e0f2fe);    color: var(--info-text, #075985); }
+
+  .btn-primary {
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.5rem;
+    font-size: var(--text-sm, 0.875rem);
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: var(--primary, #4f46e5);
+    color: #fff;
+    transition: opacity 0.15s;
+    align-self: flex-start;
+  }
+
+  .btn-primary:hover:not(:disabled) { opacity: 0.9; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>

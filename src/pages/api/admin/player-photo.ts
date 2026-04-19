@@ -44,12 +44,20 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const nationalId = (formData.get("national_id") as string | null)?.trim() || "";
+  const federation = (formData.get("federation") as string | null)?.trim() || "";
   const fideId = (formData.get("fide_id") as string | null)?.trim() || "";
   const photoFile = formData.get("photo");
 
   if (!nationalId && !fideId) {
     return new Response(
       JSON.stringify({ error: "Provide national_id or fide_id" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (nationalId && !federation) {
+    return new Response(
+      JSON.stringify({ error: "federation is required when using national_id" }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
@@ -76,7 +84,7 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   // Resolve player
-  let player = nationalId ? findPlayerByNationalId(nationalId) : undefined;
+  let player = nationalId ? findPlayerByNationalId(nationalId, federation) : undefined;
   if (!player && fideId) player = findPlayerByFideIdExact(fideId);
 
   if (!player || !player.id) {
@@ -112,7 +120,7 @@ export const POST: APIRoute = async ({ request }) => {
 };
 
 export const DELETE: APIRoute = async ({ request }) => {
-  let body: { national_id?: string; fide_id?: string };
+  let body: { national_id?: string; federation?: string; fide_id?: string };
   try {
     body = await request.json();
   } catch {
@@ -123,6 +131,7 @@ export const DELETE: APIRoute = async ({ request }) => {
   }
 
   const nationalId = body.national_id?.trim() || "";
+  const federation = body.federation?.trim() || "";
   const fideId = body.fide_id?.trim() || "";
 
   if (!nationalId && !fideId) {
@@ -132,7 +141,14 @@ export const DELETE: APIRoute = async ({ request }) => {
     );
   }
 
-  let player = nationalId ? findPlayerByNationalId(nationalId) : undefined;
+  if (nationalId && !federation) {
+    return new Response(
+      JSON.stringify({ error: "federation is required when using national_id" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  let player = nationalId ? findPlayerByNationalId(nationalId, federation) : undefined;
   if (!player && fideId) player = findPlayerByFideIdExact(fideId);
 
   if (!player || !player.id) {

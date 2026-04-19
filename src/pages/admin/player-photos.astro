@@ -1,6 +1,7 @@
 ---
 import ResponsiveLayout from "../../layouts/ResponsiveLayout.astro";
 import { resolvePageLang } from "../../lib/page-lang";
+import { FIDE_FEDERATIONS } from "../../lib/federations";
 
 const lang = resolvePageLang(Astro.url, Astro.cookies);
 
@@ -39,6 +40,27 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
         </label>
       </div>
 
+      <div id="federation-row" class="field-group field-group--single">
+        <label class="field-label">
+          <span>Federation <span class="field-required">(required for National ID)</span></span>
+          <input
+            type="text"
+            name="federation"
+            id="federation"
+            class="field-input"
+            placeholder="e.g. POR – Portugal"
+            autocomplete="off"
+            list="fed-list"
+            maxlength="10"
+          />
+          <datalist id="fed-list">
+            {FIDE_FEDERATIONS.map(({ code, name }) => (
+              <option value={code}>{name}</option>
+            ))}
+          </datalist>
+        </label>
+      </div>
+
       <label class="drop-zone" id="drop-zone">
         <input
           type="file"
@@ -72,6 +94,8 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
     const form = document.getElementById("upload-form") as HTMLFormElement;
     const idType = document.getElementById("id-type") as HTMLSelectElement;
     const idValue = document.getElementById("id-value") as HTMLInputElement;
+    const federationInput = document.getElementById("federation") as HTMLInputElement;
+    const federationRow = document.getElementById("federation-row") as HTMLDivElement;
     const photoInput = document.getElementById("photo-input") as HTMLInputElement;
     const dropZone = document.getElementById("drop-zone") as HTMLLabelElement;
     const dropContent = document.getElementById("drop-zone-content") as HTMLDivElement;
@@ -79,6 +103,15 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
     const statusMsg = document.getElementById("status-msg") as HTMLDivElement;
     const submitBtn = document.getElementById("submit-btn") as HTMLButtonElement;
     const deleteBtn = document.getElementById("delete-btn") as HTMLButtonElement;
+
+    function updateFederationVisibility() {
+      const show = idType.value === "national_id";
+      federationRow.style.display = show ? "" : "none";
+      federationInput.required = show;
+    }
+
+    idType.addEventListener("change", updateFederationVisibility);
+    updateFederationVisibility();
 
     function showStatus(msg: string, kind: "success" | "error" | "info") {
       statusMsg.textContent = msg;
@@ -116,7 +149,6 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
       dropZone.classList.remove("drop-zone--active");
       const file = e.dataTransfer?.files[0];
       if (file) {
-        // Replace the input's file list (DataTransfer trick)
         const dt = new DataTransfer();
         dt.items.add(file);
         photoInput.files = dt.files;
@@ -131,11 +163,16 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
       const file = photoInput.files?.[0];
       if (!file) { showStatus("Please select a photo.", "error"); return; }
 
+      const useNationalId = idType.value === "national_id";
+      const fed = federationInput.value.trim().toUpperCase();
+      if (useNationalId && !fed) { showStatus("Please enter the federation code.", "error"); return; }
+
       submitBtn.disabled = true;
       showStatus("Uploading…", "info");
 
       const fd = new FormData();
       fd.append(idType.value, value);
+      if (useNationalId) fd.append("federation", fed);
       fd.append("photo", file);
 
       try {
@@ -157,12 +194,17 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
       const value = idValue.value.trim();
       if (!value) { showStatus("Please enter an identifier value.", "error"); return; }
 
+      const useNationalId = idType.value === "national_id";
+      const fed = federationInput.value.trim().toUpperCase();
+      if (useNationalId && !fed) { showStatus("Please enter the federation code.", "error"); return; }
+
       deleteBtn.disabled = true;
       showStatus("Removing…", "info");
 
       try {
         const body: Record<string, string> = {};
         body[idType.value] = value;
+        if (useNationalId) body.federation = fed;
         const res = await fetch("/api/admin/player-photo", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
@@ -216,8 +258,18 @@ const lang = resolvePageLang(Astro.url, Astro.cookies);
     gap: 0.75rem;
   }
 
+  .field-group--single {
+    grid-template-columns: 1fr;
+  }
+
   @media (max-width: 480px) {
     .field-group { grid-template-columns: 1fr; }
+  }
+
+  .field-required {
+    font-weight: 400;
+    color: var(--text-secondary, #6b7280);
+    font-size: var(--text-xs, 0.75rem);
   }
 
   .field-label {

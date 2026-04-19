@@ -79,7 +79,7 @@ const recentPlayerCount = !isTeamView
     />
   )}
 
-  {data && (
+  {data && playerList.length === 0 && (
       <RoundSelector
         rounds={rounds}
         activeRound={round}
