@@ -23,8 +23,6 @@ let tournamentDate = "";
 let tournamentLocation = "";
 let sponsorImage = "";
 let sponsorAlt = "";
-let startRank = 3;
-let totalPlayers = 0;
 let lang = "0";
 let busy = false;
 let introActive = true; // starts with intro visible
@@ -52,8 +50,6 @@ function init(): void {
   tournamentLocation = stage.dataset.tournamentLocation ?? "";
   sponsorImage = stage.dataset.sponsorImage ?? "";
   sponsorAlt = stage.dataset.sponsorAlt ?? "Sponsor";
-  startRank = parseInt(stage.dataset.startRank ?? "3", 10);
-  totalPlayers = parseInt(stage.dataset.totalPlayers ?? "0", 10);
   lang = stage.dataset.lang ?? "0";
 
   document.addEventListener("keydown", onKey);
@@ -140,25 +136,6 @@ function showIntro(): void {
   const intro = slot.querySelector(".wc-intro") as HTMLElement | null;
   if (intro) {
     requestAnimationFrame(() => intro.classList.add("in"));
-  }
-
-  // Wire rank picker
-  const picker = document.getElementById("rankPicker");
-  if (picker) {
-    picker.addEventListener("click", (e) => {
-      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".wc-rank-btn");
-      if (!btn) return;
-      e.stopPropagation(); // don't trigger advance
-
-      const delta = parseInt(btn.dataset.delta ?? "0", 10);
-      const newRank = Math.max(1, Math.min(totalPlayers, startRank + delta));
-      if (newRank === startRank) return;
-
-      // Reload with new startRank
-      const url = new URL(window.location.href);
-      url.searchParams.set("startRank", String(newRank));
-      window.location.href = url.toString();
-    });
   }
 }
 
