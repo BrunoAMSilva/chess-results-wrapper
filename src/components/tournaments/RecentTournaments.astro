@@ -36,18 +36,26 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
     gap: var(--space-2);
   }
 
-  .recent-card-reveal {
+  :global(.recent-card-reveal) {
     opacity: 0;
     transform: translateY(16px);
-    transition:
-      opacity 0.5s var(--ease-out),
-      transform 0.5s var(--ease-out);
-    transition-delay: calc(var(--recent-i, 0) * 60ms + 120ms);
   }
 
-  .recent-card-reveal.is-visible {
-    opacity: 1;
-    transform: translateY(0);
+  :global(.recent-card-reveal.is-visible) {
+    animation: recentCardReveal 0.5s var(--ease-out) both;
+    animation-delay: calc(var(--recent-i, 0) * 60ms + 120ms);
+  }
+
+  @keyframes recentCardReveal {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   /* ── Card base ─────────────────────────────────────────────── */
