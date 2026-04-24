@@ -12,5 +12,11 @@ export default defineConfig({
     mode: 'standalone',
   }),
 
+  vite: {
+    optimizeDeps: {
+      exclude: ['firebase/app', 'firebase/analytics', 'firebase/auth'],
+    },
+  },
+
   integrations: [chessDevToolbar()],
 });

@@ -32,7 +32,11 @@ if (token) {
       <div class="ambient ambient-b"></div>
 
       <main id="maincontent" class="login-container" tabindex="-1">
-        <div class="login-card" data-redirect={redirect}>
+        <div
+          class="login-card"
+          data-redirect={redirect}
+          data-load-error={t('auth.loadError')}
+        >
           <div class="login-header">
             <img class="login-logo" src="/logo.svg" alt="" width="48" height="48" />
             <h1 class="login-title">{t('auth.loginTitle')}</h1>
@@ -65,67 +69,9 @@ if (token) {
     </div>
 
     <script>
-      import { initializeApp } from "firebase/app";
-      import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+      import { initLoginPage } from "../scripts/login";
 
-      const app = initializeApp({
-        apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
-        authDomain: import.meta.env.PUBLIC_FIREBASE_AUTH_DOMAIN,
-        projectId: import.meta.env.PUBLIC_FIREBASE_PROJECT_ID,
-        storageBucket: import.meta.env.PUBLIC_FIREBASE_STORAGE_BUCKET,
-        messagingSenderId: import.meta.env.PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-        appId: import.meta.env.PUBLIC_FIREBASE_APP_ID,
-      });
-
-      const auth = getAuth(app);
-      const provider = new GoogleAuthProvider();
-
-      const card = document.querySelector<HTMLElement>(".login-card")!;
-      const rawRedirectUrl = card.dataset.redirect || "/referee";
-      // Re-validate client-side: only allow relative paths
-      const redirectUrl = rawRedirectUrl.startsWith("/") && !rawRedirectUrl.startsWith("//") ? rawRedirectUrl : "/referee";
-      const btn = document.getElementById("googleSignIn") as HTMLButtonElement;
-      const spinner = document.getElementById("signInSpinner")!;
-      const errorEl = document.getElementById("authError")!;
-      const errorMsg = document.getElementById("authErrorMessage")!;
-
-      btn.addEventListener("click", async () => {
-        btn.disabled = true;
-        btn.hidden = true;
-        spinner.hidden = false;
-        errorEl.hidden = true;
-
-        try {
-          const result = await signInWithPopup(auth, provider);
-          const token = await result.user.getIdToken();
-
-          const res = await fetch("/api/auth", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token }),
-          });
-
-          if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error || "Login failed");
-          }
-
-          window.location.href = redirectUrl;
-        } catch (err: any) {
-          // Don't show error for user-cancelled popup
-          if (err.code === "auth/popup-closed-by-user" || err.code === "auth/cancelled-popup-request") {
-            btn.disabled = false;
-            btn.hidden = false;
-            spinner.hidden = true;
-            return;
-          }
-          errorMsg.textContent = err.message || "Something went wrong";
-          errorEl.hidden = false;
-          btn.disabled = false;
-          btn.hidden = false;
-          spinner.hidden = true;
-        }
-      });
+      initLoginPage();
     </script>
   </body>
 </html>
@@ -257,6 +203,10 @@ if (token) {
     display: flex;
     justify-content: center;
     padding: var(--space-4);
+  }
+
+  .spinner-container[hidden] {
+    display: none;
   }
   .spinner {
     width: 24px;
