@@ -80,6 +80,10 @@
   --radius-xl: 20px;
   --radius-full: 9999px;
 
+  /* ── Sidebar ────────────────────────────────────────────── */
+  --sidebar-width: 16rem;
+  --sidebar-width-collapsed: 5rem;
+
   /* ── Brand / Gold palette ───────────────────────────────── */
   --gold-50:  #fffbeb;
   --gold-100: #fef3c7;

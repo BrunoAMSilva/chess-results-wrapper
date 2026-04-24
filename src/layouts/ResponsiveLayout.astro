@@ -1,7 +1,9 @@
 ---
 import { languages, useTranslations } from "../i18n/ui";
 import BaseHead from "../components/app/BaseHead.astro";
+import DesktopSidebarNav from "../components/app/DesktopSidebarNav.astro";
 import Icon from "../components/app/Icon.astro";
+import type { IconName } from "../lib/ui/icons";
 import "../styles/global.css";
 
 interface Props {
@@ -9,6 +11,15 @@ interface Props {
   eyebrow?: string;
   lang?: number;
   navMode?: "default" | "referee" | "none";
+}
+
+interface DesktopSidebarItem {
+  href?: string;
+  label: string;
+  icon: IconName;
+  active?: boolean;
+  hidden?: boolean;
+  profileNav?: boolean;
 }
 
 const { title, eyebrow, lang = 1, navMode = "default" } = Astro.props;
@@ -24,6 +35,7 @@ const refereeTid = refereeIdMatch ? refereeIdMatch[1] : "";
 if (refereeTid) tid = refereeTid;
 const isPairings = currentPath === "/pairings" || currentPath === "/present";
 const isStandings = currentPath === "/standings";
+const isSearch = currentPath === "/" || currentPath === "/discover";
 const isProfile = currentPath === "/player-profile";
 const isOptions = currentPath === "/options";
 const isReferee = currentPath.startsWith("/referee") || navMode === "referee";
@@ -49,6 +61,89 @@ if (isOptions && navMode === "referee" && tid) {
   if (round) params.push(`round=${round}`);
   refereeBackUrl = `/referee/${tid}?${params.join('&')}`;
 }
+
+const defaultSidebarItems: DesktopSidebarItem[] = [
+  {
+    href: `/?lang=${lang}`,
+    label: t('nav.search'),
+    icon: "search",
+    active: isSearch,
+  },
+  {
+    href: `/pairings?tid=${tid}&lang=${lang}`,
+    label: t('nav.pairings'),
+    icon: "table",
+    active: isPairings,
+  },
+  {
+    href: `/standings?tid=${tid}&lang=${lang}`,
+    label: t('nav.standings'),
+    icon: "bar-chart",
+    active: isStandings,
+  },
+  {
+    href: `/options?tid=${tid}&lang=${lang}`,
+    label: t('nav.settings'),
+    icon: "settings",
+    active: isOptions,
+  },
+  {
+    label: t('nav.profile'),
+    icon: "user",
+    active: isProfile,
+    hidden: true,
+    profileNav: true,
+  },
+];
+
+const refereeSidebarItems: DesktopSidebarItem[] = [
+  {
+    href: refereeTid ? refereeBackUrl : `/referee?lang=${lang}`,
+    label: refereeTid ? t('referee.back') : t('nav.search'),
+    icon: refereeTid ? "arrow-left" : "search",
+  },
+  {
+    href: tid ? `/referee/${tid}?lang=${lang}` : `/referee?lang=${lang}`,
+    label: t('referee.tables'),
+    icon: "table",
+    active: isRefereeTables,
+  },
+  {
+    href: tid ? `/referee/${tid}/results?lang=${lang}` : `/referee?lang=${lang}`,
+    label: t('referee.results'),
+    icon: "file-text",
+    active: isRefereeResults,
+  },
+  {
+    href: tid ? `/referee/${tid}/players?lang=${lang}` : `/referee?lang=${lang}`,
+    label: t('referee.players'),
+    icon: "users",
+    active: isRefereePlayers,
+  },
+  {
+    href: tid ? `/referee/${tid}/settings?lang=${lang}` : `/referee?lang=${lang}`,
+    label: t('referee.upload'),
+    icon: "lock",
+    active: isRefereeSettings,
+  },
+  {
+    href: `/options?${tid ? `tid=${tid}&` : ''}lang=${lang}&mode=referee`,
+    label: t('nav.settings'),
+    icon: "settings",
+    active: isOptions,
+  },
+];
+
+const desktopSidebarItems = navMode === "referee" ? refereeSidebarItems : defaultSidebarItems;
+const desktopSidebarActions: DesktopSidebarItem[] = navMode === "default" && tid
+  ? [
+      {
+        href: `/present?tid=${tid}&lang=${lang}`,
+        label: t('presenter.title'),
+        icon: "monitor",
+      },
+    ]
+  : [];
 ---
 
 <!doctype html>
@@ -58,13 +153,27 @@ if (isOptions && navMode === "referee" && tid) {
   </head>
   <body>
     <a class="skip-link" href="#maincontent">{t('a11y.skipToMain')}</a>
-    <div class="app-shell">
+    <div class="app-shell" data-sidebar-shell data-sidebar-state="expanded">
       <div class="ambient ambient-a"></div>
       <div class="ambient ambient-b"></div>
 
+      {navMode !== "none" && (
+        <DesktopSidebarNav
+          brand={t('site.title')}
+          brandHref={navMode === "referee" ? (tid ? `/referee/${tid}?lang=${lang}` : `/referee?lang=${lang}`) : `/?lang=${lang}`}
+          navLabel={t('sidebar.navigation')}
+          collapseLabel={t('sidebar.collapse')}
+          expandLabel={t('sidebar.expand')}
+          items={desktopSidebarItems}
+          footerActions={desktopSidebarActions}
+        />
+      )}
+
+      <div class="app-stage">
+
       <header class="topbar" transition:name="topbar" transition:animate="none">
         {navMode !== "none" && (
-          <a href={isReferee ? refereeBackUrl : `/?lang=${lang}`} class:list={["topbar-home", { "referee-back": isReferee && !!tid }]} aria-label={isReferee && tid ? t('referee.back') : 'Search'}>
+          <a href={isReferee ? refereeBackUrl : `/?lang=${lang}`} class:list={["topbar-home", { "referee-back": isReferee && !!tid }]} aria-label={isReferee && tid ? t('referee.back') : t('nav.search')}>
             {isReferee && tid ? (
               <Icon name="arrow-left" size={20} />
             ) : (
@@ -76,42 +185,11 @@ if (isOptions && navMode === "referee" && tid) {
           {eyebrow && <p class="page-eyebrow">{eyebrow}</p>}
           <h1 class="page-title">{title}</h1>
         </div>
-        <div class="topbar-left">
-          {navMode === "default" && (
-            <nav class="desktop-nav" aria-label="Main" transition:name="desktop-nav" transition:animate="none">
-              <a
-                href={`/pairings?tid=${tid}&lang=${lang}`}
-                class:list={["desktop-nav-item", { active: isPairings }]}
-                aria-current={isPairings ? "page" : undefined}
-                >{t('nav.pairings')}</a
-              >
-              <a
-                href={`/standings?tid=${tid}&lang=${lang}`}
-                class:list={["desktop-nav-item", { active: isStandings }]}
-                aria-current={isStandings ? "page" : undefined}
-                >{t('nav.standings')}</a
-              >
-              <a
-                href={`/options?tid=${tid}&lang=${lang}`}
-                class:list={["desktop-nav-item", { active: isOptions }]}
-                aria-current={isOptions ? "page" : undefined}
-                >{t('nav.settings')}</a
-              >
-              <a
-                hidden
-                data-profile-nav
-                class:list={["desktop-nav-item", { active: isProfile }]}
-                aria-current={isProfile ? "page" : undefined}
-                >{t('nav.profile')}</a
-              >
-            </nav>
-          )}
-          {navMode === "default" && tid && (
-            <a href={`/present?tid=${tid}&lang=${lang}`} class="presenter-link" aria-label={t('presenter.title')} title={t('presenter.title')}>
-              <Icon name="monitor" size={18} />
-            </a>
-          )}
-        </div>
+        {navMode === "default" && tid && (
+          <a href={`/present?tid=${tid}&lang=${lang}`} class="presenter-link presenter-link--mobile" aria-label={t('presenter.title')} title={t('presenter.title')}>
+            <Icon name="monitor" size={18} />
+          </a>
+        )}
         {authUser && (
           <div class="auth-badge">
             {authUser.picture ? (
@@ -179,7 +257,8 @@ if (isOptions && navMode === "referee" && tid) {
         <nav class="mobile-nav" transition:name="mobile-nav" transition:animate="none">
           <a
             href={`/?lang=${lang}`}
-            class="nav-item"
+            class:list={["nav-item", { active: isSearch }]}
+            aria-current={isSearch ? "page" : undefined}
           >
             <Icon name="search" size={22} />
             <span>{t('nav.search')}</span>
@@ -219,6 +298,7 @@ if (isOptions && navMode === "referee" && tid) {
           </a>
         </nav>
       )}
+      </div>
     </div>
   </body>
 </html>
@@ -290,6 +370,14 @@ if (isOptions && navMode === "referee" && tid) {
     position: relative;
   }
 
+  .app-stage {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    flex-direction: column;
+  }
+
   .ambient {
     position: fixed;
     pointer-events: none;
@@ -326,44 +414,6 @@ if (isOptions && navMode === "referee" && tid) {
     position: sticky;
     top: 0;
     z-index: 5;
-  }
-
-  .topbar-left {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-  }
-
-  .desktop-nav {
-    display: none;
-    align-items: center;
-    gap: 0.45rem;
-    margin-left: 1rem;
-    padding: 0.28rem;
-    border-radius: var(--radius-lg);
-    background: var(--surface-container-low);
-  }
-
-  .desktop-nav-item {
-    text-decoration: none;
-    color: var(--text-dim);
-    padding: 0.45rem 0.78rem;
-    border-radius: calc(var(--radius-lg) - 3px);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-    transition:
-      background var(--duration-fast) var(--ease-in-out),
-      color var(--duration-fast) var(--ease-in-out);
-  }
-
-  .desktop-nav-item:hover {
-    background: var(--surface-hover);
-    color: var(--text);
-  }
-
-  .desktop-nav-item.active {
-    color: var(--seg-active-text);
-    background: var(--seg-active-bg);
   }
 
   .topbar-home {
@@ -403,6 +453,10 @@ if (isOptions && navMode === "referee" && tid) {
   .presenter-link:hover {
     color: var(--accent-text);
     background: var(--accent-subtle);
+  }
+
+  .presenter-link--mobile {
+    display: inline-flex;
   }
 
   .page-heading {
@@ -496,7 +550,6 @@ if (isOptions && navMode === "referee" && tid) {
       height: 68px;
     }
 
-    .desktop-nav,
     .topbar-right,
     .topbar-search,
     .topbar-home {
@@ -518,6 +571,30 @@ if (isOptions && navMode === "referee" && tid) {
 
     .mobile-nav.referee-nav {
       display: flex;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .app-shell {
+      flex-direction: row;
+      gap: var(--space-4);
+      align-items: stretch;
+    }
+
+    .topbar {
+      padding-inline: var(--space-6);
+    }
+
+    .topbar-home,
+    .topbar-home.referee-back,
+    .presenter-link--mobile,
+    .mobile-nav,
+    .mobile-nav.referee-nav {
+      display: none;
+    }
+
+    .mobile-main {
+      padding-inline: var(--space-6);
     }
   }
 
