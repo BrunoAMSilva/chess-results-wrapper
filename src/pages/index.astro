@@ -302,37 +302,42 @@ const shouldRegisterServiceWorker = import.meta.env.PROD;
     display: flex;
     align-items: center;
     justify-content: center;
+    isolation: isolate;
     animation: heroLand 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
 
-  .logo-aura {
+  .logo-wrap::after {
+    content: "";
     position: absolute;
-    width: 148px;
-    height: 148px;
+    z-index: 0;
+    inset-block-start: calc(100% - var(--space-1));
+    width: calc(var(--space-12) * 4.5);
+    height: calc(var(--space-12) * 1.75);
     border-radius: 50%;
-    border: 1.5px solid var(--accent);
-    opacity: 0.25;
-    animation: auraBreath 4s ease-in-out infinite;
+    background: radial-gradient(
+      ellipse at center,
+      var(--accent-glow) 0%,
+      transparent 72%
+    );
+    filter: blur(var(--space-4));
+    opacity: 0.42;
+    transform: translateY(-50%);
+  }
+
+  .logo-aura {
+    display: none;
   }
 
   .logo-aura--outer {
-    width: 176px;
-    height: 176px;
-    opacity: 0.1;
-    animation: auraBreath 4s ease-in-out infinite;
-    animation-delay: 0.8s;
-    animation-direction: reverse;
-  }
-
-  @keyframes auraBreath {
-    0%, 100% { transform: scale(1); opacity: 0.25; }
-    50%       { transform: scale(1.08); opacity: 0.07; }
+    display: none;
   }
 
   .logo-img {
     position: relative;
     z-index: 1;
-    filter: drop-shadow(0 0 24px var(--accent-glow)) drop-shadow(0 4px 12px rgba(0,0,0,0.3));
+    filter:
+      drop-shadow(0 0 var(--space-2) var(--accent-glow))
+      drop-shadow(0 var(--space-2) var(--space-4) var(--accent-glow));
   }
 
   @keyframes heroLand {
@@ -497,13 +502,16 @@ const shouldRegisterServiceWorker = import.meta.env.PROD;
       transform var(--duration-normal) var(--ease-out),
       box-shadow var(--duration-normal) var(--ease-out),
       border-color var(--duration-normal) var(--ease-out);
-    border: 1px solid transparent;
+    border-color: color-mix(in srgb, var(--gold-700) 12%, var(--border));
   }
 
   .discover-list :global(.tournament-card:hover) {
     transform: translateY(-3px) scale(1.01);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--accent-glow);
-    border-color: var(--accent-glow);
+    background: var(--surface-raised);
+    box-shadow:
+      var(--shadow-elevated),
+      0 0 0 1px color-mix(in srgb, var(--gold-700) 18%, transparent);
+    border-color: color-mix(in srgb, var(--gold-600) 36%, transparent);
   }
 
   /* ── Discover empty / more ─────────────────────────────────── */

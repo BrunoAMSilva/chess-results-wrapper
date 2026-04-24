@@ -36,6 +36,20 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
     gap: var(--space-2);
   }
 
+  .recent-card-reveal {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 0.5s var(--ease-out),
+      transform 0.5s var(--ease-out);
+    transition-delay: calc(var(--recent-i, 0) * 60ms + 120ms);
+  }
+
+  .recent-card-reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
   /* ── Card base ─────────────────────────────────────────────── */
   .recent-list :global(.tournament-card) {
     position: relative;
@@ -44,7 +58,7 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
     gap: var(--space-3);
     padding: var(--space-4);
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid color-mix(in srgb, var(--gold-700) 12%, var(--border));
     border-radius: var(--radius-lg);
     text-decoration: none;
     color: var(--text);
@@ -73,12 +87,12 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
   }
 
   .recent-list :global(.tournament-card:hover) {
-    background: var(--surface-hover);
-    border-color: rgba(252, 211, 77, 0.18);
+    background: var(--surface-raised);
+    border-color: color-mix(in srgb, var(--gold-600) 36%, transparent);
     transform: translateY(-2px);
     box-shadow:
-      0 8px 28px rgba(0, 0, 0, 0.18),
-      0 0 0 1px rgba(252, 211, 77, 0.06);
+      var(--shadow-ambient),
+      0 0 0 1px color-mix(in srgb, var(--gold-700) 18%, transparent);
   }
 
   .recent-list :global(.tournament-card:hover::before) {
@@ -128,9 +142,9 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
     font-weight: 700;
     letter-spacing: 0.09em;
     text-transform: uppercase;
-    color: var(--accent-text);
-    background: var(--accent-subtle);
-    border: 1px solid rgba(252, 211, 77, 0.18);
+    color: var(--card-chip-text);
+    background: var(--card-chip-bg);
+    border: 1px solid var(--card-chip-border);
     border-radius: 9999px;
     padding: 2px 8px;
     line-height: 1.6;
@@ -177,8 +191,9 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
     gap: 4px;
     font-size: var(--text-xs);
     font-weight: 500;
-    color: var(--text-secondary);
-    background: var(--surface-raised);
+    color: var(--card-player-chip-text);
+    background: var(--card-player-chip-bg);
+    border: 1px solid var(--card-player-chip-border);
     border-radius: 9999px;
     padding: 2px 8px;
     white-space: nowrap;
@@ -280,17 +295,24 @@ const { recentLabel, linkBase = "/pairings" } = Astro.props;
       const base = section.getAttribute('data-link-base') || '/pairings';
 
       list.innerHTML = '';
-      for (const t of recent.slice(0, 5)) {
+      for (const [index, t] of recent.slice(0, 5).entries()) {
         const href = base.includes('{id}')
           ? base.replace('{id}', encodeURIComponent(t.id))
           : `${base}?tid=${encodeURIComponent(t.id)}`;
 
         const li = document.createElement('li');
+        li.className = 'recent-card-reveal';
+        li.style.setProperty('--recent-i', String(index));
         li.innerHTML = buildCardHtml(t, href);
         list.appendChild(li);
       }
 
       section.classList.remove('hidden');
+      requestAnimationFrame(() => {
+        list.querySelectorAll('.recent-card-reveal').forEach((item) => {
+          item.classList.add('is-visible');
+        });
+      });
     } catch {
       // localStorage unavailable or corrupted data — just hide
     }

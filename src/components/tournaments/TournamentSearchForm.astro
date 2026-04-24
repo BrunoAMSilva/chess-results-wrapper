@@ -131,8 +131,9 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
 
   .input-icon {
     position: absolute;
-    left: var(--space-4);
-    top: var(--space-4);
+    inset-inline-start: var(--space-4);
+    inset-block-start: 50%;
+    transform: translateY(-50%);
     color: var(--text-muted);
     pointer-events: none;
     z-index: 2;
@@ -151,6 +152,10 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
     transition:
       border-color var(--duration-fast) var(--ease-in-out),
       box-shadow var(--duration-fast) var(--ease-in-out);
+  }
+
+  .search-input.ui-control {
+    padding-inline-start: var(--space-12);
   }
 
   .search-input::placeholder {

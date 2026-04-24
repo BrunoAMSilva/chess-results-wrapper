@@ -175,6 +175,12 @@
   --accent-subtle: rgba(252, 211, 77, 0.12);
   --accent-glow:  rgba(252, 211, 77, 0.15);
   --accent-text:  var(--gold-300);
+  --card-chip-text: var(--gold-100);
+  --card-chip-bg: color-mix(in srgb, var(--gold-700) 26%, var(--surface-container-low));
+  --card-chip-border: color-mix(in srgb, var(--gold-400) 42%, transparent);
+  --card-player-chip-text: var(--gold-300);
+  --card-player-chip-bg: var(--surface-container-low);
+  --card-player-chip-border: color-mix(in srgb, var(--gold-500) 28%, transparent);
 
   --on-accent:    #1a1a24;
 
@@ -259,6 +265,12 @@
   --accent-subtle: rgba(180, 83, 9, 0.14);
   --accent-glow:  rgba(180, 83, 9, 0.14);
   --accent-text:  var(--gold-500);
+  --card-chip-text: color-mix(in srgb, var(--accent-text) 55%, var(--gold-700) 45%);
+  --card-chip-bg: color-mix(in srgb, var(--accent) 18%, var(--surface-raised));
+  --card-chip-border: color-mix(in srgb, var(--accent) 34%, transparent);
+  --card-player-chip-text: color-mix(in srgb, var(--accent-text) 55%, var(--gold-700) 45%);
+  --card-player-chip-bg: var(--neutral-50);
+  --card-player-chip-border: color-mix(in srgb, var(--gold-700) 22%, transparent);
 
   --on-accent:    #ffffff;
 
@@ -342,6 +354,12 @@
     --accent-subtle: rgba(180, 83, 9, 0.14);
     --accent-glow:  rgba(180, 83, 9, 0.14);
     --accent-text:  var(--gold-800);
+    --card-chip-text: color-mix(in srgb, var(--accent-text) 55%, var(--gold-700) 45%);
+    --card-chip-bg: color-mix(in srgb, var(--accent) 18%, var(--surface-raised));
+    --card-chip-border: color-mix(in srgb, var(--accent) 34%, transparent);
+    --card-player-chip-text: color-mix(in srgb, var(--accent-text) 55%, var(--gold-700) 45%);
+    --card-player-chip-bg: var(--neutral-50);
+    --card-player-chip-border: color-mix(in srgb, var(--gold-700) 22%, transparent);
 
     --on-accent:    #ffffff;
 
