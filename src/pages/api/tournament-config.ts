@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { setTournamentConfig, getTournamentConfig } from "../../lib/db";
+import { rejectUntrustedBrowserRequest } from "../../lib/request-security";
 
 const SID_PATTERN = /^[0-9A-Fa-f]{32}$/;
 const ALLOWED_KEYS = new Set(["sid", "sponsor_image", "sponsor_alt"]);
@@ -35,7 +36,10 @@ function validateConfigValue(key: string, value: string): string | null {
   return null;
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, url }) => {
+  const blocked = rejectUntrustedBrowserRequest(request, url);
+  if (blocked) return blocked;
+
   try {
     const body = await request.json();
     const tid = typeof body.tid === "string" ? body.tid : "";

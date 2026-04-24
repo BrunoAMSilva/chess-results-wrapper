@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { upsertRefereeResult, deleteRefereeResult, getRefereeResults } from "../../lib/db";
+import { rejectUntrustedBrowserRequest } from "../../lib/request-security";
 
 const VALID_RESULTS = ["1-0", "0-1", "½-½", "+:-", "-:+", "-:-"];
 
@@ -47,7 +48,10 @@ function jsonError(message: string, status: number) {
   });
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, url }) => {
+  const blocked = rejectUntrustedBrowserRequest(request, url);
+  if (blocked) return blocked;
+
   try {
     const contentType = request.headers.get("content-type") || "";
     let raw: Record<string, unknown>;
@@ -114,7 +118,10 @@ export const GET: APIRoute = async ({ url }) => {
   });
 };
 
-export const DELETE: APIRoute = async ({ request }) => {
+export const DELETE: APIRoute = async ({ request, url }) => {
+  const blocked = rejectUntrustedBrowserRequest(request, url);
+  if (blocked) return blocked;
+
   try {
     const raw = await request.json();
     const tid = typeof raw.tid === "string" ? raw.tid : "";

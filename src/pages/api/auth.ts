@@ -1,6 +1,10 @@
 import type { APIRoute } from "astro";
+import { rejectUntrustedBrowserRequest } from "../../lib/request-security";
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request, cookies, url }) => {
+  const blocked = rejectUntrustedBrowserRequest(request, url);
+  if (blocked) return blocked;
+
   try {
     const body = await request.json();
     const token = typeof body.token === "string" ? body.token : "";
@@ -44,7 +48,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   }
 };
 
-export const DELETE: APIRoute = async ({ cookies }) => {
+export const DELETE: APIRoute = async ({ request, cookies, url }) => {
+  const blocked = rejectUntrustedBrowserRequest(request, url);
+  if (blocked) return blocked;
+
   cookies.delete("__session", { path: "/" });
   return new Response(JSON.stringify({ ok: true }), {
     headers: { "Content-Type": "application/json" },

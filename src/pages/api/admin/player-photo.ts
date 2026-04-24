@@ -7,6 +7,7 @@ import {
   updatePlayerPhoto,
 } from "../../../lib/db";
 import { validateCsrfToken } from "../../../lib/csrf";
+import { rejectUntrustedBrowserRequest } from "../../../lib/request-security";
 
 const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const EXT_MAP: Record<string, string> = {
@@ -25,7 +26,10 @@ function getPhotosDir(): string {
   return dir;
 }
 
-export const POST: APIRoute = async ({ request, cookies }) => {
+export const POST: APIRoute = async ({ request, cookies, url }) => {
+  const blocked = rejectUntrustedBrowserRequest(request, url);
+  if (blocked) return blocked;
+
   const csrfToken = request.headers.get("x-csrf-token");
   const csrfCookie = cookies.get("csrf-token")?.value;
 
@@ -161,7 +165,10 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   );
 };
 
-export const DELETE: APIRoute = async ({ request, cookies }) => {
+export const DELETE: APIRoute = async ({ request, cookies, url }) => {
+  const blocked = rejectUntrustedBrowserRequest(request, url);
+  if (blocked) return blocked;
+
   const csrfToken = request.headers.get("x-csrf-token");
   const csrfCookie = cookies.get("csrf-token")?.value;
 

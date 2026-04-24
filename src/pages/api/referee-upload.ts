@@ -2,6 +2,7 @@ import type { APIRoute } from "astro";
 import { scrapePairings } from "../../lib/scraper";
 import { uploadRoundResults } from "../../lib/chess-results-upload";
 import type { Pairing, TeamPairing } from "../../lib/types";
+import { rejectUntrustedBrowserRequest } from "../../lib/request-security";
 
 function jsonError(message: string, status: number) {
   return new Response(JSON.stringify({ error: message }), {
@@ -10,7 +11,10 @@ function jsonError(message: string, status: number) {
   });
 }
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, url }) => {
+  const blocked = rejectUntrustedBrowserRequest(request, url);
+  if (blocked) return blocked;
+
   try {
     const body = await request.json();
     const tid = typeof body.tid === "string" ? body.tid : "";

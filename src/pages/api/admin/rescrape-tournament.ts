@@ -1,7 +1,11 @@
 import type { APIRoute } from "astro";
 import { scrapeStartingRank } from "../../../lib/scraper";
+import { rejectUntrustedBrowserRequest } from "../../../lib/request-security";
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, url }) => {
+  const blocked = rejectUntrustedBrowserRequest(request, url);
+  if (blocked) return blocked;
+
   let tid: string;
   try {
     const body = await request.json();

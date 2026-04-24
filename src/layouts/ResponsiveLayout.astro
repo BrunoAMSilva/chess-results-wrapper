@@ -227,6 +227,16 @@ if (isOptions && navMode === "referee" && tid) {
   import { initSelectedPlayerUi } from "../scripts/player-identity";
   import { getFirebaseAnalytics } from "../lib/firebase-client";
 
+  let firebaseAuthModulePromise: Promise<typeof import("../lib/firebase-auth-client")> | null = null;
+
+  function loadFirebaseAuthModule() {
+    if (!firebaseAuthModulePromise) {
+      firebaseAuthModulePromise = import("../lib/firebase-auth-client");
+    }
+
+    return firebaseAuthModulePromise;
+  }
+
   const pageLang = Number.parseInt(document.documentElement.dataset.appLang || "1", 10);
   initSelectedPlayerUi(Number.isFinite(pageLang) && pageLang > 0 ? pageLang : 1);
 
@@ -235,8 +245,19 @@ if (isOptions && navMode === "referee" && tid) {
   // Auth sign-out handler
   document.querySelectorAll("[data-auth-signout]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      await fetch("/api/auth", { method: "DELETE" });
-      window.location.href = "/login";
+      try {
+        const response = await fetch("/api/auth", { method: "DELETE" });
+        if (!response.ok) {
+          throw new Error("Sign-out failed");
+        }
+
+        const { signOutFirebaseAuth } = await loadFirebaseAuthModule();
+        await signOutFirebaseAuth();
+
+        window.location.href = "/login";
+      } catch (error) {
+        console.error("[auth] Sign-out failed:", error);
+      }
     });
   });
 </script>

@@ -16,7 +16,9 @@ const PUBLIC_PATHS = ["/login"];
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "SAMEORIGIN",
+  "X-Permitted-Cross-Domain-Policies": "none",
   "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), geolocation=(), microphone=(), payment=(), usb=()",
   "Content-Security-Policy": [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.googletagmanager.com",
@@ -51,9 +53,13 @@ function isApiRoute(pathname: string): boolean {
   return pathname.startsWith("/api/");
 }
 
-function addSecurityHeaders(response: Response): Response {
+function addSecurityHeaders(response: Response, request: Request, url: URL): Response {
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
+  }
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  if (url.protocol === "https:" || forwardedProto === "https") {
+    response.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
   return response;
 }
@@ -73,7 +79,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   // Skip auth check for public and non-protected routes
   if (isPublicPath(pathname) || !isProtectedRoute(pathname)) {
-    return addSecurityHeaders(await next());
+    return addSecurityHeaders(await next(), request, url);
   }
 
   // Check for auth token in cookie
@@ -109,5 +115,5 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Store user in locals for pages/endpoints
   context.locals.user = user;
 
-  return addSecurityHeaders(await next());
+  return addSecurityHeaders(await next(), request, url);
 });

@@ -13,6 +13,7 @@ export function validateCsrfToken(
   headerToken: string | undefined,
 ): boolean {
   if (!cookieToken || !headerToken) return false;
+  if (cookieToken.length !== headerToken.length) return false;
   return crypto.timingSafeEqual(
     Buffer.from(cookieToken),
     Buffer.from(headerToken),
