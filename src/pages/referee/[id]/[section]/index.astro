@@ -4,6 +4,12 @@ import RoundSelector from "../../../../components/controls/RoundSelector.astro";
 import RefereeSelectionTile from "../../../../components/referee/RefereeSelectionTile.astro";
 import { scrapePairings } from "../../../../lib/scraper";
 import { getRefereeResults, findLatestIncompleteRound } from "../../../../lib/db";
+import {
+  buildRefereeSubmittedTableMap,
+  formatRefereeTableLabel,
+  refereeResultDisplayLabel,
+} from "../../../../lib/referee-table-tiles";
+import type { RefereeSubmittedTableState } from "../../../../lib/referee-table-tiles";
 import { useTranslations } from "../../../../i18n/ui";
 import { resolvePageLang } from "../../../../lib/page-lang";
 import type { Pairing, TeamPairing } from "../../../../lib/types";
@@ -58,39 +64,11 @@ if (teamPairings && teamPairings.length > 0) {
 }
 tables.sort((a, b) => a - b);
 
-function formatTableLabel(table: number): string {
-  if (isTeamTournament) {
-    const match = Math.floor(table / 100);
-    const board = table % 100;
-    return `${match}.${board}`;
-  }
-  return String(table);
-}
-
-const RESULT_DISPLAY: Record<string, string> = {
-  "+:-": "1-0F",
-  "-:+": "0-1F",
-  "-:-": "0-0F",
-};
-
-type ResultType = "white-win" | "black-win" | "draw" | "forfeit-white" | "forfeit-black" | "forfeit-both";
-function resultToType(result: string): ResultType {
-  if (result === "+:-") return "forfeit-white";
-  if (result === "-:+") return "forfeit-black";
-  if (result === "-:-") return "forfeit-both";
-  if (result === "1-0") return "white-win";
-  if (result === "0-1") return "black-win";
-  return "draw";
-}
-
-function resultDisplayLabel(result: string): string {
-  return RESULT_DISPLAY[result] ?? result;
-}
-
-const submittedTables = new Map<number, { result: string; type: ResultType }>();
+const submittedTables = new Map<number, RefereeSubmittedTableState>();
 const refResults = getRefereeResults(section, activeRound) as Array<{ table_number: number; result: string }>;
-for (const r of refResults) {
-  submittedTables.set(r.table_number, { result: r.result, type: resultToType(r.result) });
+const submittedTableMap = buildRefereeSubmittedTableMap(refResults);
+for (const [tableNumber, resultState] of submittedTableMap) {
+  submittedTables.set(tableNumber, resultState);
 }
 
 const q = `round=${activeRound}&lang=${lang}`;
@@ -111,9 +89,9 @@ const eyebrow = tournamentName && tournamentName !== pageTitle ? tournamentName 
         <RefereeSelectionTile
           href={`/referee/${tid}/${section}/${tbl}?${q}`}
           variant="table"
-          label={formatTableLabel(tbl)}
+          label={formatRefereeTableLabel(tbl, isTeamTournament)}
           done={submittedTables.has(tbl)}
-          doneLabel={submittedTables.has(tbl) ? resultDisplayLabel(submittedTables.get(tbl)!.result) : undefined}
+          doneLabel={submittedTables.has(tbl) ? refereeResultDisplayLabel(submittedTables.get(tbl)!.result) : undefined}
           resultType={submittedTables.get(tbl)?.type}
         />
       ))}
@@ -157,5 +135,3 @@ const eyebrow = tournamentName && tournamentName !== pageTitle ? tournamentName 
     }
   }
 </style>
-
-

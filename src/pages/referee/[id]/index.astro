@@ -5,6 +5,12 @@ import RefereeSelectionTile from "../../../components/referee/RefereeSelectionTi
 import TrackRecentTournament from "../../../components/tournaments/TrackRecentTournament.astro";
 import { scrapePairings } from "../../../lib/scraper";
 import { getRefereeResults, findLatestIncompleteRound } from "../../../lib/db";
+import {
+  buildRefereeSubmittedTableMap,
+  formatRefereeTableLabel,
+  refereeResultDisplayLabel,
+} from "../../../lib/referee-table-tiles";
+import type { RefereeSubmittedTableState } from "../../../lib/referee-table-tiles";
 import { useTranslations } from "../../../i18n/ui";
 import { resolvePageLang } from "../../../lib/page-lang";
 import type { LinkedTournament, Pairing, TeamPairing } from "../../../lib/types";
@@ -82,20 +88,12 @@ if (!hasSections) {
   tables.sort((a, b) => a - b);
 }
 
-function formatTableLabel(table: number): string {
-  if (isTeamTournament) {
-    const match = Math.floor(table / 100);
-    const board = table % 100;
-    return `${match}.${board}`;
-  }
-  return String(table);
-}
-
-const submittedTables = new Set<number>();
+const submittedTables = new Map<number, RefereeSubmittedTableState>();
 if (!hasSections) {
-  const refResults = getRefereeResults(tid, activeRound) as Array<{ table_number: number }>;
-  for (const r of refResults) {
-    submittedTables.add(r.table_number);
+  const refResults = getRefereeResults(tid, activeRound) as Array<{ table_number: number; result: string }>;
+  const submittedTableMap = buildRefereeSubmittedTableMap(refResults);
+  for (const [tableNumber, resultState] of submittedTableMap) {
+    submittedTables.set(tableNumber, resultState);
   }
 }
 
@@ -129,10 +127,11 @@ const roundBaseUrl = `/referee/${tid}?lang=${lang}`;
           <RefereeSelectionTile
             href={`/referee/${tid}/${tid}/${tbl}?${q}`}
             variant="table"
-            label={formatTableLabel(tbl)}
+            label={formatRefereeTableLabel(tbl, isTeamTournament)}
             eyebrow={t("referee.table")}
             done={submittedTables.has(tbl)}
-            doneLabel={t("referee.saved")}
+            doneLabel={submittedTables.has(tbl) ? refereeResultDisplayLabel(submittedTables.get(tbl)!.result) : undefined}
+            resultType={submittedTables.get(tbl)?.type}
           />
         ))}
       </div>
