@@ -1,0 +1,87 @@
+---
+interface Props {
+  tournamentId: string;
+  activeRound: number;
+  totalRounds: number;
+  hasRoundParam: boolean;
+}
+
+const { tournamentId, activeRound, totalRounds, hasRoundParam } = Astro.props;
+---
+
+<script is:inline define:vars={{ tournamentId, activeRound, totalRounds, hasRoundParam }}>
+  (function () {
+    if (!tournamentId || totalRounds < 1) return;
+
+    var storageKey = "referee:last-round:" + tournamentId;
+
+    function clampRound(value) {
+      var parsed = Number.parseInt(String(value), 10);
+      if (!Number.isFinite(parsed) || parsed < 1) return null;
+      return Math.min(parsed, totalRounds);
+    }
+
+    function persistRound(value) {
+      var round = clampRound(value);
+      if (!round) return;
+
+      try {
+        localStorage.setItem(storageKey, String(round));
+      } catch (_) {
+        return;
+      }
+    }
+
+    function readStoredRound() {
+      try {
+        return clampRound(localStorage.getItem(storageKey));
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function syncRoundPreference() {
+      if (hasRoundParam) {
+        persistRound(activeRound);
+        return;
+      }
+
+      var storedRound = readStoredRound();
+      if (!storedRound) {
+        persistRound(activeRound);
+        return;
+      }
+
+      if (storedRound === activeRound) {
+        persistRound(storedRound);
+        return;
+      }
+
+      var url = new URL(window.location.href);
+      if (url.searchParams.has("round")) return;
+
+      url.searchParams.set("round", String(storedRound));
+      window.location.replace(url.toString());
+    }
+
+    document.addEventListener("click", function (event) {
+      var target = event.target;
+      if (!(target instanceof Element)) return;
+
+      var roundLink = target.closest("[data-referee-round-link]");
+      if (!roundLink) return;
+
+      persistRound(roundLink.getAttribute("data-round"));
+    });
+
+    document.addEventListener("change", function (event) {
+      var target = event.target;
+      if (!(target instanceof HTMLSelectElement)) return;
+      if (!target.matches("[data-referee-round-select]")) return;
+
+      persistRound(target.value);
+    });
+
+    syncRoundPreference();
+  })();
+</script>

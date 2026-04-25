@@ -1,6 +1,7 @@
 ---
 import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
 import RoundSelector from "../../../components/controls/RoundSelector.astro";
+import RefereeRoundPreference from "../../../components/referee/RefereeRoundPreference.astro";
 import RefereeSelectionTile from "../../../components/referee/RefereeSelectionTile.astro";
 import TrackRecentTournament from "../../../components/tournaments/TrackRecentTournament.astro";
 import { scrapePairings } from "../../../lib/scraper";
@@ -106,6 +107,12 @@ const roundBaseUrl = `/referee/${tid}?lang=${lang}`;
 ---
 
 <ResponsiveLayout title={title} eyebrow={eyebrow} lang={lang} navMode="referee">
+  <RefereeRoundPreference
+    tournamentId={tid}
+    activeRound={activeRound}
+    totalRounds={totalRounds}
+    hasRoundParam={Boolean(roundParam)}
+  />
   {error && <div class="error-msg"><p>{error}</p></div>}
 
   <div class="referee-page">

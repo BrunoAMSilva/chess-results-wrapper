@@ -25,6 +25,7 @@ const { rounds, activeRound, baseUrl, label = "Round", sticky = true } = Astro.p
         href={`${baseUrl}&round=${r}`}
         class:list={["round-pill", { active: r === activeRound }]}
         data-round={r}
+        data-referee-round-link
       >
         {r}
       </a>

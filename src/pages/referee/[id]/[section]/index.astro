@@ -1,6 +1,7 @@
 ---
 import ResponsiveLayout from "../../../../layouts/ResponsiveLayout.astro";
 import RoundSelector from "../../../../components/controls/RoundSelector.astro";
+import RefereeRoundPreference from "../../../../components/referee/RefereeRoundPreference.astro";
 import RefereeSelectionTile from "../../../../components/referee/RefereeSelectionTile.astro";
 import { scrapePairings } from "../../../../lib/scraper";
 import { getRefereeResults, findLatestIncompleteRound } from "../../../../lib/db";
@@ -79,6 +80,12 @@ const eyebrow = tournamentName && tournamentName !== pageTitle ? tournamentName 
 ---
 
 <ResponsiveLayout title={pageTitle} eyebrow={eyebrow} lang={lang} navMode="referee">
+  <RefereeRoundPreference
+    tournamentId={tid}
+    activeRound={activeRound}
+    totalRounds={totalRounds}
+    hasRoundParam={Boolean(roundParam)}
+  />
   {error && <div class="error-msg"><p>{error}</p></div>}
 
   <div class="referee-page">

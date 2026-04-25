@@ -1,6 +1,7 @@
 ---
 import ResponsiveLayout from "../../../../layouts/ResponsiveLayout.astro";
 import ActionButton from "../../../../components/controls/ActionButton.astro";
+import RefereeRoundPreference from "../../../../components/referee/RefereeRoundPreference.astro";
 import { scrapePairings } from "../../../../lib/scraper";
 import { useTranslations } from "../../../../i18n/ui";
 import { resolvePageLang } from "../../../../lib/page-lang";
@@ -18,6 +19,7 @@ const t = useTranslations(lang);
 
 let error: string | null = null;
 let activeRound = 1;
+let totalRounds = 0;
 let whiteName = "";
 let blackName = "";
 let tournamentName = "";
@@ -26,7 +28,7 @@ let sectionTitle = "";
 try {
   // Try DB first for tournament metadata to avoid scraping round 1 just for meta
   const dbTournament = getTournament(section);
-  let totalRounds = dbTournament?.total_rounds ?? 0;
+  totalRounds = dbTournament?.total_rounds ?? 0;
 
   if (roundParam) {
     activeRound = Math.max(1, Math.min(parseInt(roundParam, 10) || 1, totalRounds || 99));
@@ -89,6 +91,12 @@ const eyebrow = sectionTitle && sectionTitle !== `${t("referee.table")} ${tableL
 ---
 
 <ResponsiveLayout title={`${t("referee.table")} ${tableLabel}`} eyebrow={eyebrow} lang={lang} navMode="referee">
+  <RefereeRoundPreference
+    tournamentId={tid}
+    activeRound={activeRound}
+    totalRounds={totalRounds}
+    hasRoundParam={Boolean(roundParam)}
+  />
   {error && <div class="error-msg"><p>{error}</p></div>}
 
   <div class="result-page">

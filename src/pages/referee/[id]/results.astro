@@ -2,6 +2,7 @@
 import ResponsiveLayout from "../../../layouts/ResponsiveLayout.astro";
 import EmptyState from "../../../components/app/EmptyState.astro";
 import ActionButton from "../../../components/controls/ActionButton.astro";
+import RefereeRoundPreference from "../../../components/referee/RefereeRoundPreference.astro";
 import RoundProgressCard from "../../../components/referee/RoundProgressCard.astro";
 import { scrapePairings } from "../../../lib/scraper";
 import {
@@ -222,6 +223,12 @@ for (const entry of uploadLog) {
   lang={lang}
   navMode="referee"
 >
+  <RefereeRoundPreference
+    tournamentId={tid}
+    activeRound={activeRound}
+    totalRounds={totalRounds}
+    hasRoundParam={Boolean(roundParam)}
+  />
   {
     error && (
       <div class="error-msg">
@@ -273,6 +280,7 @@ for (const entry of uploadLog) {
                   <select
                     class="card-inline-select round-inline-select"
                     id="roundSelect"
+                    data-referee-round-select
                     aria-label={t("referee.round")}
                   >
                     {rounds.map((round) => (
