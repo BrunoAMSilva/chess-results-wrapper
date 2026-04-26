@@ -124,7 +124,12 @@ const defaultActive = hasTeams ? "teams" : "open";
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-light) transparent;
     gap: var(--space-3);
     z-index: 5;
     padding-block-end: var(--space-4);
@@ -132,13 +137,27 @@ const defaultActive = hasTeams ? "teams" : "open";
   }
 
   .standings-seg-wrapper :global(.tournament-selector-wrapper) {
-    flex: 1 1 auto;
+    flex: 1 0 auto;
     min-width: 0;
   }
 
   .standings-seg-wrapper :global(.seg-control) {
-    width: 100%;
+    flex-shrink: 0;
+    width: max-content;
     max-width: 360px;
+  }
+
+  .standings-seg-wrapper::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .standings-seg-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .standings-seg-wrapper::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: var(--radius-full);
   }
 
   .standings-list {
