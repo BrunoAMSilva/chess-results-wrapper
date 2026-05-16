@@ -1,13 +1,17 @@
 # Build stage
+FROM oven/bun:1.2.22-alpine AS bun
+
 FROM node:22-alpine AS build
 
 WORKDIR /app
 
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
+
 # Install build dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
 
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile
 
 COPY . .
 
@@ -20,18 +24,20 @@ ARG PUBLIC_FIREBASE_MESSAGING_SENDER_ID
 ARG PUBLIC_FIREBASE_APP_ID
 ARG PUBLIC_FIREBASE_MEASUREMENT_ID
 
-RUN npm run build
+RUN bun run build
 
 # Production stage
 FROM node:22-alpine AS production
 
 WORKDIR /app
 
+COPY --from=bun /usr/local/bin/bun /usr/local/bin/bun
+
 # Install runtime dependencies for better-sqlite3
 RUN apk add --no-cache python3 make g++
 
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && apk del python3 make g++
+COPY package.json bun.lock ./
+RUN bun install --frozen-lockfile --production && apk del python3 make g++
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/public ./public
