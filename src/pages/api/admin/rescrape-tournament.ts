@@ -1,5 +1,5 @@
 import type { APIRoute } from "astro";
-import { scrapeStartingRank } from "../../../lib/scraper";
+import { scrapeFullTournament, scrapeStartingRank } from "../../../lib/scraper";
 import { rejectUntrustedBrowserRequest } from "../../../lib/request-security";
 
 export const POST: APIRoute = async ({ request, url }) => {
@@ -25,8 +25,22 @@ export const POST: APIRoute = async ({ request, url }) => {
   }
 
   try {
+    let warning: string | undefined;
+    try {
+      await scrapeFullTournament(tid);
+    } catch (e) {
+      warning = e instanceof Error
+        ? `Tournament data refresh failed: ${e.message}. Player enrichment still ran.`
+        : "Tournament data refresh failed. Player enrichment still ran.";
+    }
+
     const count = await scrapeStartingRank(tid);
-    return new Response(JSON.stringify({ ok: true, players_updated: count }), {
+    return new Response(JSON.stringify({
+      ok: true,
+      players_updated: count,
+      tournament_refreshed: !warning,
+      warning,
+    }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

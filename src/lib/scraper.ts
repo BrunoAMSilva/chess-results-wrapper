@@ -361,9 +361,6 @@ export async function scrapeFullTournament(
   try {
     const standingsData = await scrapeStandingsFromRemote(tournamentId);
     persistStandings(tournamentId, standingsData.info, standingsData.standings, standingsData.womenStandings);
-
-    // Scrape player cards (art=9) for extended player data
-    await scrapePlayerCards(tournamentId, standingsData.standings);
   } catch (_) { /* standings are non-critical during full scrape */ }
 }
 

@@ -19,9 +19,9 @@ const prefillTid = Astro.url.searchParams.get("tid") ?? "";
       <p class="admin-eyebrow">Tournament Management</p>
       <h1 class="admin-title">Refresh Tournament</h1>
       <p class="admin-desc">
-        Fetches the starting rank list (<code>art=0</code>) and player cards (<code>art=9</code>)
-        from chess-results.com to fill in missing FIDE IDs, national IDs, ratings, and birth years.
-        Safe to run at any time — only updates players, never overwrites standings.
+        Refreshes tournament data first, then fetches the starting rank list (<code>art=0</code>)
+        and player cards (<code>art=9</code>) so FIDE IDs, national IDs, ratings, birth years,
+        and player lists stay aligned.
       </p>
     </header>
 
@@ -67,7 +67,7 @@ const prefillTid = Astro.url.searchParams.get("tid") ?? "";
       if (!tid) { showStatus("Please enter a tournament ID.", "error"); return; }
 
       submitBtn.disabled = true;
-      showStatus("Scraping… this may take a moment.", "info");
+      showStatus("Refreshing tournament data and extended player info… this may take a moment.", "info");
 
       try {
         const res = await fetch("/api/admin/rescrape-tournament", {
@@ -77,7 +77,15 @@ const prefillTid = Astro.url.searchParams.get("tid") ?? "";
         });
         const data = await res.json();
         if (res.ok) {
-          showStatus(`Done — ${data.players_updated} player(s) refreshed.`, "success");
+          const baseMessage = data.tournament_refreshed
+            ? `Done — tournament refreshed and ${data.players_updated} player(s) enriched.`
+            : `Done — ${data.players_updated} player(s) enriched.`;
+
+          if (data.warning) {
+            showStatus(`${baseMessage} ${data.warning}`, "info");
+          } else {
+            showStatus(baseMessage, "success");
+          }
         } else {
           showStatus(data.error ?? "Scrape failed.", "error");
         }
