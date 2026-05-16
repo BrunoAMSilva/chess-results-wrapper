@@ -15,6 +15,20 @@ describe("rejectUntrustedBrowserRequest", () => {
     expect(rejectUntrustedBrowserRequest(request, url)).toBeNull();
   });
 
+  it("allows same-origin origin headers behind a reverse proxy", () => {
+    const internalUrl = new URL("http://127.0.0.1:4321/api/referee-result");
+    const request = new Request(internalUrl, {
+      method: "POST",
+      headers: {
+        origin: "https://example.com",
+        "x-forwarded-host": "example.com",
+        "x-forwarded-proto": "https",
+      },
+    });
+
+    expect(rejectUntrustedBrowserRequest(request, internalUrl)).toBeNull();
+  });
+
   it("rejects cross-origin origin headers", async () => {
     const request = new Request(url, {
       method: "POST",
@@ -36,6 +50,20 @@ describe("rejectUntrustedBrowserRequest", () => {
     });
 
     expect(rejectUntrustedBrowserRequest(request, url)).toBeNull();
+  });
+
+  it("allows same-origin referers behind a reverse proxy", () => {
+    const internalUrl = new URL("http://127.0.0.1:4321/api/referee-result");
+    const request = new Request(internalUrl, {
+      method: "POST",
+      headers: {
+        referer: "https://example.com/referee/123",
+        "x-forwarded-host": "example.com",
+        "x-forwarded-proto": "https",
+      },
+    });
+
+    expect(rejectUntrustedBrowserRequest(request, internalUrl)).toBeNull();
   });
 
   it("rejects malformed referers", async () => {
