@@ -14,12 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run test:unit
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run test:unit
 
   build-and-push:
     needs: test
