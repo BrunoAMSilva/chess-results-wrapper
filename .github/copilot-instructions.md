@@ -12,6 +12,10 @@ chess-results.com HTML → Scraper (Cheerio) → SQLite DB → Astro SSR pages
 - **Database:** better-sqlite3 with WAL mode, foreign keys ON. Path from `DATABASE_PATH` env (default `data/chess-results.db`)
 - **Scraping:** Cheerio parses HTML from chess-results.com. No browser automation at runtime (Playwright is only used during bulk import discovery)
 - **Strategy pattern:** Four tournament parsers in `src/lib/strategies/` — Swiss, RoundRobin, TeamSwiss, TeamRoundRobin — auto-detected per tournament
+- **TypeScript:** Full type safety with auto-generated types for content collections and props
+- **Code quality:** Ensure good practices and patterns are used in the entire codebase. Make sure to use dry principles and avoid code duplication. If you find yourself copying and pasting code, it's a sign that you should refactor and create reusable functions or components.
+- **Atomic components:** Astro components are small and focused on a single responsibility. They receive typed Props and have no side effects. All data fetching and logic is done in the parent page or in the scraper/db layers.
+- **Molecular components:** More complex components that compose multiple atomic components and contain more logic, but still focused on a specific piece of UI (e.g. `TournamentSelector`, `StandingsTable`, `PlayerCard`).
 
 ## Key Behavioral Contracts
 
@@ -76,11 +80,12 @@ Key constraints:
 ## Testing Requirements
 
 - **Framework:** Vitest with in-memory SQLite (`DATABASE_PATH=:memory:`)
-- **Pre-commit hook:** `.githooks/pre-commit` runs `npm run test:unit` — never bypass this
-- **Before any PR:** All unit tests must pass (`npm run test:unit`)
+- **Pre-commit hook:** `.githooks/pre-commit` runs `bun run test:unit` — never bypass this
+- **Before any PR:** All unit tests must pass (`bun run test:unit`)
 - **After modifying db.ts:** Run the full db test suite and verify upsert preservation logic
 - **After modifying scraper/strategies:** Run parse tests with the HTML fixtures in `tests/fixtures/`
-- **Live tests:** Canary tests that hit chess-results.com are skipped by default (SKIP_LIVE=1). Run with `npm run test:live`
+- **Live tests:** Canary tests that hit chess-results.com are skipped by default (SKIP_LIVE=1). Run with `bun run test:live`
+- **Updating tests:** NEVER update tests to match broken behavior. If a test fails, fix the underlying code, not the test. Before updating a test, verify the failure is legitimate and not a false positive.
 
 ## i18n
 
@@ -108,5 +113,5 @@ Key constraints:
 ## Deployment
 
 - Docker via `Dockerfile` + `docker-compose.yml`
-- CI/CD: GitHub Actions (`deploy.yml`) — runs `npm run test:unit` before build
+- CI/CD: GitHub Actions (`deploy.yml`) — runs `bun run test:unit` before build
 - Database file is persisted as a Docker volume

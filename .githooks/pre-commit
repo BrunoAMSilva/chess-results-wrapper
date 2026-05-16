@@ -3,7 +3,7 @@
 # Skips live tests (network-dependent) for speed.
 
 echo "Running unit tests before commit..."
-npm run test:unit
+bun run test:unit
 
 if [ $? -ne 0 ]; then
   echo ""
