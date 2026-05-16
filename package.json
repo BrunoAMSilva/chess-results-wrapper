@@ -21,24 +21,24 @@
     "seed:por2026:server": "./scripts/import-por2026-server.sh"
   },
   "dependencies": {
-    "@astrojs/node": "^9.5.4",
-    "astro": "^5.18.0",
-    "better-sqlite3": "^12.6.2",
+    "@astrojs/node": "^10.1.1",
+    "astro": "^6.3.3",
+    "better-sqlite3": "^12.10.0",
     "cheerio": "^1.2.0",
     "chess.js": "^1.4.0",
-    "cm-chessboard": "^8.11.5",
-    "firebase": "^12.12.0",
-    "firebase-admin": "^13.8.0",
+    "cm-chessboard": "^8.12.7",
+    "firebase": "^12.13.0",
+    "firebase-admin": "^13.10.0",
     "iconify": "^1.4.0"
   },
   "devDependencies": {
-    "@astrojs/check": "^0.9.6",
-    "@playwright/test": "^1.58.2",
+    "@astrojs/check": "^0.9.9",
+    "@playwright/test": "^1.60.0",
     "@types/better-sqlite3": "^7.6.13",
-    "playwright": "^1.58.2",
-    "shadcn": "^4.5.0",
-    "tsx": "^4.20.5",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.18"
+    "playwright": "^1.60.0",
+    "shadcn": "^4.7.0",
+    "tsx": "^4.22.0",
+    "typescript": "6.0.3",
+    "vitest": "^4.1.6"
   }
 }
