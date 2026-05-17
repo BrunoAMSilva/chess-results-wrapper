@@ -18,7 +18,8 @@ interface Props {
   recentStorageKey?: string;
   searchLimit?: number;
   showSubmit?: boolean;
-  resultLayout?: 'dropdown' | 'stacked';
+  showLabel?: boolean;
+  resultLayout?: "dropdown" | "stacked";
   autofocus?: boolean;
   class?: string;
 }
@@ -26,23 +27,24 @@ interface Props {
 const {
   label,
   placeholder,
-  submitLabel = '',
-  hint = '',
-  invalidMessage = '',
+  submitLabel = "",
+  hint = "",
+  invalidMessage = "",
   loadingMessage,
   noResultsMessage,
-  lang = '',
-  navigateBasePath = '/pairings',
+  lang = "",
+  navigateBasePath = "/pairings",
   navigatePathTemplate,
-  recentStorageKey = 'recentTournaments',
+  recentStorageKey = "recentTournaments",
   searchLimit = 0,
   showSubmit = true,
-  resultLayout = 'dropdown',
+  showLabel = true,
+  resultLayout = "dropdown",
   autofocus = false,
-  class: className = '',
+  class: className = "",
 } = Astro.props;
 
-const instanceId = `tournament-search-${crypto.randomUUID().replaceAll('-', '')}`;
+const instanceId = `tournament-search-${crypto.randomUUID().replaceAll("-", "")}`;
 const inputId = `${instanceId}-input`;
 const resultsId = `${instanceId}-results`;
 const loadingId = `${instanceId}-loading`;
@@ -50,11 +52,17 @@ const noResultsId = `${instanceId}-no-results`;
 const announceId = `${instanceId}-announce`;
 const hintId = `${instanceId}-hint`;
 const errorId = `${instanceId}-error`;
-const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(Boolean).join(' ');
+const describedBy = [hint ? hintId : "", invalidMessage ? errorId : ""]
+  .filter(Boolean)
+  .join(" ");
 ---
 
 <div
-  class:list={["tournament-search", `tournament-search--${resultLayout}`, className]}
+  class:list={[
+    "tournament-search",
+    `tournament-search--${resultLayout}`,
+    className,
+  ]}
   data-tournament-search-root
   data-lang={lang}
   data-base-path={navigateBasePath}
@@ -64,7 +72,12 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
   data-result-layout={resultLayout}
 >
   <form class="search-form" data-search-form>
-    <FormField label={label} forId={inputId} class="search-field">
+    <FormField
+      label={label}
+      forId={inputId}
+      class="search-field"
+      showLabel={showLabel}
+    >
       <div class="input-wrapper">
         <Icon name="search" size={20} class="input-icon" />
         <TextInput
@@ -83,24 +96,63 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
           aria-describedby={describedBy || undefined}
           autofocus={autofocus}
           data-search-input
+          size="small"
         />
-        <div class="search-results hidden" id={resultsId} role="listbox" aria-label={`${label} results`} data-search-results>
-          <p class="search-loading hidden" id={loadingId} data-search-loading>{loadingMessage}</p>
-          <p class="no-results hidden" id={noResultsId} data-no-results>{noResultsMessage}</p>
+        <div
+          class="search-results hidden"
+          id={resultsId}
+          role="listbox"
+          aria-label={`${label} results`}
+          data-search-results
+        >
+          <p class="search-loading hidden" id={loadingId} data-search-loading>
+            {loadingMessage}
+          </p>
+          <p class="no-results hidden" id={noResultsId} data-no-results>
+            {noResultsMessage}
+          </p>
         </div>
-        <div class="sr-only" aria-live="polite" aria-atomic="true" id={announceId} data-search-announce></div>
+        <div
+          class="sr-only"
+          aria-live="polite"
+          aria-atomic="true"
+          id={announceId}
+          data-search-announce
+        >
+        </div>
       </div>
     </FormField>
-    {showSubmit && (
-      <ActionButton type="submit" class="search-btn" >
-        <span class="sr-only">{submitLabel}</span>
-        <Icon slot="icon" name="arrow-right" size={22} />
-      </ActionButton>
-    )}
+    {
+      showSubmit && (
+        <ActionButton type="submit" class="search-btn">
+          <span class="sr-only">{submitLabel}</span>
+          <Icon slot="icon" name="arrow-right" size={22} />
+        </ActionButton>
+      )
+    }
   </form>
 
-  {hint && <p class="home-hint" id={hintId}>{hint}</p>}
-  {invalidMessage && <p class="error-hint hidden" id={errorId} data-error-hint role="alert" aria-live="assertive" aria-atomic="true">{invalidMessage}</p>}
+  {
+    hint && (
+      <p class="home-hint" id={hintId}>
+        {hint}
+      </p>
+    )
+  }
+  {
+    invalidMessage && (
+      <p
+        class="error-hint hidden"
+        id={errorId}
+        data-error-hint
+        role="alert"
+        aria-live="assertive"
+        aria-atomic="true"
+      >
+        {invalidMessage}
+      </p>
+    )
+  }
 </div>
 
 <style>
@@ -137,21 +189,6 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
     color: var(--text-muted);
     pointer-events: none;
     z-index: 2;
-  }
-
-  .search-input {
-    width: 100%;
-    padding: var(--space-4) var(--space-4) var(--space-4) var(--space-12);
-    font-size: var(--text-base);
-    font-family: var(--font-sans);
-    color: var(--text);
-    background: var(--input-bg);
-    border: 1px solid var(--outline-variant);
-    border-radius: var(--radius-lg);
-    outline: none;
-    transition:
-      border-color var(--duration-fast) var(--ease-in-out),
-      box-shadow var(--duration-fast) var(--ease-in-out);
   }
 
   .search-input.ui-control {
@@ -242,7 +279,9 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
     box-shadow: var(--shadow-ambient);
   }
 
-  .tournament-search--stacked .search-results :global(.result-item:focus-visible) {
+  .tournament-search--stacked
+    .search-results
+    :global(.result-item:focus-visible) {
     outline: 2px solid var(--accent);
     outline-offset: 3px;
   }
@@ -418,29 +457,52 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
 
 <script>
   function initTournamentSearch(root: HTMLElement) {
-    if (root.dataset.tournamentSearchBound === 'true') return;
-    root.dataset.tournamentSearchBound = 'true';
+    if (root.dataset.tournamentSearchBound === "true") return;
+    root.dataset.tournamentSearchBound = "true";
 
-    const form = root.querySelector('[data-search-form]') as HTMLFormElement | null;
-    const input = root.querySelector('[data-search-input]') as HTMLInputElement | null;
-    const errorHint = root.querySelector('[data-error-hint]') as HTMLElement | null;
-    const searchResults = root.querySelector('[data-search-results]') as HTMLElement | null;
-    const noResults = root.querySelector('[data-no-results]') as HTMLElement | null;
-    const searchLoading = root.querySelector('[data-search-loading]') as HTMLElement | null;
-    const announceEl = root.querySelector('[data-search-announce]') as HTMLElement | null;
+    const form = root.querySelector(
+      "[data-search-form]",
+    ) as HTMLFormElement | null;
+    const input = root.querySelector(
+      "[data-search-input]",
+    ) as HTMLInputElement | null;
+    const errorHint = root.querySelector(
+      "[data-error-hint]",
+    ) as HTMLElement | null;
+    const searchResults = root.querySelector(
+      "[data-search-results]",
+    ) as HTMLElement | null;
+    const noResults = root.querySelector(
+      "[data-no-results]",
+    ) as HTMLElement | null;
+    const searchLoading = root.querySelector(
+      "[data-search-loading]",
+    ) as HTMLElement | null;
+    const announceEl = root.querySelector(
+      "[data-search-announce]",
+    ) as HTMLElement | null;
 
-    if (!form || !input || !errorHint || !searchResults || !noResults || !searchLoading || !announceEl) return;
+    if (
+      !form ||
+      !input ||
+      !errorHint ||
+      !searchResults ||
+      !noResults ||
+      !searchLoading ||
+      !announceEl
+    )
+      return;
 
     const resultsEl = searchResults;
     const noResultsEl = noResults;
     const loadingEl = searchLoading;
     const inputEl = input;
     const announceRegion = announceEl;
-    const lang = root.dataset.lang || '';
-    const navigateBasePath = root.dataset.basePath || '/pairings';
-    const navigatePathTemplate = root.dataset.pathTemplate || '';
-    const recentStorageKey = root.dataset.recentKey || 'recentTournaments';
-    const searchLimit = Number(root.dataset.searchLimit || '0');
+    const lang = root.dataset.lang || "";
+    const navigateBasePath = root.dataset.basePath || "/pairings";
+    const navigatePathTemplate = root.dataset.pathTemplate || "";
+    const recentStorageKey = root.dataset.recentKey || "recentTournaments";
+    const searchLimit = Number(root.dataset.searchLimit || "0");
 
     let debounceTimer: ReturnType<typeof setTimeout>;
     let activeIndex = -1;
@@ -454,7 +516,7 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
       player_count?: number;
     }> = [];
 
-    form.addEventListener('submit', (event) => {
+    form.addEventListener("submit", (event) => {
       event.preventDefault();
       const raw = inputEl.value.trim();
       if (!raw) return;
@@ -467,18 +529,18 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
       const tid = extractTournamentId(raw);
       if (tid) {
         hideDropdown();
-        errorHint?.classList.add('hidden');
+        errorHint?.classList.add("hidden");
         navigateToTournament(tid);
       } else {
-        errorHint?.classList.remove('hidden');
+        errorHint?.classList.remove("hidden");
       }
     });
 
-    inputEl.addEventListener('input', () => {
-      errorHint?.classList.add('hidden');
+    inputEl.addEventListener("input", () => {
+      errorHint?.classList.add("hidden");
       const raw = inputEl.value.trim();
 
-      if (!raw || /^\d+$/.test(raw) || raw.includes('chess-results.com')) {
+      if (!raw || /^\d+$/.test(raw) || raw.includes("chess-results.com")) {
         hideDropdown();
         return;
       }
@@ -494,34 +556,42 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
       }, 300);
     });
 
-    inputEl.addEventListener('keydown', (event) => {
+    inputEl.addEventListener("keydown", (event) => {
       if (!currentResults.length) return;
-      const items = resultsEl.querySelectorAll('.result-item');
+      const items = resultsEl.querySelectorAll(".result-item");
 
-      if (event.key === 'ArrowDown') {
+      if (event.key === "ArrowDown") {
         event.preventDefault();
         activeIndex = Math.min(activeIndex + 1, items.length - 1);
         updateActiveItem(items);
-      } else if (event.key === 'ArrowUp') {
+      } else if (event.key === "ArrowUp") {
         event.preventDefault();
         activeIndex = Math.max(activeIndex - 1, -1);
         updateActiveItem(items);
-      } else if (event.key === 'Enter' && activeIndex >= 0) {
+      } else if (event.key === "Enter" && activeIndex >= 0) {
         event.preventDefault();
         navigateToTournament(currentResults[activeIndex].id);
-      } else if (event.key === 'Escape') {
+      } else if (event.key === "Escape") {
         hideDropdown();
       }
     });
 
-    document.addEventListener('click', (event) => {
-      if (!resultsEl.contains(event.target as Node) && !root.contains(event.target as Node)) {
+    document.addEventListener("click", (event) => {
+      if (
+        !resultsEl.contains(event.target as Node) &&
+        !root.contains(event.target as Node)
+      ) {
         hideDropdown();
       }
     });
 
     const existing = inputEl.value.trim();
-    if (existing && existing.length >= 2 && !/^\d+$/.test(existing) && !existing.includes('chess-results.com')) {
+    if (
+      existing &&
+      existing.length >= 2 &&
+      !/^\d+$/.test(existing) &&
+      !existing.includes("chess-results.com")
+    ) {
       void searchTournaments(existing);
     }
 
@@ -530,8 +600,10 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
       setLoading(true);
 
       try {
-        const limitSuffix = searchLimit > 0 ? `&limit=${searchLimit}` : '';
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}${limitSuffix}`);
+        const limitSuffix = searchLimit > 0 ? `&limit=${searchLimit}` : "";
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(query)}${limitSuffix}`,
+        );
         if (requestId !== latestRequestId) return;
         if (!response.ok) {
           hideDropdown();
@@ -548,37 +620,55 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
       }
     }
 
-    function renderResults(results: Array<{ id: string; name: string; type: string; total_rounds: number; date: string; location: string; event_label: string; linked_tournaments: string; player_count?: number }>) {
+    function renderResults(
+      results: Array<{
+        id: string;
+        name: string;
+        type: string;
+        total_rounds: number;
+        date: string;
+        location: string;
+        event_label: string;
+        linked_tournaments: string;
+        player_count?: number;
+      }>,
+    ) {
       currentResults = results;
       activeIndex = -1;
 
-      resultsEl.querySelectorAll('.result-item').forEach((element) => element.remove());
+      resultsEl
+        .querySelectorAll(".result-item")
+        .forEach((element) => element.remove());
 
       if (results.length === 0) {
-        noResultsEl.classList.remove('hidden');
-        resultsEl.classList.remove('hidden');
-        inputEl.setAttribute('aria-expanded', 'true');
-        announceRegion.textContent = noResultsEl.textContent || '';
+        noResultsEl.classList.remove("hidden");
+        resultsEl.classList.remove("hidden");
+        inputEl.setAttribute("aria-expanded", "true");
+        announceRegion.textContent = noResultsEl.textContent || "";
         return;
       }
 
-      noResultsEl.classList.add('hidden');
+      noResultsEl.classList.add("hidden");
       for (const [index, tournament] of results.entries()) {
-        const item = document.createElement('a');
-        item.className = 'result-item';
+        const item = document.createElement("a");
+        item.className = "result-item";
         item.id = `${inputEl.id}-result-${index}`;
-        item.setAttribute('role', 'option');
-        item.setAttribute('aria-selected', 'false');
+        item.setAttribute("role", "option");
+        item.setAttribute("aria-selected", "false");
         item.href = buildTournamentHref(tournament.id);
 
-        const meta = [tournament.date, tournament.location, `${tournament.total_rounds} rounds`]
+        const meta = [
+          tournament.date,
+          tournament.location,
+          `${tournament.total_rounds} rounds`,
+        ]
           .filter(Boolean)
-          .join(' · ');
+          .join(" · ");
 
-        let linkedHtml = '';
+        let linkedHtml = "";
         const linked: Array<{ id: string; name: string }> = (() => {
           try {
-            return JSON.parse(tournament.linked_tournaments || '[]');
+            return JSON.parse(tournament.linked_tournaments || "[]");
           } catch {
             return [];
           }
@@ -587,8 +677,11 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
         if (linked.length > 0) {
           const pills = linked
             .sort((left, right) => left.name.localeCompare(right.name))
-            .map((linkedTournament) => `<span class="event-pill" data-tid="${escapeHtml(linkedTournament.id)}">${escapeHtml(linkedTournament.name)}</span>`)
-            .join('');
+            .map(
+              (linkedTournament) =>
+                `<span class="event-pill" data-tid="${escapeHtml(linkedTournament.id)}">${escapeHtml(linkedTournament.name)}</span>`,
+            )
+            .join("");
           linkedHtml = `<span class="event-pills">${pills}</span>`;
         }
 
@@ -603,8 +696,8 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
           </span>
         `;
 
-        item.querySelectorAll('.event-pill').forEach((pill) => {
-          pill.addEventListener('click', (event) => {
+        item.querySelectorAll(".event-pill").forEach((pill) => {
+          pill.addEventListener("click", (event) => {
             event.preventDefault();
             event.stopPropagation();
             const pillTid = (pill as HTMLElement).dataset.tid;
@@ -613,7 +706,7 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
           });
         });
 
-        item.addEventListener('click', (event) => {
+        item.addEventListener("click", (event) => {
           event.preventDefault();
           navigateToTournament(tournament.id);
         });
@@ -621,77 +714,102 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
         resultsEl.appendChild(item);
       }
 
-      resultsEl.classList.remove('hidden');
-      inputEl.setAttribute('aria-expanded', 'true');
+      resultsEl.classList.remove("hidden");
+      inputEl.setAttribute("aria-expanded", "true");
       announceRegion.textContent = String(results.length);
     }
 
     function updateActiveItem(items: NodeListOf<Element>) {
       items.forEach((element, index) => {
         const isActive = index === activeIndex;
-        element.classList.toggle('active', isActive);
-        element.setAttribute('aria-selected', String(isActive));
+        element.classList.toggle("active", isActive);
+        element.setAttribute("aria-selected", String(isActive));
       });
 
-      inputEl.setAttribute('aria-activedescendant', activeIndex >= 0 ? `${inputEl.id}-result-${activeIndex}` : '');
+      inputEl.setAttribute(
+        "aria-activedescendant",
+        activeIndex >= 0 ? `${inputEl.id}-result-${activeIndex}` : "",
+      );
     }
 
     function hideDropdown() {
-      resultsEl.classList.add('hidden');
+      resultsEl.classList.add("hidden");
       setLoading(false);
-      inputEl.setAttribute('aria-expanded', 'false');
-      inputEl.setAttribute('aria-activedescendant', '');
+      inputEl.setAttribute("aria-expanded", "false");
+      inputEl.setAttribute("aria-activedescendant", "");
       currentResults = [];
       activeIndex = -1;
     }
 
     function setLoading(isLoading: boolean) {
-      loadingEl.classList.toggle('hidden', !isLoading);
-      noResultsEl.classList.add('hidden');
+      loadingEl.classList.toggle("hidden", !isLoading);
+      noResultsEl.classList.add("hidden");
       if (isLoading) {
-        resultsEl.querySelectorAll('.result-item').forEach((element) => element.remove());
-        resultsEl.classList.remove('hidden');
-        inputEl.setAttribute('aria-expanded', 'true');
-        announceRegion.textContent = loadingEl.textContent || '';
+        resultsEl
+          .querySelectorAll(".result-item")
+          .forEach((element) => element.remove());
+        resultsEl.classList.remove("hidden");
+        inputEl.setAttribute("aria-expanded", "true");
+        announceRegion.textContent = loadingEl.textContent || "";
       }
     }
 
     function navigateToTournament(tid: string, name?: string) {
       const entry = currentResults.find((result) => result.id === tid);
-      saveRecentTournament(entry || { id: tid, name: name || `Tournament ${tid}` });
+      saveRecentTournament(
+        entry || { id: tid, name: name || `Tournament ${tid}` },
+      );
       window.location.href = buildTournamentHref(tid);
     }
 
     function buildTournamentHref(tid: string) {
       if (navigatePathTemplate) {
-        const href = navigatePathTemplate.replace('{id}', encodeURIComponent(tid));
+        const href = navigatePathTemplate.replace(
+          "{id}",
+          encodeURIComponent(tid),
+        );
         if (lang) {
-          const separator = href.includes('?') ? '&' : '?';
+          const separator = href.includes("?") ? "&" : "?";
           return `${href}${separator}lang=${encodeURIComponent(lang)}`;
         }
         return href;
       }
 
       const params = new URLSearchParams({ tid });
-      if (lang) params.set('lang', lang);
+      if (lang) params.set("lang", lang);
       return `${navigateBasePath}?${params.toString()}`;
     }
 
-    function saveRecentTournament(entry: { id: string; name?: string; type?: string; date?: string; location?: string; player_count?: number }) {
+    function saveRecentTournament(entry: {
+      id: string;
+      name?: string;
+      type?: string;
+      date?: string;
+      location?: string;
+      player_count?: number;
+    }) {
       try {
         const stored = localStorage.getItem(recentStorageKey);
-        let recent: Array<{ id: string; name: string; type?: string; date?: string; location?: string; playerCount?: number }> = stored ? JSON.parse(stored) : [];
+        let recent: Array<{
+          id: string;
+          name: string;
+          type?: string;
+          date?: string;
+          location?: string;
+          playerCount?: number;
+        }> = stored ? JSON.parse(stored) : [];
         const existing = recent.find((result) => result.id === entry.id);
         recent = recent.filter((result) => result.id !== entry.id);
         recent.unshift({
           id: entry.id,
           name: entry.name || existing?.name || `Tournament ${entry.id}`,
-          type: entry.type || existing?.type || '',
-          date: entry.date || existing?.date || '',
-          location: entry.location || existing?.location || '',
-          playerCount: typeof entry.player_count === 'number' && entry.player_count > 0
-            ? entry.player_count
-            : existing?.playerCount,
+          type: entry.type || existing?.type || "",
+          date: entry.date || existing?.date || "",
+          location: entry.location || existing?.location || "",
+          playerCount:
+            typeof entry.player_count === "number" && entry.player_count > 0
+              ? entry.player_count
+              : existing?.playerCount,
         });
         recent = recent.slice(0, 5);
         localStorage.setItem(recentStorageKey, JSON.stringify(recent));
@@ -709,17 +827,19 @@ const describedBy = [hint ? hintId : '', invalidMessage ? errorId : ''].filter(B
   }
 
   function escapeHtml(text: string): string {
-    const div = document.createElement('div');
+    const div = document.createElement("div");
     div.textContent = text;
     return div.innerHTML;
   }
 
   function initTournamentSearchForms() {
-    document.querySelectorAll<HTMLElement>('[data-tournament-search-root]').forEach((root) => {
-      initTournamentSearch(root);
-    });
+    document
+      .querySelectorAll<HTMLElement>("[data-tournament-search-root]")
+      .forEach((root) => {
+        initTournamentSearch(root);
+      });
   }
 
-  document.addEventListener('DOMContentLoaded', initTournamentSearchForms);
-  document.addEventListener('astro:after-swap', initTournamentSearchForms);
+  document.addEventListener("DOMContentLoaded", initTournamentSearchForms);
+  document.addEventListener("astro:after-swap", initTournamentSearchForms);
 </script>

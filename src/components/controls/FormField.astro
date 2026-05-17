@@ -2,18 +2,28 @@
 interface Props {
   label: string;
   forId?: string;
+  showLabel?: boolean;
   class?: string;
 }
 
-const { label, forId, class: className = "" } = Astro.props;
+const { label, forId, class: className = "", showLabel = true } = Astro.props;
 ---
 
 <div class:list={["ui-field", className]}>
-  {forId ? (
-    <label class="ui-field__label" for={forId}>{label}</label>
-  ) : (
-    <span class="ui-field__label">{label}</span>
-  )}
+  {
+    forId ? (
+      <label
+        class:list={["ui-field__label", !showLabel && "visually-hidden"]}
+        for={forId}
+      >
+        {label}
+      </label>
+    ) : (
+      <span class:list={["ui-field__label", !showLabel && "visually-hidden"]}>
+        {label}
+      </span>
+    )
+  }
   <div class="ui-field__control">
     <slot />
   </div>

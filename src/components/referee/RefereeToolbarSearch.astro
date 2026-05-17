@@ -1,0 +1,52 @@
+---
+import TournamentSearchForm from "../tournaments/TournamentSearchForm.astro";
+import { useTranslations } from "../../i18n/ui";
+
+interface Props {
+  lang: number;
+}
+
+const { lang } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<div class="referee-toolbar-search" role="search" aria-label={t('referee.searchTournament')}>
+  <TournamentSearchForm
+    label={t('referee.searchTournament')}
+    placeholder={t('referee.searchPlaceholder')}
+    loadingMessage={t('home.loading')}
+    noResultsMessage={t('referee.noResults')}
+    submitLabel={t('home.submit')}
+    invalidMessage={t('home.invalid')}
+    lang={String(lang)}
+    navigatePathTemplate="/referee/{id}"
+    showSubmit={false}
+    searchLimit={8}
+    showLabel={false}
+    class="referee-toolbar-search__form"
+  />
+</div>
+
+<style>
+  .referee-toolbar-search {
+    display: none;
+  }
+
+  @media (min-width: 1024px) {
+    .referee-toolbar-search {
+      display: block;
+      width: min(12rem, 32vw);
+    }
+  }
+
+  @media (forced-colors: active) {
+    .referee-toolbar-search :global(.referee-toolbar-search__form .search-input),
+    .referee-toolbar-search :global(.referee-toolbar-search__form .search-results),
+    .referee-toolbar-search :global(.referee-toolbar-search__form .error-hint) {
+      border: 1px solid ButtonBorder;
+      background: Canvas;
+      color: CanvasText;
+      box-shadow: none;
+    }
+  }
+</style>

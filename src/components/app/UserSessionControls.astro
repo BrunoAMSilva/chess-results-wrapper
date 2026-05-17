@@ -1,0 +1,215 @@
+---
+import Icon from "./Icon.astro";
+import type { AuthUser } from "../../lib/firebase-admin";
+
+interface Props {
+  user: AuthUser;
+  signOutLabel: string;
+  variant?: "topbar" | "sidebar";
+}
+
+const { user, signOutLabel, variant = "topbar" } = Astro.props;
+const avatarSize = variant === "sidebar" ? 32 : 28;
+const avatarIconSize = variant === "sidebar" ? 18 : 16;
+const displayName = user.name?.trim() || user.email?.trim();
+---
+
+<div class:list={["user-session", `user-session--${variant}`]}>
+  <div class="user-session__identity">
+    {user.picture ? (
+      <img
+        src={user.picture}
+        alt=""
+        class="user-session__avatar"
+        width={avatarSize}
+        height={avatarSize}
+        referrerpolicy="no-referrer"
+      />
+    ) : (
+      <span class="user-session__avatar-fallback" aria-hidden="true">
+        <Icon name="user" size={avatarIconSize} />
+      </span>
+    )}
+
+    {variant === "sidebar" && displayName && (
+      <span class="user-session__name" title={displayName}>{displayName}</span>
+    )}
+  </div>
+
+  <button
+    class="user-session__signout"
+    type="button"
+    data-auth-signout
+    aria-label={signOutLabel}
+    title={signOutLabel}
+  >
+    <Icon name="log-out" size={16} />
+    {variant === "sidebar" && <span class="user-session__signout-label">{signOutLabel}</span>}
+  </button>
+</div>
+
+<style>
+  .user-session {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex-shrink: 0;
+  }
+
+  .user-session--sidebar {
+    display: none;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--surface-container-high) 88%, transparent);
+  }
+
+  .user-session__identity {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+  }
+
+  .user-session__avatar,
+  .user-session__avatar-fallback {
+    flex-shrink: 0;
+    border-radius: var(--radius-full);
+  }
+
+  .user-session__avatar {
+    border: 2px solid var(--border-strong);
+    object-fit: cover;
+  }
+
+  .user-session__avatar-fallback {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-hover);
+    border: 2px solid var(--border-strong);
+    color: var(--text-dim);
+    width: 28px;
+    height: 28px;
+  }
+
+  .user-session--sidebar .user-session__avatar-fallback {
+    width: 32px;
+    height: 32px;
+  }
+
+  .user-session__signout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-1);
+    padding: var(--space-1);
+    color: var(--text-dim);
+    background: none;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    transition:
+      color var(--duration-fast) var(--ease-in-out),
+      background var(--duration-fast) var(--ease-in-out),
+      border-color var(--duration-fast) var(--ease-in-out);
+  }
+
+  .user-session--sidebar .user-session__signout {
+    padding: var(--space-2);
+    background: color-mix(in srgb, var(--surface-container-highest) 68%, transparent);
+  }
+
+  .user-session__signout:hover {
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 12%, transparent);
+  }
+
+  .user-session__signout:focus-visible {
+    outline-color: var(--accent);
+  }
+
+  .user-session__signout-label {
+    white-space: nowrap;
+    overflow: hidden;
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    transition:
+      width var(--duration-fast) var(--ease-in-out),
+      opacity var(--duration-fast) var(--ease-in-out);
+  }
+
+  .user-session__name {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    transition:
+      width var(--duration-fast) var(--ease-in-out),
+      opacity var(--duration-fast) var(--ease-in-out);
+  }
+
+  @media (min-width: 1024px) {
+    .user-session--topbar {
+      display: none;
+    }
+
+    .user-session--sidebar {
+      display: flex;
+    }
+  }
+
+  :global(.app-shell[data-sidebar-state="collapsed"]) .user-session--sidebar {
+    justify-content: center;
+    gap: var(--space-1);
+    padding-inline: var(--space-1);
+  }
+
+  :global(.app-shell[data-sidebar-state="collapsed"]) .user-session--sidebar .user-session__identity {
+    gap: 0;
+    flex: 0;
+  }
+
+  :global(.app-shell[data-sidebar-state="collapsed"]) .user-session--sidebar .user-session__signout {
+    gap: 0;
+    padding-inline: var(--space-1);
+    background: transparent;
+  }
+
+  :global(.app-shell[data-sidebar-state="collapsed"]) .user-session--sidebar .user-session__name,
+  :global(.app-shell[data-sidebar-state="collapsed"]) .user-session--sidebar .user-session__signout-label {
+    width: 0;
+    opacity: 0;
+  }
+
+  @media (forced-colors: active) {
+    .user-session--sidebar,
+    .user-session__signout {
+      border: 1px solid transparent;
+    }
+
+    .user-session__signout:hover {
+      border-color: Highlight;
+      background: ButtonFace;
+      color: ButtonText;
+    }
+
+    .user-session__signout:focus-visible {
+      outline-color: Highlight;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .user-session__signout,
+    .user-session__name,
+    .user-session__signout-label {
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
