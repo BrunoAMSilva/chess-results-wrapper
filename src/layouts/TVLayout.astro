@@ -31,7 +31,10 @@ const documentTitle = eyebrow ? `${eyebrow} - ${title} | ViteChess` : `${title} 
     )}
     <script>
       import { getFirebaseAnalytics } from "../lib/firebase-client";
+      import { startServerSessionSync } from "../lib/firebase-auth-client";
+
       getFirebaseAnalytics();
+      startServerSessionSync();
     </script>
   </body>
 </html>

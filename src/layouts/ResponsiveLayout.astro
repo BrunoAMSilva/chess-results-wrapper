@@ -408,6 +408,14 @@ const desktopSidebarActions: DesktopSidebarItem[] =
 
   getFirebaseAnalytics();
 
+  loadFirebaseAuthModule()
+    .then(({ startServerSessionSync }) => {
+      startServerSessionSync();
+    })
+    .catch((error) => {
+      console.error("[auth] Failed to start session sync:", error);
+    });
+
   // Auth sign-out handler
   document.querySelectorAll("[data-auth-signout]").forEach((btn) => {
     btn.addEventListener("click", async () => {

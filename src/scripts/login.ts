@@ -53,8 +53,24 @@ export function initLoginPage() {
     spinner.hidden = !pending;
   };
 
-  setPending(false);
+  setPending(true);
   errorEl.hidden = true;
+
+  void (async () => {
+    try {
+      const { restoreServerSessionFromClientAuth } = await loadFirebaseAuthModule();
+      const restored = await restoreServerSessionFromClientAuth();
+
+      if (restored) {
+        window.location.href = redirectUrl;
+        return;
+      }
+    } catch (error) {
+      console.error("[auth] Session restore failed:", error);
+    }
+
+    setPending(false);
+  })();
 
   button.addEventListener("click", async () => {
     setPending(true);
