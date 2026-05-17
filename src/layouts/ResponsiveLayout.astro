@@ -73,12 +73,6 @@ if (isOptions && navMode === "referee" && tid) {
 
 const defaultSidebarItems: DesktopSidebarItem[] = [
   {
-    href: `/?lang=${lang}`,
-    label: t("nav.search"),
-    icon: "search",
-    active: isSearch,
-  },
-  {
     href: `/pairings?tid=${tid}&lang=${lang}`,
     label: t("nav.pairings"),
     icon: "table",
