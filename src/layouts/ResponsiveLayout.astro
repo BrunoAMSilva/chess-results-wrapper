@@ -180,11 +180,7 @@ const desktopSidebarActions: DesktopSidebarItem[] =
             sidebarId="app-desktop-sidebar"
             brand={t("site.title")}
             brandHref={
-              navMode === "referee"
-                ? tid
-                  ? `/referee/${tid}?lang=${lang}`
-                  : `/referee?lang=${lang}`
-                : `/?lang=${lang}`
+              navMode === "referee" ? `/referee?lang=${lang}` : `/?lang=${lang}`
             }
             navLabel={t("sidebar.navigation")}
             items={desktopSidebarItems}
