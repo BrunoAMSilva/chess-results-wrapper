@@ -1,7 +1,11 @@
-import * as cheerio from 'cheerio';
-import { getCache, setCache } from './cache';
-import { BASE_URL, CACHE_TTL } from './constants';
-import { getStrategyFromHtml, parseTournamentMeta, parsePlayerCard } from './strategies';
+import * as cheerio from "cheerio";
+import { getCache, setCache } from "./cache";
+import { BASE_URL, CACHE_TTL } from "./constants";
+import {
+  getStrategyFromHtml,
+  parseTournamentMeta,
+  parsePlayerCard,
+} from "./strategies";
 import {
   persistStandings,
   persistPairings,
@@ -12,8 +16,8 @@ import {
   upsertPlayer,
   linkPlayerToTournament,
   upsertTournament,
-} from './db';
-import db from './db';
+} from "./db";
+import db from "./db";
 
 // Re-export types from the shared types module for backward compatibility
 export type {
@@ -28,11 +32,11 @@ export type {
   TeamPlayerEntry,
   LinkedTournament,
   Sex,
-} from './types';
-import type { TournamentData, StandingsData } from './types';
-import { TournamentType } from './types';
+} from "./types";
+import type { TournamentData, StandingsData } from "./types";
+import { TournamentType } from "./types";
 
-const S2_BASE_URL = 'https://s2.chess-results.com';
+const S2_BASE_URL = "https://s2.chess-results.com";
 
 // Always scrape chess-results.com in English for consistent column headers
 // and reduced overhead. User's UI language is separate from scraping language.
@@ -48,20 +52,20 @@ class SimpleCookieJar {
     };
 
     let setCookies: string[] = [];
-    if (typeof headersObj.getSetCookie === 'function') {
+    if (typeof headersObj.getSetCookie === "function") {
       setCookies = headersObj.getSetCookie();
-    } else if (typeof headersObj.raw === 'function') {
-      setCookies = headersObj.raw()['set-cookie'] || [];
+    } else if (typeof headersObj.raw === "function") {
+      setCookies = headersObj.raw()["set-cookie"] || [];
     } else {
-      const fallback = res.headers.get('set-cookie') || '';
+      const fallback = res.headers.get("set-cookie") || "";
       if (fallback) {
         setCookies = fallback.split(/,(?=\s*[^;,\s]+=)/g).map((s) => s.trim());
       }
     }
 
     for (const raw of setCookies) {
-      const firstPart = raw.split(';')[0] || '';
-      const eqIdx = firstPart.indexOf('=');
+      const firstPart = raw.split(";")[0] || "";
+      const eqIdx = firstPart.indexOf("=");
       if (eqIdx <= 0) continue;
       const name = firstPart.slice(0, eqIdx).trim();
       const value = firstPart.slice(eqIdx + 1).trim();
@@ -72,12 +76,17 @@ class SimpleCookieJar {
   }
 
   toHeader(): string {
-    return Array.from(this.jar.entries()).map(([k, v]) => `${k}=${v}`).join('; ');
+    return Array.from(this.jar.entries())
+      .map(([k, v]) => `${k}=${v}`)
+      .join("; ");
   }
 }
 
 function isOldTournamentGate(html: string): boolean {
-  const hasGateText = /LinkButton2|mais de 2 semanas|more than 2 weeks|mehr als 2 Wochen|m[aá]s de 2 semanas/i.test(html);
+  const hasGateText =
+    /LinkButton2|mais de 2 semanas|more than 2 weeks|mehr als 2 Wochen|m[aá]s de 2 semanas/i.test(
+      html,
+    );
   if (!hasGateText) return false;
   // Some old tournament pages show the gate warning banner but still contain
   // actual data (CRs1 table with results).  Only treat it as a real gate when
@@ -91,8 +100,8 @@ function extractHiddenFields(html: string): Map<string, string> {
   const fields = new Map<string, string>();
 
   $('input[type="hidden"]').each((_, el) => {
-    const name = ($(el).attr('name') || '').trim();
-    const value = $(el).attr('value') || '';
+    const name = ($(el).attr("name") || "").trim();
+    const value = $(el).attr("value") || "";
     if (name) {
       fields.set(name, value);
     }
@@ -101,10 +110,15 @@ function extractHiddenFields(html: string): Map<string, string> {
   return fields;
 }
 
-async function fetchTournamentHtml(url: string, tournamentId: string): Promise<string> {
+async function fetchTournamentHtml(
+  url: string,
+  tournamentId: string,
+): Promise<string> {
   const primaryRes = await fetch(url);
   if (!primaryRes.ok) {
-    throw new Error(`Failed to fetch tournament page: HTTP ${primaryRes.status} for tournament ${tournamentId}`);
+    throw new Error(
+      `Failed to fetch tournament page: HTTP ${primaryRes.status} for tournament ${tournamentId}`,
+    );
   }
 
   const primaryHtml = await primaryRes.text();
@@ -114,7 +128,10 @@ async function fetchTournamentHtml(url: string, tournamentId: string): Promise<s
   if (!isOldTournamentGate(primaryHtml)) {
     // Page has data but tournament details (linked tournaments, etc.) may be
     // collapsed behind a "Show tournament details" button.  Try to expand them.
-    if (/cb_alleDetails/.test(primaryHtml) && !/class="CRnowrap"/.test(primaryHtml)) {
+    if (
+      /cb_alleDetails/.test(primaryHtml) &&
+      !/class="CRnowrap"/.test(primaryHtml)
+    ) {
       try {
         const jar = new SimpleCookieJar();
         jar.updateFromResponse(primaryRes);
@@ -122,11 +139,11 @@ async function fetchTournamentHtml(url: string, tournamentId: string): Promise<s
         for (const [k, v] of extractHiddenFields(primaryHtml).entries()) {
           body.set(k, v);
         }
-        body.set('cb_alleDetails', 'Show tournament details');
+        body.set("cb_alleDetails", "Show tournament details");
         const expandRes = await fetch(resolvedUrl, {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
+            "Content-Type": "application/x-www-form-urlencoded",
             Cookie: jar.toHeader(),
             Referer: resolvedUrl,
           },
@@ -136,11 +153,17 @@ async function fetchTournamentHtml(url: string, tournamentId: string): Promise<s
           const expandedHtml = await expandRes.text();
           // Accept if the expanded HTML gained metadata (CRnowrap) or
           // tournament selection links — different servers vary in markup.
-          if (/class="CRnowrap"|Tournament selection|Selec[çc][ãa]o|Selecci[oó]n|Sélection|Auswahl/i.test(expandedHtml)) {
+          if (
+            /class="CRnowrap"|Tournament selection|Selec[çc][ãa]o|Selecci[oó]n|Sélection|Auswahl/i.test(
+              expandedHtml,
+            )
+          ) {
             return expandedHtml;
           }
         }
-      } catch (_) { /* expansion is best-effort */ }
+      } catch (_) {
+        /* expansion is best-effort */
+      }
     }
     return primaryHtml;
   }
@@ -180,25 +203,25 @@ async function fetchTournamentHtml(url: string, tournamentId: string): Promise<s
   const submitBtn = $gate('input[type="submit"]').first();
   const postbackMatch = gateHtml.match(/__doPostBack\('([^']+)'/);
 
-  if (submitBtn.length > 0 && submitBtn.attr('name')) {
+  if (submitBtn.length > 0 && submitBtn.attr("name")) {
     // Regular submit button — include its name/value, leave __EVENTTARGET empty
-    body.set('__EVENTTARGET', '');
-    body.set('__EVENTARGUMENT', '');
-    body.set(submitBtn.attr('name')!, submitBtn.attr('value') || '');
+    body.set("__EVENTTARGET", "");
+    body.set("__EVENTARGUMENT", "");
+    body.set(submitBtn.attr("name")!, submitBtn.attr("value") || "");
   } else if (postbackMatch) {
     // Link button — set __EVENTTARGET to the postback target
-    body.set('__EVENTTARGET', postbackMatch[1]);
-    body.set('__EVENTARGUMENT', '');
+    body.set("__EVENTTARGET", postbackMatch[1]);
+    body.set("__EVENTARGUMENT", "");
   } else {
     // Fallback
-    body.set('__EVENTTARGET', '');
-    body.set('__EVENTARGUMENT', '');
+    body.set("__EVENTTARGET", "");
+    body.set("__EVENTARGUMENT", "");
   }
 
   const postRes = await fetch(gateUrl, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
+      "Content-Type": "application/x-www-form-urlencoded",
       Cookie: jar.toHeader(),
       Referer: gateUrl,
     },
@@ -244,7 +267,9 @@ function isTournamentFinished(dateStr: string): boolean {
   const endDate = parts[parts.length - 1].trim();
   const match = endDate.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
   if (!match) return false;
-  const tournamentEnd = new Date(`${match[1]}-${match[2]}-${match[3]}T23:59:59`);
+  const tournamentEnd = new Date(
+    `${match[1]}-${match[2]}-${match[3]}T23:59:59`,
+  );
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   yesterday.setHours(23, 59, 59, 999);
@@ -273,7 +298,7 @@ async function fetchRemoteMeta(
  * from archive pages (totalRounds, linkedTournaments, etc.).
  */
 function enrichFromDb(
-  info: TournamentData['info'] | StandingsData['info'],
+  info: TournamentData["info"] | StandingsData["info"],
   tournamentId: string,
 ): void {
   try {
@@ -291,9 +316,13 @@ function enrichFromDb(
             info.currentLabel = dbTournament.event_label || undefined;
           }
         }
-      } catch (_) { /* malformed JSON is non-critical */ }
+      } catch (_) {
+        /* malformed JSON is non-critical */
+      }
     }
-  } catch (_) { /* DB read is non-critical */ }
+  } catch (_) {
+    /* DB read is non-critical */
+  }
 }
 
 // ─── Full tournament scrape ───────────────────────────────────────────────────
@@ -312,8 +341,9 @@ export async function scrapeFullTournament(
   enrichFromDb(firstData.info, tournamentId);
 
   const totalRounds = firstData.info.totalRounds;
-  const isTeam = firstData.info.type === TournamentType.TeamSwiss ||
-                 firstData.info.type === TournamentType.TeamRoundRobin;
+  const isTeam =
+    firstData.info.type === TournamentType.TeamSwiss ||
+    firstData.info.type === TournamentType.TeamRoundRobin;
 
   // For team tournaments, also fetch board-level pairings (art=3) for round 1
   if (isTeam) {
@@ -325,12 +355,25 @@ export async function scrapeFullTournament(
         firstData.teamPairings = boardData.teamPairings;
         firstData.pairings = boardData.pairings;
       }
-    } catch (_) { /* board pairings are best-effort */ }
+    } catch (_) {
+      /* board pairings are best-effort */
+    }
   }
 
   // Persist round 1
-  try { persistPairings(tournamentId, firstData.info, 1, firstData.pairings, firstData.teamPairings); } catch (e) {
-    console.warn(`[scraper] Failed to persist pairings for ${tournamentId} round 1:`, e instanceof Error ? e.message : e);
+  try {
+    persistPairings(
+      tournamentId,
+      firstData.info,
+      1,
+      firstData.pairings,
+      firstData.teamPairings,
+    );
+  } catch (e) {
+    console.warn(
+      `[scraper] Failed to persist pairings for ${tournamentId} round 1:`,
+      e instanceof Error ? e.message : e,
+    );
   }
 
   // Scrape remaining rounds
@@ -350,21 +393,38 @@ export async function scrapeFullTournament(
             data.teamPairings = boardData.teamPairings;
             data.pairings = boardData.pairings;
           }
-        } catch (_) { /* board pairings are best-effort */ }
+        } catch (_) {
+          /* board pairings are best-effort */
+        }
       }
 
-      persistPairings(tournamentId, data.info, rd, data.pairings, data.teamPairings);
-    } catch (_) { /* individual round failures are non-critical */ }
+      persistPairings(
+        tournamentId,
+        data.info,
+        rd,
+        data.pairings,
+        data.teamPairings,
+      );
+    } catch (_) {
+      /* individual round failures are non-critical */
+    }
   }
 
   // Scrape standings
   try {
     const standingsData = await scrapeStandingsFromRemote(tournamentId);
-    persistStandings(tournamentId, standingsData.info, standingsData.standings, standingsData.womenStandings);
-  } catch (_) { /* standings are non-critical during full scrape */ }
+    persistStandings(
+      tournamentId,
+      standingsData.info,
+      standingsData.standings,
+      standingsData.womenStandings,
+    );
+  } catch (_) {
+    /* standings are non-critical during full scrape */
+  }
 }
 
-import type { Standing } from './types';
+import type { Standing } from "./types";
 
 /**
  * Scrape art=9 player card pages for all players in a tournament.
@@ -411,7 +471,7 @@ export async function scrapeStartingRank(
   }
 
   // Backfill player cards (national ID, birth year, performance rating, etc.)
-  const standingsWithSno = data.standings.map(s => ({
+  const standingsWithSno = data.standings.map((s) => ({
     ...s,
     startingNumber: s.startingNumber || s.rank,
   }));
@@ -434,7 +494,9 @@ async function scrapePlayerCards(
       if (card.name) {
         persistPlayerCard(tournamentId, card);
       }
-    } catch (_) { /* individual player card failures are non-critical */ }
+    } catch (_) {
+      /* individual player card failures are non-critical */
+    }
   }
 }
 
@@ -451,8 +513,9 @@ async function scrapePairingsFromRemote(
     const data = parseHtml(html, round);
     enrichFromDb(data.info, tournamentId);
 
-    const isTeam = data.info.type === TournamentType.TeamSwiss ||
-                   data.info.type === TournamentType.TeamRoundRobin;
+    const isTeam =
+      data.info.type === TournamentType.TeamSwiss ||
+      data.info.type === TournamentType.TeamRoundRobin;
 
     // For team tournaments, also fetch board-level pairings (art=3)
     if (isTeam) {
@@ -467,17 +530,32 @@ async function scrapePairingsFromRemote(
           data.teamPairings = boardData.teamPairings;
           data.pairings = boardData.pairings;
         }
-      } catch (_) { /* board pairings are best-effort */ }
+      } catch (_) {
+        /* board pairings are best-effort */
+      }
     }
 
     // Persist to database (best-effort)
-    try { persistPairings(tournamentId, data.info, round, data.pairings, data.teamPairings); } catch (e) {
-      console.warn(`[scraper] Failed to persist pairings for ${tournamentId} round ${round}:`, e instanceof Error ? e.message : e);
+    try {
+      persistPairings(
+        tournamentId,
+        data.info,
+        round,
+        data.pairings,
+        data.teamPairings,
+      );
+    } catch (e) {
+      console.warn(
+        `[scraper] Failed to persist pairings for ${tournamentId} round ${round}:`,
+        e instanceof Error ? e.message : e,
+      );
     }
 
     return data;
   } catch (e) {
-    throw new Error(`Failed to parse pairings for tournament ${tournamentId}, round ${round}: ${e instanceof Error ? e.message : e}`);
+    throw new Error(
+      `Failed to parse pairings for tournament ${tournamentId}, round ${round}: ${e instanceof Error ? e.message : e}`,
+    );
   }
 }
 
@@ -503,7 +581,9 @@ async function scrapeStandingsFromRemote(
       }
     } catch (e) {
       if (art === 1) {
-        throw new Error(`Failed to parse standings for tournament ${tournamentId}: ${e instanceof Error ? e.message : e}`);
+        throw new Error(
+          `Failed to parse standings for tournament ${tournamentId}: ${e instanceof Error ? e.message : e}`,
+        );
       }
     }
   }
@@ -518,16 +598,22 @@ async function scrapeStandingsFromRemote(
   if (result.standings.length === 0) {
     try {
       await scrapeStartingRank(tournamentId);
-    } catch (_) { /* non-critical */ }
+    } catch (_) {
+      /* non-critical */
+    }
   }
 
   // Crosstables (art=4) lack the sex column, team standings, and sometimes startingNumbers.
   // If we used art=4, fetch art=1 to supplement missing data.
   if (usedArt !== 1 && result.standings.length > 0) {
-    const isTeam = result.info.type === TournamentType.TeamSwiss ||
-                   result.info.type === TournamentType.TeamRoundRobin;
-    const missingSnr = result.standings.some(s => !s.startingNumber);
-    const needsFallback = result.womenStandings.length === 0 || missingSnr || (isTeam && !result.teamStandings?.length);
+    const isTeam =
+      result.info.type === TournamentType.TeamSwiss ||
+      result.info.type === TournamentType.TeamRoundRobin;
+    const missingSnr = result.standings.some((s) => !s.startingNumber);
+    const needsFallback =
+      result.womenStandings.length === 0 ||
+      missingSnr ||
+      (isTeam && !result.teamStandings?.length);
 
     if (needsFallback) {
       try {
@@ -537,32 +623,38 @@ async function scrapeStandingsFromRemote(
         if (fallback.womenStandings.length > 0) {
           result = { ...result, womenStandings: fallback.womenStandings };
         }
-        if (isTeam && fallback.teamStandings && fallback.teamStandings.length > 0) {
+        if (
+          isTeam &&
+          fallback.teamStandings &&
+          fallback.teamStandings.length > 0
+        ) {
           result = { ...result, teamStandings: fallback.teamStandings };
         }
         // Merge startingNumbers from art=1 when art=4 lacks them
         if (missingSnr && fallback.standings.length > 0) {
-          const snrByName = new Map(fallback.standings.map(s => [s.name, s.startingNumber]));
+          const snrByName = new Map(
+            fallback.standings.map((s) => [s.name, s.startingNumber]),
+          );
           result = {
             ...result,
-            standings: result.standings.map(s =>
+            standings: result.standings.map((s) =>
               !s.startingNumber && snrByName.has(s.name)
                 ? { ...s, startingNumber: snrByName.get(s.name)! }
-                : s
+                : s,
             ),
           };
         }
-      } catch (_) { /* best-effort: supplementary data is optional */ }
+      } catch (_) {
+        /* best-effort: supplementary data is optional */
+      }
     }
   }
 
   // Enrich sex data from women standings
   const womenNames = new Set(result.womenStandings.map((s) => s.name));
-  const enrichedStandings = result.standings.map((s) => (
-    womenNames.has(s.name) && !s.sex
-      ? { ...s, sex: 'F' as const }
-      : s
-  ));
+  const enrichedStandings = result.standings.map((s) =>
+    womenNames.has(s.name) && !s.sex ? { ...s, sex: "F" as const } : s,
+  );
 
   const enrichedResult: StandingsData = {
     ...result,
@@ -577,14 +669,20 @@ async function scrapeStandingsFromRemote(
 // ─── Freshness cache ──────────────────────────────────────────────────────────
 
 /** Short-lived in-memory cache to avoid redundant remote freshness checks. */
-const freshnessCache = new Map<string, { status: 'fresh' | 'scraped' | 'live'; timestamp: number }>();
+const freshnessCache = new Map<
+  string,
+  { status: "fresh" | "scraped" | "live"; timestamp: number }
+>();
 const FRESHNESS_CACHE_TTL = 60_000; // 1 minute
 const FRESHNESS_CACHE_MAX = 500; // evict oldest entries beyond this size
 
 /** In-flight promise map: coalesces concurrent requests for the same tournament. */
-const inFlightEnsure = new Map<string, Promise<'fresh' | 'scraped' | 'live'>>();
+const inFlightEnsure = new Map<string, Promise<"fresh" | "scraped" | "live">>();
 
-function setFreshnessCache(tournamentId: string, status: 'fresh' | 'scraped' | 'live'): void {
+function setFreshnessCache(
+  tournamentId: string,
+  status: "fresh" | "scraped" | "live",
+): void {
   freshnessCache.set(tournamentId, { status, timestamp: Date.now() });
   // Evict the oldest entry once we exceed the cap
   if (freshnessCache.size > FRESHNESS_CACHE_MAX) {
@@ -610,7 +708,7 @@ function setFreshnessCache(tournamentId: string, status: 'fresh' | 'scraped' | '
  */
 export async function ensureTournamentData(
   tournamentId: string,
-): Promise<'fresh' | 'scraped' | 'live'> {
+): Promise<"fresh" | "scraped" | "live"> {
   const now = Date.now();
 
   // Fast path: freshness cache hit — also prune expired entries on each read
@@ -635,23 +733,26 @@ export async function ensureTournamentData(
 
 async function doEnsureTournamentData(
   tournamentId: string,
-): Promise<'fresh' | 'scraped' | 'live'> {
+): Promise<"fresh" | "scraped" | "live"> {
   const dbTournament = getTournament(tournamentId);
 
   if (!dbTournament) {
     try {
       await scrapeFullTournament(tournamentId);
-      setFreshnessCache(tournamentId, 'scraped');
-      return 'scraped';
+      setFreshnessCache(tournamentId, "scraped");
+      return "scraped";
     } catch (e) {
-      console.warn(`[scraper] Full scrape failed for new tournament ${tournamentId}, falling back to live mode:`, e instanceof Error ? e.message : e);
-      return 'live'; // Full scrape failed — caller should try single-page scrape
+      console.warn(
+        `[scraper] Full scrape failed for new tournament ${tournamentId}, falling back to live mode:`,
+        e instanceof Error ? e.message : e,
+      );
+      return "live"; // Full scrape failed — caller should try single-page scrape
     }
   }
 
   if (!isTournamentFinished(dbTournament.date)) {
-    setFreshnessCache(tournamentId, 'live');
-    return 'live';
+    setFreshnessCache(tournamentId, "live");
+    return "live";
   }
 
   // Finished tournament — check remote freshness
@@ -659,33 +760,50 @@ async function doEnsureTournamentData(
   const remoteLastUpdated = remoteMeta.lastUpdated;
 
   // Fix stale total_rounds: if remote reports more rounds than DB, update DB
-  if (remoteMeta.totalRounds > 0 && remoteMeta.totalRounds > dbTournament.total_rounds) {
+  if (
+    remoteMeta.totalRounds > 0 &&
+    remoteMeta.totalRounds > dbTournament.total_rounds
+  ) {
     try {
-      db.prepare('UPDATE tournaments SET total_rounds = ?, updated_at = datetime(\'now\') WHERE id = ?')
-        .run(remoteMeta.totalRounds, tournamentId);
-    } catch (_) { /* non-critical */ }
+      db.prepare(
+        "UPDATE tournaments SET total_rounds = ?, updated_at = datetime('now') WHERE id = ?",
+      ).run(remoteMeta.totalRounds, tournamentId);
+    } catch (_) {
+      /* non-critical */
+    }
   }
 
-  if (remoteLastUpdated && dbTournament.last_updated && remoteLastUpdated <= dbTournament.last_updated) {
-    setFreshnessCache(tournamentId, 'fresh');
-    return 'fresh';
+  if (
+    remoteLastUpdated &&
+    dbTournament.last_updated &&
+    remoteLastUpdated <= dbTournament.last_updated
+  ) {
+    setFreshnessCache(tournamentId, "fresh");
+    return "fresh";
   }
 
-  if (remoteLastUpdated && (!dbTournament.last_updated || remoteLastUpdated > dbTournament.last_updated)) {
+  if (
+    remoteLastUpdated &&
+    (!dbTournament.last_updated ||
+      remoteLastUpdated > dbTournament.last_updated)
+  ) {
     try {
       await scrapeFullTournament(tournamentId);
-      setFreshnessCache(tournamentId, 'scraped');
-      return 'scraped';
+      setFreshnessCache(tournamentId, "scraped");
+      return "scraped";
     } catch (e) {
-      console.warn(`[scraper] Full scrape failed for tournament ${tournamentId}, serving stale DB data:`, e instanceof Error ? e.message : e);
-      setFreshnessCache(tournamentId, 'fresh');
-      return 'fresh'; // Full scrape failed — serve stale DB data
+      console.warn(
+        `[scraper] Full scrape failed for tournament ${tournamentId}, serving stale DB data:`,
+        e instanceof Error ? e.message : e,
+      );
+      setFreshnessCache(tournamentId, "fresh");
+      return "fresh"; // Full scrape failed — serve stale DB data
     }
   }
 
   // Couldn't determine remote freshness — serve from DB
-  setFreshnessCache(tournamentId, 'fresh');
-  return 'fresh';
+  setFreshnessCache(tournamentId, "fresh");
+  return "fresh";
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
@@ -701,13 +819,14 @@ export async function scrapePairings(
 
   const status = await ensureTournamentData(tournamentId);
 
-  if (status !== 'live') {
+  if (status !== "live") {
     const fromDb = getPairingsFromDb(tournamentId, round);
     if (fromDb) {
       // For team tournaments, ensure we have team pairings data.
       // If the DB was populated before team persistence was added, fall through to remote.
-      const isTeam = fromDb.info.type === TournamentType.TeamSwiss ||
-                     fromDb.info.type === TournamentType.TeamRoundRobin;
+      const isTeam =
+        fromDb.info.type === TournamentType.TeamSwiss ||
+        fromDb.info.type === TournamentType.TeamRoundRobin;
       if (!isTeam || (fromDb.teamPairings && fromDb.teamPairings.length > 0)) {
         setCache(cacheKey, fromDb, CACHE_TTL);
         return fromDb;
@@ -717,7 +836,7 @@ export async function scrapePairings(
 
   const result = await scrapePairingsFromRemote(tournamentId, round);
   // Cache live tournament data with a shorter TTL
-  setCache(cacheKey, result, status === 'live' ? 60 : CACHE_TTL);
+  setCache(cacheKey, result, status === "live" ? 60 : CACHE_TTL);
   return result;
 }
 
@@ -730,7 +849,7 @@ export async function scrapeStandings(
 
   const status = await ensureTournamentData(tournamentId);
 
-  if (status !== 'live') {
+  if (status !== "live") {
     const fromDb = getStandingsFromDb(tournamentId);
     if (fromDb) {
       setCache(cacheKey, fromDb, CACHE_TTL);
@@ -742,9 +861,17 @@ export async function scrapeStandings(
   setCache(cacheKey, result, CACHE_TTL);
 
   try {
-    persistStandings(tournamentId, result.info, result.standings, result.womenStandings);
+    persistStandings(
+      tournamentId,
+      result.info,
+      result.standings,
+      result.womenStandings,
+    );
   } catch (e) {
-    console.warn(`[scraper] Failed to persist standings for ${tournamentId}:`, e instanceof Error ? e.message : e);
+    console.warn(
+      `[scraper] Failed to persist standings for ${tournamentId}:`,
+      e instanceof Error ? e.message : e,
+    );
   }
 
   return result;
@@ -755,10 +882,8 @@ export async function scrapeStandings(
  * Scrapes art=9 pages for all players that are missing national_id.
  * Called before XML export to guarantee player IDs are available.
  */
-export async function ensurePlayerCards(
-  tournamentId: string,
-): Promise<void> {
-  const { getPlayerNationalIds } = await import('./db');
+export async function ensurePlayerCards(tournamentId: string): Promise<void> {
+  const { getPlayerNationalIds } = await import("./db");
   const existingIds = getPlayerNationalIds(tournamentId);
 
   // If some players already have national IDs, assume cards were scraped
@@ -771,7 +896,10 @@ export async function ensurePlayerCards(
       await scrapePlayerCards(tournamentId, standingsData.standings);
     }
   } catch (e) {
-    console.warn(`[scraper] Failed to ensure player cards for ${tournamentId}:`, e instanceof Error ? e.message : e);
+    console.warn(
+      `[scraper] Failed to ensure player cards for ${tournamentId}:`,
+      e instanceof Error ? e.message : e,
+    );
   }
 }
 
@@ -783,7 +911,7 @@ export async function ensurePlayerCards(
 export async function fetchPlayerUids(
   tournamentId: string,
 ): Promise<Record<number, number>> {
-  const { upsertPlayerUid } = await import('./db');
+  const { upsertPlayerUid } = await import("./db");
   const url = `${BASE_URL}/xml.aspx?tnr=${tournamentId}&key1=Alphabetic`;
   const response = await fetch(url);
   if (!response.ok) {
@@ -793,9 +921,9 @@ export async function fetchPlayerUids(
   const $ = cheerio.load(xml, { xml: true });
   const map: Record<number, number> = {};
 
-  $('Daten').each((_, el) => {
-    const startrank = parseInt($(el).attr('Startrank') || '', 10);
-    const uid = parseInt($(el).attr('Uid') || '', 10);
+  $("Daten").each((_, el) => {
+    const startrank = parseInt($(el).attr("Startrank") || "", 10);
+    const uid = parseInt($(el).attr("Uid") || "", 10);
     if (startrank > 0 && uid > 0) {
       map[startrank] = uid;
       upsertPlayerUid(tournamentId, startrank, uid);
@@ -813,7 +941,7 @@ export async function fetchPlayerUids(
 export async function ensurePlayerUids(
   tournamentId: string,
 ): Promise<Record<number, number>> {
-  const { getPlayerUidMap } = await import('./db');
+  const { getPlayerUidMap } = await import("./db");
   const existing = getPlayerUidMap(tournamentId);
   if (Object.keys(existing).length > 0) return existing;
   return fetchPlayerUids(tournamentId);
@@ -836,7 +964,10 @@ export function parseHtml(html: string, round: number): TournamentData {
  * Parse board-level pairings HTML (art=3) for team tournaments.
  * Falls back to standard parsePairings if the strategy doesn't support board pairings.
  */
-export function parseBoardPairingsHtml(html: string, round: number): TournamentData {
+export function parseBoardPairingsHtml(
+  html: string,
+  round: number,
+): TournamentData {
   const $ = cheerio.load(html);
   const strategy = getStrategyFromHtml($);
   const meta = parseTournamentMeta($);
