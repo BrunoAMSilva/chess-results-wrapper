@@ -1,9 +1,11 @@
-import Database from 'better-sqlite3';
-import path from 'node:path';
-import fs from 'node:fs';
-import { MIN_OPENING_REHEARSAL_PLIES } from './constants';
+import Database from "better-sqlite3";
+import path from "node:path";
+import fs from "node:fs";
+import { MIN_OPENING_REHEARSAL_PLIES } from "./constants";
 
-const dbPath = process.env.DATABASE_PATH || path.join(process.cwd(), 'data', 'chess-results.db');
+const dbPath =
+  process.env.DATABASE_PATH ||
+  path.join(process.cwd(), "data", "chess-results.db");
 
 // Bump when the schema changes. Triggers a full data wipe on startup
 // if the stored PRAGMA user_version is behind this value.
@@ -17,12 +19,12 @@ try {
   db = new Database(dbPath);
 } catch (_) {
   // Fall back to in-memory database if file DB fails
-  db = new Database(':memory:');
+  db = new Database(":memory:");
 }
 
 // Enable WAL mode for better concurrent read performance
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+db.pragma("journal_mode = WAL");
+db.pragma("foreign_keys = ON");
 
 db.exec(`
   -- HTTP cache (existing functionality)
@@ -174,7 +176,7 @@ db.exec(`
 // ─── Database versioning ────────────────────────────────────────────────────
 // If the stored version is behind DB_VERSION, wipe all data so stale rows
 // (wrong tournament types, missing labels, etc.) don't persist across deploys.
-const currentVersion = db.pragma('user_version', { simple: true }) as number;
+const currentVersion = db.pragma("user_version", { simple: true }) as number;
 if (currentVersion < DB_VERSION) {
   db.exec(`
     DELETE FROM results;
@@ -189,9 +191,11 @@ if (currentVersion < DB_VERSION) {
 
 // ─── Table migrations (idempotent) ──────────────────────────────────────────
 // Recreate standings table if missing `type` column (needed in PRIMARY KEY)
-const standingsCols = (db.prepare('PRAGMA table_info(standings)').all() as { name: string }[]);
-if (!standingsCols.some(c => c.name === 'type')) {
-  db.exec('DROP TABLE IF EXISTS standings');
+const standingsCols = db.prepare("PRAGMA table_info(standings)").all() as {
+  name: string;
+}[];
+if (!standingsCols.some((c) => c.name === "type")) {
+  db.exec("DROP TABLE IF EXISTS standings");
   db.exec(`
     CREATE TABLE standings (
       tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
@@ -208,18 +212,38 @@ if (!standingsCols.some(c => c.name === 'type')) {
       PRIMARY KEY (tournament_id, player_id, type)
     )
   `);
-  db.exec('CREATE INDEX IF NOT EXISTS idx_standings_tournament ON standings(tournament_id)');
-  db.exec('CREATE INDEX IF NOT EXISTS idx_standings_player_type ON standings(player_id, type)');
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_standings_tournament ON standings(tournament_id)",
+  );
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_standings_player_type ON standings(player_id, type)",
+  );
 }
 
 // ─── Column migrations (idempotent) ─────────────────────────────────────────
-try { db.exec('ALTER TABLE players ADD COLUMN birth_year INTEGER'); } catch (_) {}
-try { db.exec('ALTER TABLE players ADD COLUMN national_id TEXT'); } catch (_) {}
-try { db.exec("ALTER TABLE players ADD COLUMN title TEXT NOT NULL DEFAULT ''"); } catch (_) {}
-try { db.exec('ALTER TABLE players ADD COLUMN photo_url TEXT'); } catch (_) {}
-try { db.exec('ALTER TABLE tournament_players ADD COLUMN national_rating INTEGER'); } catch (_) {}
-try { db.exec('ALTER TABLE tournament_players ADD COLUMN performance_rating INTEGER'); } catch (_) {}
-try { db.exec("ALTER TABLE tournament_players ADD COLUMN rating_change TEXT"); } catch (_) {}
+try {
+  db.exec("ALTER TABLE players ADD COLUMN birth_year INTEGER");
+} catch (_) {}
+try {
+  db.exec("ALTER TABLE players ADD COLUMN national_id TEXT");
+} catch (_) {}
+try {
+  db.exec("ALTER TABLE players ADD COLUMN title TEXT NOT NULL DEFAULT ''");
+} catch (_) {}
+try {
+  db.exec("ALTER TABLE players ADD COLUMN photo_url TEXT");
+} catch (_) {}
+try {
+  db.exec("ALTER TABLE tournament_players ADD COLUMN national_rating INTEGER");
+} catch (_) {}
+try {
+  db.exec(
+    "ALTER TABLE tournament_players ADD COLUMN performance_rating INTEGER",
+  );
+} catch (_) {}
+try {
+  db.exec("ALTER TABLE tournament_players ADD COLUMN rating_change TEXT");
+} catch (_) {}
 
 // ─── Data migration: fix duplicate standings from art=4/art=1 name mismatch ──
 // art=4 (crosstable) uses "Last First" while art=1 uses "Last, First",
@@ -227,22 +251,30 @@ try { db.exec("ALTER TABLE tournament_players ADD COLUMN rating_change TEXT"); }
 // Detect tournaments with >1 row per (tournament_id, rank, type) and clear
 // their standings + reset last_updated so the next visit triggers a fresh scrape.
 try {
-  const dupeTournaments = db.prepare(`
+  const dupeTournaments = db
+    .prepare(
+      `
     SELECT DISTINCT tournament_id
     FROM standings
     WHERE type = 'open'
     GROUP BY tournament_id, rank
     HAVING COUNT(*) > 1
-  `).all() as Array<{ tournament_id: string }>;
+  `,
+    )
+    .all() as Array<{ tournament_id: string }>;
 
   if (dupeTournaments.length > 0) {
-    const tids = [...new Set(dupeTournaments.map(d => d.tournament_id))];
+    const tids = [...new Set(dupeTournaments.map((d) => d.tournament_id))];
     for (const tid of tids) {
-      db.prepare('DELETE FROM standings WHERE tournament_id = ?').run(tid);
-      db.prepare("UPDATE tournaments SET last_updated = '', updated_at = datetime('now') WHERE id = ?").run(tid);
+      db.prepare("DELETE FROM standings WHERE tournament_id = ?").run(tid);
+      db.prepare(
+        "UPDATE tournaments SET last_updated = '', updated_at = datetime('now') WHERE id = ?",
+      ).run(tid);
     }
   }
-} catch (_) { /* non-critical migration */ }
+} catch (_) {
+  /* non-critical migration */
+}
 
 function playerRichnessScore(row: DbPlayer): number {
   let score = 0;
@@ -263,27 +295,37 @@ function playerRichnessScore(row: DbPlayer): number {
  * - avoid merging across clearly different federations
  */
 function migrateDeduplicatePlayers(): void {
-  const names = db.prepare(`
+  const names = db
+    .prepare(
+      `
     SELECT name
     FROM players
     GROUP BY name
     HAVING COUNT(*) > 1
-  `).all() as Array<{ name: string }>;
+  `,
+    )
+    .all() as Array<{ name: string }>;
 
   if (names.length === 0) return;
 
   const txn = db.transaction(() => {
     for (const { name } of names) {
-      const rows = db.prepare(`
+      const rows = db
+        .prepare(
+          `
         SELECT *
         FROM players
         WHERE name = ?
-      `).all(name) as DbPlayer[];
+      `,
+        )
+        .all(name) as DbPlayer[];
 
       if (rows.length < 2) continue;
 
       const withFederation = rows.filter((r) => !!r.federation);
-      const uniqueFederations = new Set(withFederation.map((r) => r.federation));
+      const uniqueFederations = new Set(
+        withFederation.map((r) => r.federation),
+      );
 
       // If multiple explicit federations exist, skip migration for this name.
       if (uniqueFederations.size > 1) continue;
@@ -291,7 +333,7 @@ function migrateDeduplicatePlayers(): void {
       const ordered = [...rows].sort((a, b) => {
         const scoreDiff = playerRichnessScore(b) - playerRichnessScore(a);
         if (scoreDiff !== 0) return scoreDiff;
-        return (b.updated_at || '').localeCompare(a.updated_at || '');
+        return (b.updated_at || "").localeCompare(a.updated_at || "");
       });
 
       const target = ordered[0];
@@ -303,28 +345,40 @@ function migrateDeduplicatePlayers(): void {
         if (sourceId === target.id) continue;
 
         // Avoid unique conflicts by removing overlapping source links first.
-        db.prepare(`
+        db.prepare(
+          `
           DELETE FROM tournament_players
           WHERE player_id = ?
             AND tournament_id IN (
               SELECT tournament_id FROM tournament_players WHERE player_id = ?
             )
-        `).run(sourceId, target.id);
+        `,
+        ).run(sourceId, target.id);
 
-        db.prepare(`
+        db.prepare(
+          `
           DELETE FROM standings
           WHERE player_id = ?
             AND tournament_id IN (
               SELECT tournament_id FROM standings WHERE player_id = ?
             )
-        `).run(sourceId, target.id);
+        `,
+        ).run(sourceId, target.id);
 
-        db.prepare('UPDATE tournament_players SET player_id = ? WHERE player_id = ?').run(target.id, sourceId);
-        db.prepare('UPDATE standings SET player_id = ? WHERE player_id = ?').run(target.id, sourceId);
-        db.prepare('UPDATE results SET white_player_id = ? WHERE white_player_id = ?').run(target.id, sourceId);
-        db.prepare('UPDATE results SET black_player_id = ? WHERE black_player_id = ?').run(target.id, sourceId);
+        db.prepare(
+          "UPDATE tournament_players SET player_id = ? WHERE player_id = ?",
+        ).run(target.id, sourceId);
+        db.prepare(
+          "UPDATE standings SET player_id = ? WHERE player_id = ?",
+        ).run(target.id, sourceId);
+        db.prepare(
+          "UPDATE results SET white_player_id = ? WHERE white_player_id = ?",
+        ).run(target.id, sourceId);
+        db.prepare(
+          "UPDATE results SET black_player_id = ? WHERE black_player_id = ?",
+        ).run(target.id, sourceId);
 
-        db.prepare('DELETE FROM players WHERE id = ?').run(sourceId);
+        db.prepare("DELETE FROM players WHERE id = ?").run(sourceId);
       }
     }
   });
@@ -356,22 +410,37 @@ import type {
   PlayerCardData,
   DbPlayerTournamentHistory,
   DbPlayerResultEntry,
-} from './types';
+} from "./types";
 
 // ── Tournaments ──
 
-export function upsertTournament(info: TournamentInfo, tournamentId: string): void {
+export function upsertTournament(
+  info: TournamentInfo,
+  tournamentId: string,
+): void {
   // Migrate: add columns if they don't exist yet (no-op after first run)
-  try { db.exec('ALTER TABLE tournaments ADD COLUMN event_label TEXT NOT NULL DEFAULT \'\''); } catch (_) {}
-  try { db.exec('ALTER TABLE tournaments ADD COLUMN linked_tournaments TEXT NOT NULL DEFAULT \'[]\''); } catch (_) {}
-  try { db.exec("ALTER TABLE tournaments ADD COLUMN last_updated TEXT NOT NULL DEFAULT ''"); } catch (_) {}
+  try {
+    db.exec(
+      "ALTER TABLE tournaments ADD COLUMN event_label TEXT NOT NULL DEFAULT ''",
+    );
+  } catch (_) {}
+  try {
+    db.exec(
+      "ALTER TABLE tournaments ADD COLUMN linked_tournaments TEXT NOT NULL DEFAULT '[]'",
+    );
+  } catch (_) {}
+  try {
+    db.exec(
+      "ALTER TABLE tournaments ADD COLUMN last_updated TEXT NOT NULL DEFAULT ''",
+    );
+  } catch (_) {}
 
   // Filter out self-reference from linked tournaments
   const filtered = info.linkedTournaments?.filter((t) => t.id !== tournamentId);
-  const linkedJson = filtered && filtered.length > 0
-    ? JSON.stringify(filtered)
-    : '[]';
-  db.prepare(`
+  const linkedJson =
+    filtered && filtered.length > 0 ? JSON.stringify(filtered) : "[]";
+  db.prepare(
+    `
     INSERT INTO tournaments (id, name, type, total_rounds, date, location, event_label, linked_tournaments, last_updated, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     ON CONFLICT(id) DO UPDATE SET
@@ -384,13 +453,33 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
       linked_tournaments = CASE WHEN excluded.linked_tournaments != '[]' THEN excluded.linked_tournaments ELSE tournaments.linked_tournaments END,
       last_updated = CASE WHEN excluded.last_updated != '' THEN excluded.last_updated ELSE tournaments.last_updated END,
       updated_at = datetime('now')
-  `).run(tournamentId, info.name, info.type, info.totalRounds, info.date, info.location, info.currentLabel || '', linkedJson, info.lastUpdated || '');
+  `,
+  ).run(
+    tournamentId,
+    info.name,
+    info.type,
+    info.totalRounds,
+    info.date,
+    info.location,
+    info.currentLabel || "",
+    linkedJson,
+    info.lastUpdated || "",
+  );
 
   // Propagate links bidirectionally: if A links to B, ensure B links back to A
   if (filtered && filtered.length > 0 && info.currentLabel) {
-    const reverseEntry = JSON.stringify({ id: tournamentId, name: info.currentLabel });
+    const reverseEntry = JSON.stringify({
+      id: tournamentId,
+      name: info.currentLabel,
+    });
     for (const linked of filtered) {
-      const row = db.prepare('SELECT linked_tournaments, event_label FROM tournaments WHERE id = ?').get(linked.id) as { linked_tournaments: string; event_label: string } | undefined;
+      const row = db
+        .prepare(
+          "SELECT linked_tournaments, event_label FROM tournaments WHERE id = ?",
+        )
+        .get(linked.id) as
+        | { linked_tournaments: string; event_label: string }
+        | undefined;
       if (!row) continue;
       try {
         const existing: LinkedTournament[] = JSON.parse(row.linked_tournaments);
@@ -398,7 +487,10 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
         // Build full link set: existing links + this tournament + all siblings (excluding self)
         const siblings = filtered.filter((t) => t.id !== linked.id);
         const merged = [...existing];
-        for (const entry of [{ id: tournamentId, name: info.currentLabel }, ...siblings]) {
+        for (const entry of [
+          { id: tournamentId, name: info.currentLabel },
+          ...siblings,
+        ]) {
           if (!merged.some((t) => t.id === entry.id)) {
             merged.push(entry);
           }
@@ -406,19 +498,25 @@ export function upsertTournament(info: TournamentInfo, tournamentId: string): vo
         const mergedJson = JSON.stringify(merged);
         // Also propagate event_label from the link name if the linked tournament has none
         if (!row.event_label && linked.name) {
-          db.prepare('UPDATE tournaments SET linked_tournaments = ?, event_label = ?, updated_at = datetime(\'now\') WHERE id = ?')
-            .run(mergedJson, linked.name, linked.id);
+          db.prepare(
+            "UPDATE tournaments SET linked_tournaments = ?, event_label = ?, updated_at = datetime('now') WHERE id = ?",
+          ).run(mergedJson, linked.name, linked.id);
         } else {
-          db.prepare('UPDATE tournaments SET linked_tournaments = ?, updated_at = datetime(\'now\') WHERE id = ?')
-            .run(mergedJson, linked.id);
+          db.prepare(
+            "UPDATE tournaments SET linked_tournaments = ?, updated_at = datetime('now') WHERE id = ?",
+          ).run(mergedJson, linked.id);
         }
-      } catch (_) { /* malformed JSON is non-critical */ }
+      } catch (_) {
+        /* malformed JSON is non-critical */
+      }
     }
   }
 }
 
 export function getTournament(tournamentId: string): DbTournament | undefined {
-  return db.prepare('SELECT * FROM tournaments WHERE id = ?').get(tournamentId) as DbTournament | undefined;
+  return db
+    .prepare("SELECT * FROM tournaments WHERE id = ?")
+    .get(tournamentId) as DbTournament | undefined;
 }
 
 // ── Players ──
@@ -426,11 +524,11 @@ export function getTournament(tournamentId: string): DbTournament | undefined {
 export function upsertPlayer(
   name: string,
   federation: string,
-  sex: Sex = '',
+  sex: Sex = "",
   fideId: string | null = null,
   birthYear: number | null = null,
   nationalId: string | null = null,
-  title: string = '',
+  title: string = "",
 ): number {
   const normalizedName = name.trim();
   const normalizedFed = federation.trim();
@@ -440,11 +538,12 @@ export function upsertPlayer(
 
   // Strongest identity signal when available.
   if (normalizedFideId) {
-    const byFideId = db.prepare(
-      'SELECT id FROM players WHERE fide_id = ? LIMIT 1',
-    ).get(normalizedFideId) as { id: number } | undefined;
+    const byFideId = db
+      .prepare("SELECT id FROM players WHERE fide_id = ? LIMIT 1")
+      .get(normalizedFideId) as { id: number } | undefined;
     if (byFideId) {
-      db.prepare(`
+      db.prepare(
+        `
         UPDATE players SET
           name = CASE WHEN ? != '' THEN ? ELSE name END,
           federation = CASE WHEN ? != '' THEN ? ELSE federation END,
@@ -455,7 +554,8 @@ export function upsertPlayer(
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
           updated_at = datetime('now')
         WHERE id = ?
-      `).run(
+      `,
+      ).run(
         normalizedName,
         normalizedName,
         normalizedFed,
@@ -475,13 +575,14 @@ export function upsertPlayer(
     }
   }
 
-  const existing = db.prepare(
-    'SELECT id FROM players WHERE name = ? AND federation = ?',
-  ).get(normalizedName, normalizedFed) as { id: number } | undefined;
+  const existing = db
+    .prepare("SELECT id FROM players WHERE name = ? AND federation = ?")
+    .get(normalizedName, normalizedFed) as { id: number } | undefined;
 
   if (existing) {
     // Update fields that may have changed
-    db.prepare(`
+    db.prepare(
+      `
       UPDATE players SET
         sex = CASE WHEN ? != '' THEN ? ELSE sex END,
         title = CASE WHEN ? != '' THEN ? ELSE title END,
@@ -490,7 +591,8 @@ export function upsertPlayer(
         national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
         updated_at = datetime('now')
       WHERE id = ?
-    `).run(
+    `,
+    ).run(
       sex,
       sex,
       normalizedTitle,
@@ -508,15 +610,18 @@ export function upsertPlayer(
 
   // If federation is unknown (pairings pages), reuse an existing unique player by name.
   if (!normalizedFed) {
-    const sameName = db.prepare(
-      `SELECT id, federation
+    const sameName = db
+      .prepare(
+        `SELECT id, federation
        FROM players
        WHERE name = ?
        ORDER BY CASE WHEN federation = '' THEN 1 ELSE 0 END, updated_at DESC`,
-    ).all(normalizedName) as Array<{ id: number; federation: string }>;
+      )
+      .all(normalizedName) as Array<{ id: number; federation: string }>;
 
     if (sameName.length === 1) {
-      db.prepare(`
+      db.prepare(
+        `
         UPDATE players SET
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
           title = CASE WHEN ? != '' THEN ? ELSE title END,
@@ -525,7 +630,8 @@ export function upsertPlayer(
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
           updated_at = datetime('now')
         WHERE id = ?
-      `).run(
+      `,
+      ).run(
         sex,
         sex,
         normalizedTitle,
@@ -542,12 +648,15 @@ export function upsertPlayer(
     }
   } else {
     // If we now know the federation, adopt a previous placeholder entry.
-    const placeholder = db.prepare(
-      "SELECT id FROM players WHERE name = ? AND federation = '' LIMIT 1",
-    ).get(normalizedName) as { id: number } | undefined;
+    const placeholder = db
+      .prepare(
+        "SELECT id FROM players WHERE name = ? AND federation = '' LIMIT 1",
+      )
+      .get(normalizedName) as { id: number } | undefined;
 
     if (placeholder) {
-      db.prepare(`
+      db.prepare(
+        `
         UPDATE players SET
           federation = ?,
           sex = CASE WHEN ? != '' THEN ? ELSE sex END,
@@ -557,7 +666,8 @@ export function upsertPlayer(
           national_id = CASE WHEN ? IS NOT NULL THEN ? ELSE national_id END,
           updated_at = datetime('now')
         WHERE id = ?
-      `).run(
+      `,
+      ).run(
         normalizedFed,
         sex,
         sex,
@@ -575,10 +685,22 @@ export function upsertPlayer(
     }
   }
 
-  const result = db.prepare(`
+  const result = db
+    .prepare(
+      `
     INSERT INTO players (name, federation, sex, title, fide_id, birth_year, national_id)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(normalizedName, normalizedFed, sex, normalizedTitle, normalizedFideId, birthYear, normalizedNationalId);
+  `,
+    )
+    .run(
+      normalizedName,
+      normalizedFed,
+      sex,
+      normalizedTitle,
+      normalizedFideId,
+      birthYear,
+      normalizedNationalId,
+    );
 
   return Number(result.lastInsertRowid);
 }
@@ -588,12 +710,13 @@ export function linkPlayerToTournament(
   playerId: number,
   startingNumber: number,
   rating: number | null = null,
-  club = '',
+  club = "",
   nationalRating: number | null = null,
   performanceRating: number | null = null,
   ratingChange: string | null = null,
 ): void {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO tournament_players (tournament_id, player_id, starting_number, rating, club, national_rating, performance_rating, rating_change)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(tournament_id, player_id) DO UPDATE SET
@@ -603,7 +726,17 @@ export function linkPlayerToTournament(
       national_rating = COALESCE(excluded.national_rating, tournament_players.national_rating),
       performance_rating = COALESCE(excluded.performance_rating, tournament_players.performance_rating),
       rating_change = CASE WHEN excluded.rating_change IS NOT NULL THEN excluded.rating_change ELSE tournament_players.rating_change END
-  `).run(tournamentId, playerId, startingNumber, rating, club, nationalRating, performanceRating, ratingChange);
+  `,
+  ).run(
+    tournamentId,
+    playerId,
+    startingNumber,
+    rating,
+    club,
+    nationalRating,
+    performanceRating,
+    ratingChange,
+  );
 }
 
 // ── Results ──
@@ -618,7 +751,8 @@ export function upsertResult(
   whiteTeam: string | null = null,
   blackTeam: string | null = null,
 ): void {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO results (tournament_id, round, table_number, white_player_id, black_player_id, result, white_team, black_team)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(tournament_id, round, table_number) DO UPDATE SET
@@ -627,11 +761,23 @@ export function upsertResult(
       result = excluded.result,
       white_team = excluded.white_team,
       black_team = excluded.black_team
-  `).run(tournamentId, round, tableNumber, whitePlayerId, blackPlayerId, result, whiteTeam, blackTeam);
+  `,
+  ).run(
+    tournamentId,
+    round,
+    tableNumber,
+    whitePlayerId,
+    blackPlayerId,
+    result,
+    whiteTeam,
+    blackTeam,
+  );
 }
 
 export function getResults(tournamentId: string, round: number) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT r.*, pw.name AS white_name, pb.name AS black_name,
            COALESCE(tpw.starting_number, 0) AS white_starting_number,
            COALESCE(tpb.starting_number, 0) AS black_starting_number
@@ -642,14 +788,20 @@ export function getResults(tournamentId: string, round: number) {
     LEFT JOIN tournament_players tpb ON tpb.tournament_id = r.tournament_id AND tpb.player_id = r.black_player_id
     WHERE r.tournament_id = ? AND r.round = ?
     ORDER BY r.table_number
-  `).all(tournamentId, round);
+  `,
+    )
+    .all(tournamentId, round);
 }
 
 /** Build TournamentData for a specific round from DB rows. */
 export function getPairingsFromDb(
   tournamentId: string,
   round: number,
-): { info: TournamentInfo; pairings: Pairing[]; teamPairings?: TeamPairing[] } | null {
+): {
+  info: TournamentInfo;
+  pairings: Pairing[];
+  teamPairings?: TeamPairing[];
+} | null {
   const tournament = getTournament(tournamentId);
   if (!tournament) return null;
 
@@ -667,23 +819,29 @@ export function getPairingsFromDb(
 
   const inferUnpairedLabel = (result: string): string => {
     const normalized = result.trim();
-    return normalized === '1' ? 'BYE' : 'not paired';
+    return normalized === "1" ? "BYE" : "not paired";
   };
 
   const pairings: Pairing[] = results.map((r) => ({
     table: r.table_number,
-    white: { name: r.white_name || '', number: r.white_starting_number },
-    black: r.black_name ? { name: r.black_name, number: r.black_starting_number } : null,
+    white: { name: r.white_name || "", number: r.white_starting_number },
+    black: r.black_name
+      ? { name: r.black_name, number: r.black_starting_number }
+      : null,
     unpairedLabel: r.black_name ? undefined : inferUnpairedLabel(r.result),
     result: r.result,
   }));
 
   const info = buildTournamentInfo(tournament, round);
 
-  const parseBoardScore = (result: string): { white: number; black: number } | null => {
+  const parseBoardScore = (
+    result: string,
+  ): { white: number; black: number } | null => {
     const normalized = result.replace(/\s+/g, "").toLowerCase();
-    if (normalized === "1-0" || normalized === "1:0") return { white: 1, black: 0 };
-    if (normalized === "0-1" || normalized === "0:1") return { white: 0, black: 1 };
+    if (normalized === "1-0" || normalized === "1:0")
+      return { white: 1, black: 0 };
+    if (normalized === "0-1" || normalized === "0:1")
+      return { white: 0, black: 1 };
     if (
       normalized === "½-½" ||
       normalized === "½:½" ||
@@ -703,19 +861,23 @@ export function getPairingsFromDb(
   };
 
   // Reconstruct team pairings from board-level results if applicable
-  const isTeam = tournament.type === 'team-swiss' || tournament.type === 'team-round-robin';
+  const isTeam =
+    tournament.type === "team-swiss" || tournament.type === "team-round-robin";
   const hasTeamData = results.some((r) => r.white_team || r.black_team);
 
   if (isTeam && hasTeamData) {
-    const groupsByKey = new Map<string, {
-      whiteTeam: string;
-      blackTeam: string;
-      boards: Pairing[];
-      whiteScore: number;
-      blackScore: number;
-      scoredBoards: number;
-      firstTable: number;
-    }>();
+    const groupsByKey = new Map<
+      string,
+      {
+        whiteTeam: string;
+        blackTeam: string;
+        boards: Pairing[];
+        whiteScore: number;
+        blackScore: number;
+        scoredBoards: number;
+        firstTable: number;
+      }
+    >();
 
     for (const r of results) {
       if (!r.white_team || !r.black_team) {
@@ -739,8 +901,10 @@ export function getPairingsFromDb(
 
       group.boards.push({
         table: r.table_number,
-        white: { name: r.white_name || '', number: r.white_starting_number },
-        black: r.black_name ? { name: r.black_name, number: r.black_starting_number } : null,
+        white: { name: r.white_name || "", number: r.white_starting_number },
+        black: r.black_name
+          ? { name: r.black_name, number: r.black_starting_number }
+          : null,
         unpairedLabel: r.black_name ? undefined : inferUnpairedLabel(r.result),
         result: r.result,
       });
@@ -760,13 +924,14 @@ export function getPairingsFromDb(
     const teamPairings: TeamPairing[] = Array.from(groupsByKey.values())
       .sort((a, b) => a.firstTable - b.firstTable)
       .map((g, i) => ({
-      table: i + 1,
-      whiteTeam: g.whiteTeam,
-      blackTeam: g.blackTeam,
-      boards: g.boards,
-      result: g.scoredBoards > 0
-        ? `${formatScore(g.whiteScore)}:${formatScore(g.blackScore)}`
-        : '',
+        table: i + 1,
+        whiteTeam: g.whiteTeam,
+        blackTeam: g.blackTeam,
+        boards: g.boards,
+        result:
+          g.scoredBoards > 0
+            ? `${formatScore(g.whiteScore)}:${formatScore(g.blackScore)}`
+            : "",
       }));
 
     return { info, pairings, teamPairings };
@@ -784,7 +949,7 @@ export function getStandingsFromDb(tournamentId: string): {
   const tournament = getTournament(tournamentId);
   if (!tournament) return null;
 
-  const openRows = getStandings(tournamentId, 'open') as Array<{
+  const openRows = getStandings(tournamentId, "open") as Array<{
     rank: number;
     name: string;
     fed: string;
@@ -807,46 +972,53 @@ export function getStandingsFromDb(tournamentId: string): {
   const standings: Standing[] = openRows.map((r) => ({
     rank: r.rank,
     startingNumber: r.starting_number || 0,
-    title: r.title || '',
+    title: r.title || "",
     name: r.name,
-    fed: r.fed || '',
-    rating: r.rating ? String(r.rating) : '',
-    club: r.club || '',
+    fed: r.fed || "",
+    rating: r.rating ? String(r.rating) : "",
+    club: r.club || "",
     points: r.points,
-    sex: r.sex || '',
-    fideId: r.fide_id || '',
-    tieBreak1: r.tie_break_1 || '',
-    tieBreak2: r.tie_break_2 || '',
-    tieBreak3: r.tie_break_3 || '',
-    tieBreak4: r.tie_break_4 || '',
-    tieBreak5: r.tie_break_5 || '',
-    tieBreak6: r.tie_break_6 || '',
+    sex: r.sex || "",
+    fideId: r.fide_id || "",
+    tieBreak1: r.tie_break_1 || "",
+    tieBreak2: r.tie_break_2 || "",
+    tieBreak3: r.tie_break_3 || "",
+    tieBreak4: r.tie_break_4 || "",
+    tieBreak5: r.tie_break_5 || "",
+    tieBreak6: r.tie_break_6 || "",
   }));
 
-  const womenRows = getStandings(tournamentId, 'women') as typeof openRows;
+  const womenRows = getStandings(tournamentId, "women") as typeof openRows;
   const womenStandings: Standing[] = womenRows.map((r) => ({
     rank: r.rank,
     startingNumber: r.starting_number || 0,
-    title: r.title || '',
+    title: r.title || "",
     name: r.name,
-    fed: r.fed || '',
-    rating: r.rating ? String(r.rating) : '',
-    club: r.club || '',
+    fed: r.fed || "",
+    rating: r.rating ? String(r.rating) : "",
+    club: r.club || "",
     points: r.points,
-    sex: 'F' as Sex,
-    fideId: r.fide_id || '',
-    tieBreak1: r.tie_break_1 || '',
-    tieBreak2: r.tie_break_2 || '',
-    tieBreak3: r.tie_break_3 || '',
-    tieBreak4: r.tie_break_4 || '',
-    tieBreak5: r.tie_break_5 || '',
-    tieBreak6: r.tie_break_6 || '',
+    sex: "F" as Sex,
+    fideId: r.fide_id || "",
+    tieBreak1: r.tie_break_1 || "",
+    tieBreak2: r.tie_break_2 || "",
+    tieBreak3: r.tie_break_3 || "",
+    tieBreak4: r.tie_break_4 || "",
+    tieBreak5: r.tie_break_5 || "",
+    tieBreak6: r.tie_break_6 || "",
   }));
 
-  return { info: buildTournamentInfo(tournament, 0), standings, womenStandings };
+  return {
+    info: buildTournamentInfo(tournament, 0),
+    standings,
+    womenStandings,
+  };
 }
 
-function buildTournamentInfo(tournament: DbTournament, round = 0): TournamentInfo {
+function buildTournamentInfo(
+  tournament: DbTournament,
+  round = 0,
+): TournamentInfo {
   let linkedTournaments: LinkedTournament[] | undefined;
   let currentLabel: string | undefined;
   try {
@@ -855,7 +1027,9 @@ function buildTournamentInfo(tournament: DbTournament, round = 0): TournamentInf
       linkedTournaments = parsed;
       currentLabel = tournament.event_label || undefined;
     }
-  } catch (_) { /* ignore */ }
+  } catch (_) {
+    /* ignore */
+  }
 
   return {
     name: tournament.name,
@@ -873,24 +1047,37 @@ function buildTournamentInfo(tournament: DbTournament, round = 0): TournamentInf
 // ── Standings ──
 
 // Migrate: add TB4-TB6 columns if they don't exist yet (no-op after first run)
-try { db.exec("ALTER TABLE standings ADD COLUMN tie_break_4 TEXT NOT NULL DEFAULT ''"); } catch (_) {}
-try { db.exec("ALTER TABLE standings ADD COLUMN tie_break_5 TEXT NOT NULL DEFAULT ''"); } catch (_) {}
-try { db.exec("ALTER TABLE standings ADD COLUMN tie_break_6 TEXT NOT NULL DEFAULT ''"); } catch (_) {}
+try {
+  db.exec(
+    "ALTER TABLE standings ADD COLUMN tie_break_4 TEXT NOT NULL DEFAULT ''",
+  );
+} catch (_) {}
+try {
+  db.exec(
+    "ALTER TABLE standings ADD COLUMN tie_break_5 TEXT NOT NULL DEFAULT ''",
+  );
+} catch (_) {}
+try {
+  db.exec(
+    "ALTER TABLE standings ADD COLUMN tie_break_6 TEXT NOT NULL DEFAULT ''",
+  );
+} catch (_) {}
 
 export function upsertStanding(
   tournamentId: string,
   playerId: number,
-  type: 'open' | 'women',
+  type: "open" | "women",
   rank: number,
   points: string,
-  tb1 = '',
-  tb2 = '',
-  tb3 = '',
-  tb4 = '',
-  tb5 = '',
-  tb6 = '',
+  tb1 = "",
+  tb2 = "",
+  tb3 = "",
+  tb4 = "",
+  tb5 = "",
+  tb6 = "",
 ): void {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO standings (tournament_id, player_id, type, rank, points, tie_break_1, tie_break_2, tie_break_3, tie_break_4, tie_break_5, tie_break_6)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(tournament_id, player_id, type) DO UPDATE SET
@@ -902,11 +1089,26 @@ export function upsertStanding(
       tie_break_4 = excluded.tie_break_4,
       tie_break_5 = excluded.tie_break_5,
       tie_break_6 = excluded.tie_break_6
-  `).run(tournamentId, playerId, type, rank, points, tb1, tb2, tb3, tb4, tb5, tb6);
+  `,
+  ).run(
+    tournamentId,
+    playerId,
+    type,
+    rank,
+    points,
+    tb1,
+    tb2,
+    tb3,
+    tb4,
+    tb5,
+    tb6,
+  );
 }
 
-export function getStandings(tournamentId: string, type: string = 'open') {
-  return db.prepare(`
+export function getStandings(tournamentId: string, type: string = "open") {
+  return db
+    .prepare(
+      `
     SELECT s.rank, p.name, p.federation AS fed, p.sex, p.title,
            COALESCE(tp.rating, 0) AS rating,
            COALESCE(tp.club, '') AS club,
@@ -918,7 +1120,9 @@ export function getStandings(tournamentId: string, type: string = 'open') {
     LEFT JOIN tournament_players tp ON tp.tournament_id = s.tournament_id AND tp.player_id = p.id
     WHERE s.tournament_id = ? AND s.type = ?
     ORDER BY s.rank
-  `).all(tournamentId, type);
+  `,
+    )
+    .all(tournamentId, type);
 }
 
 /** Persist an entire batch of standings + players in a single transaction. */
@@ -931,12 +1135,23 @@ export function persistStandings(
   const txn = db.transaction(() => {
     upsertTournament(info, tournamentId);
 
+    // If remote returned no standings at all, avoid deleting existing DB standings.
+    // This prevents accidental clearing when the remote page is temporarily unavailable.
+    if (
+      (!standings || standings.length === 0) &&
+      (!womenStandings || womenStandings.length === 0)
+    ) {
+      return;
+    }
+
     // Delete existing standings before inserting fresh set.
     // This prevents stale rows from accumulating when player IDs change
     // (e.g., name format differences between art=4 and art=1 pages).
-    db.prepare('DELETE FROM standings WHERE tournament_id = ?').run(tournamentId);
+    db.prepare("DELETE FROM standings WHERE tournament_id = ?").run(
+      tournamentId,
+    );
 
-    const saveStanding = (s: Standing, type: 'open' | 'women') => {
+    const saveStanding = (s: Standing, type: "open" | "women") => {
       const playerId = upsertPlayer(
         s.name,
         s.fed,
@@ -953,14 +1168,26 @@ export function persistStandings(
         s.rating ? Number.parseInt(s.rating, 10) || null : null,
         s.club,
       );
-      upsertStanding(tournamentId, playerId, type, s.rank, s.points, s.tieBreak1, s.tieBreak2, s.tieBreak3, s.tieBreak4, s.tieBreak5, s.tieBreak6);
+      upsertStanding(
+        tournamentId,
+        playerId,
+        type,
+        s.rank,
+        s.points,
+        s.tieBreak1,
+        s.tieBreak2,
+        s.tieBreak3,
+        s.tieBreak4,
+        s.tieBreak5,
+        s.tieBreak6,
+      );
     };
 
     for (const s of standings) {
-      saveStanding(s, 'open');
+      saveStanding(s, "open");
     }
     for (const s of womenStandings) {
-      saveStanding(s, 'women');
+      saveStanding(s, "women");
     }
   });
   txn();
@@ -980,24 +1207,33 @@ export function persistPairings(
     if (teamPairings && teamPairings.length > 0) {
       for (const tm of teamPairings) {
         for (const b of tm.boards) {
-          const whiteId = b.white.name ? upsertPlayer(b.white.name, '') : null;
-          const blackId = b.black?.name ? upsertPlayer(b.black.name, '') : null;
-          if (whiteId) linkPlayerToTournament(tournamentId, whiteId, b.white.number);
-          if (blackId && b.black) linkPlayerToTournament(tournamentId, blackId, b.black.number);
-          upsertResult(tournamentId, round, b.table, whiteId, blackId, b.result, tm.whiteTeam, tm.blackTeam);
+          const whiteId = b.white.name ? upsertPlayer(b.white.name, "") : null;
+          const blackId = b.black?.name ? upsertPlayer(b.black.name, "") : null;
+          if (whiteId)
+            linkPlayerToTournament(tournamentId, whiteId, b.white.number);
+          if (blackId && b.black)
+            linkPlayerToTournament(tournamentId, blackId, b.black.number);
+          upsertResult(
+            tournamentId,
+            round,
+            b.table,
+            whiteId,
+            blackId,
+            b.result,
+            tm.whiteTeam,
+            tm.blackTeam,
+          );
         }
       }
     } else {
       for (const p of pairings) {
-        const whiteId = p.white.name
-          ? upsertPlayer(p.white.name, '')
-          : null;
-        const blackId = p.black?.name
-          ? upsertPlayer(p.black.name, '')
-          : null;
+        const whiteId = p.white.name ? upsertPlayer(p.white.name, "") : null;
+        const blackId = p.black?.name ? upsertPlayer(p.black.name, "") : null;
 
-        if (whiteId) linkPlayerToTournament(tournamentId, whiteId, p.white.number);
-        if (blackId && p.black) linkPlayerToTournament(tournamentId, blackId, p.black.number);
+        if (whiteId)
+          linkPlayerToTournament(tournamentId, whiteId, p.white.number);
+        if (blackId && p.black)
+          linkPlayerToTournament(tournamentId, blackId, p.black.number);
 
         upsertResult(tournamentId, round, p.table, whiteId, blackId, p.result);
       }
@@ -1007,13 +1243,19 @@ export function persistPairings(
 }
 
 /** Look up titles (GM, IM, etc.) for all players in a tournament, keyed by player name. */
-export function getPlayerTitleMap(tournamentId: string): Record<string, string> {
-  const rows = db.prepare(`
+export function getPlayerTitleMap(
+  tournamentId: string,
+): Record<string, string> {
+  const rows = db
+    .prepare(
+      `
     SELECT p.name, p.title
     FROM tournament_players tp
     JOIN players p ON p.id = tp.player_id
     WHERE tp.tournament_id = ? AND p.title != ''
-  `).all(tournamentId) as Array<{ name: string; title: string }>;
+  `,
+    )
+    .all(tournamentId) as Array<{ name: string; title: string }>;
 
   const map: Record<string, string> = {};
   for (const r of rows) {
@@ -1023,13 +1265,22 @@ export function getPlayerTitleMap(tournamentId: string): Record<string, string> 
 }
 
 /** Look up national IDs (Ident-Number) for all players in a tournament, keyed by starting number. */
-export function getPlayerNationalIds(tournamentId: string): Record<number, string> {
-  const rows = db.prepare(`
+export function getPlayerNationalIds(
+  tournamentId: string,
+): Record<number, string> {
+  const rows = db
+    .prepare(
+      `
     SELECT tp.starting_number, p.national_id
     FROM tournament_players tp
     JOIN players p ON p.id = tp.player_id
     WHERE tp.tournament_id = ? AND p.national_id IS NOT NULL AND p.national_id != ''
-  `).all(tournamentId) as Array<{ starting_number: number; national_id: string }>;
+  `,
+    )
+    .all(tournamentId) as Array<{
+    starting_number: number;
+    national_id: string;
+  }>;
 
   const map: Record<number, string> = {};
   for (const r of rows) {
@@ -1048,7 +1299,7 @@ export function persistPlayerCard(
   const playerId = upsertPlayer(
     card.name,
     card.federation,
-    '',
+    "",
     card.fideId || null,
     card.birthYear,
     card.nationalId || null,
@@ -1067,9 +1318,14 @@ export function persistPlayerCard(
 
 // ── Search ──
 
-export function searchTournaments(query: string, limit = 10): DbTournamentSummary[] {
+export function searchTournaments(
+  query: string,
+  limit = 10,
+): DbTournamentSummary[] {
   // Note: '?' parameter binding in SQLite safely handles LIKE wildcard characters.
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT t.*,
       COUNT(tp.player_id) AS player_count
     FROM tournaments t
@@ -1078,11 +1334,15 @@ export function searchTournaments(query: string, limit = 10): DbTournamentSummar
     GROUP BY t.id
     ORDER BY datetime(t.updated_at) DESC
     LIMIT ?
-  `).all(query, limit) as DbTournamentSummary[];
+  `,
+    )
+    .all(query, limit) as DbTournamentSummary[];
 }
 
 export function listTournaments(limit = 20, offset = 0): DbTournamentSummary[] {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT t.*,
       COUNT(tp.player_id) AS player_count
     FROM tournaments t
@@ -1090,12 +1350,20 @@ export function listTournaments(limit = 20, offset = 0): DbTournamentSummary[] {
     GROUP BY t.id
     ORDER BY datetime(t.updated_at) DESC
     LIMIT ? OFFSET ?
-  `).all(limit, offset) as DbTournamentSummary[];
+  `,
+    )
+    .all(limit, offset) as DbTournamentSummary[];
 }
 
-export function searchTournamentsPaged(query: string, limit = 20, offset = 0): DbTournamentSummary[] {
+export function searchTournamentsPaged(
+  query: string,
+  limit = 20,
+  offset = 0,
+): DbTournamentSummary[] {
   // Note: '?' parameter binding in SQLite safely handles LIKE wildcard characters.
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT t.*,
       COUNT(tp.player_id) AS player_count
     FROM tournaments t
@@ -1104,58 +1372,90 @@ export function searchTournamentsPaged(query: string, limit = 20, offset = 0): D
     GROUP BY t.id
     ORDER BY datetime(t.updated_at) DESC
     LIMIT ? OFFSET ?
-  `).all(query, limit, offset) as DbTournamentSummary[];
+  `,
+    )
+    .all(query, limit, offset) as DbTournamentSummary[];
 }
 
-export function countTournaments(query = ''): number {
+export function countTournaments(query = ""): number {
   if (!query.trim()) {
-    return (db.prepare(`SELECT COUNT(*) as count FROM tournaments`).get() as { count: number }).count;
+    return (
+      db.prepare(`SELECT COUNT(*) as count FROM tournaments`).get() as {
+        count: number;
+      }
+    ).count;
   }
 
-  return (db.prepare(`
+  return (
+    db
+      .prepare(
+        `
     SELECT COUNT(*) as count
     FROM tournaments
     WHERE name LIKE '%' || ? || '%'
-  `).get(query) as { count: number }).count;
+  `,
+      )
+      .get(query) as { count: number }
+  ).count;
 }
 
 export function getPlayerById(playerId: number): DbPlayer | undefined {
-  return db.prepare('SELECT * FROM players WHERE id = ?').get(playerId) as DbPlayer | undefined;
+  return db.prepare("SELECT * FROM players WHERE id = ?").get(playerId) as
+    | DbPlayer
+    | undefined;
 }
 
-export function findPlayerByNationalId(nationalId: string, federation: string): DbPlayer | undefined {
+export function findPlayerByNationalId(
+  nationalId: string,
+  federation: string,
+): DbPlayer | undefined {
   const normalizedId = nationalId.trim();
   const normalizedFed = federation.trim();
   if (!normalizedId || !normalizedFed) return undefined;
-  return db.prepare(
-    'SELECT * FROM players WHERE national_id = ? AND federation = ? LIMIT 1',
-  ).get(normalizedId, normalizedFed) as DbPlayer | undefined;
+  return db
+    .prepare(
+      "SELECT * FROM players WHERE national_id = ? AND federation = ? LIMIT 1",
+    )
+    .get(normalizedId, normalizedFed) as DbPlayer | undefined;
 }
 
 export function findPlayerByFideIdExact(fideId: string): DbPlayer | undefined {
   const normalized = fideId.trim();
   if (!normalized) return undefined;
-  return db.prepare('SELECT * FROM players WHERE fide_id = ? LIMIT 1').get(normalized) as DbPlayer | undefined;
+  return db
+    .prepare("SELECT * FROM players WHERE fide_id = ? LIMIT 1")
+    .get(normalized) as DbPlayer | undefined;
 }
 
-export function updatePlayerPhoto(playerId: number, photoUrl: string | null): void {
-  db.prepare("UPDATE players SET photo_url = ?, updated_at = datetime('now') WHERE id = ?").run(photoUrl, playerId);
+export function updatePlayerPhoto(
+  playerId: number,
+  photoUrl: string | null,
+): void {
+  db.prepare(
+    "UPDATE players SET photo_url = ?, updated_at = datetime('now') WHERE id = ?",
+  ).run(photoUrl, playerId);
 }
 
-export function findPlayerByIdentity(name: string, federation = ''): DbPlayer | undefined {
+export function findPlayerByIdentity(
+  name: string,
+  federation = "",
+): DbPlayer | undefined {
   const normalizedName = name.trim();
   const normalizedFed = federation.trim();
 
   if (normalizedFed) {
-    const exact = db.prepare(
-      'SELECT * FROM players WHERE name = ? AND federation = ? LIMIT 1',
-    ).get(normalizedName, normalizedFed) as DbPlayer | undefined;
+    const exact = db
+      .prepare(
+        "SELECT * FROM players WHERE name = ? AND federation = ? LIMIT 1",
+      )
+      .get(normalizedName, normalizedFed) as DbPlayer | undefined;
     if (exact) return exact;
   }
 
   if (!normalizedFed) {
-    return db.prepare(
-      `SELECT *
+    return db
+      .prepare(
+        `SELECT *
        FROM players
        WHERE name = ?
        ORDER BY
@@ -1168,21 +1468,26 @@ export function findPlayerByIdentity(name: string, federation = ''): DbPlayer | 
          END,
          updated_at DESC
        LIMIT 1`,
-    ).get(normalizedName) as DbPlayer | undefined;
+      )
+      .get(normalizedName) as DbPlayer | undefined;
   }
 
-  return db.prepare(
-    `SELECT *
+  return db
+    .prepare(
+      `SELECT *
      FROM players
      WHERE name = ?
      ORDER BY CASE WHEN federation = ? THEN 0 WHEN federation != '' THEN 1 ELSE 2 END,
               updated_at DESC
      LIMIT 1`,
-  ).get(normalizedName, normalizedFed) as DbPlayer | undefined;
+    )
+    .get(normalizedName, normalizedFed) as DbPlayer | undefined;
 }
 
 export function getPlayerTournamentHistory(playerId: number) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT
       t.id AS tournament_id,
       t.name AS tournament_name,
@@ -1211,21 +1516,29 @@ export function getPlayerTournamentHistory(playerId: number) {
     LEFT JOIN standings s ON s.tournament_id = tp.tournament_id AND s.player_id = tp.player_id AND s.type = 'open'
     WHERE tp.player_id = ?
     ORDER BY datetime(t.updated_at) DESC
-  `).all(playerId) as DbPlayerTournamentHistory[];
+  `,
+    )
+    .all(playerId) as DbPlayerTournamentHistory[];
 }
 
 export function getPlayerResultRows(playerId: number) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT tournament_id, white_player_id, black_player_id, result
     FROM results
     WHERE white_player_id = ? OR black_player_id = ?
-  `).all(playerId, playerId) as DbPlayerResultEntry[];
+  `,
+    )
+    .all(playerId, playerId) as DbPlayerResultEntry[];
 }
 
 // ─── Openings API ────────────────────────────────────────────────────────────
 
 export function getOpenings() {
-  const rows = db.prepare('SELECT * FROM openings ORDER BY name, variation').all() as any[];
+  const rows = db
+    .prepare("SELECT * FROM openings ORDER BY name, variation")
+    .all() as any[];
   return rows.map((row) => ({
     ...row,
     moves: JSON.parse(row.moves),
@@ -1241,23 +1554,25 @@ type OpeningCatalogSummary = {
 };
 
 export type OpeningCatalogSearchResult =
-  | ({ type: 'opening' } & OpeningCatalogSummary)
+  | ({ type: "opening" } & OpeningCatalogSummary)
   | {
-      type: 'variation';
+      type: "variation";
       id: number;
       name: string;
       variation: string;
       eco: string;
-      color: 'w' | 'b';
+      color: "w" | "b";
       moveCount: number;
       isBriefLine: boolean;
     };
 
-function summarizeOpeningCatalog(rows: {
-  name: string;
-  eco: string;
-  moves: string;
-}[]) {
+function summarizeOpeningCatalog(
+  rows: {
+    name: string;
+    eco: string;
+    moves: string;
+  }[],
+) {
   const summaries = new Map<string, OpeningCatalogSummary>();
 
   for (const row of rows) {
@@ -1267,7 +1582,8 @@ function summarizeOpeningCatalog(rows: {
 
     if (summary) {
       summary.lineCount += 1;
-      summary.rehearsalLineCount += length >= MIN_OPENING_REHEARSAL_PLIES ? 1 : 0;
+      summary.rehearsalLineCount +=
+        length >= MIN_OPENING_REHEARSAL_PLIES ? 1 : 0;
       summary.longestLineLength = Math.max(summary.longestLineLength, length);
       if (row.eco < summary.eco) {
         summary.eco = row.eco;
@@ -1296,7 +1612,7 @@ function summarizeOpeningCatalog(rows: {
 }
 
 export function getOpeningNames(): OpeningCatalogSummary[] {
-  const rows = db.prepare('SELECT name, eco, moves FROM openings').all() as {
+  const rows = db.prepare("SELECT name, eco, moves FROM openings").all() as {
     name: string;
     eco: string;
     moves: string;
@@ -1311,7 +1627,9 @@ export function searchOpeningCatalog(query: string): OpeningCatalogSummary[] {
     return getOpeningNames();
   }
 
-  const rows = db.prepare('SELECT name, eco, variation, moves FROM openings').all() as {
+  const rows = db
+    .prepare("SELECT name, eco, variation, moves FROM openings")
+    .all() as {
     name: string;
     eco: string;
     variation: string;
@@ -1321,27 +1639,37 @@ export function searchOpeningCatalog(query: string): OpeningCatalogSummary[] {
   const matchedOpeningNames = new Set<string>();
 
   for (const row of rows) {
-    const searchableText = `${row.name} ${row.eco} ${row.variation}`.toLowerCase();
+    const searchableText =
+      `${row.name} ${row.eco} ${row.variation}`.toLowerCase();
     if (searchableText.includes(normalizedQuery)) {
       matchedOpeningNames.add(row.name);
     }
   }
 
-  return summarizeOpeningCatalog(rows).filter((summary) => matchedOpeningNames.has(summary.name));
+  return summarizeOpeningCatalog(rows).filter((summary) =>
+    matchedOpeningNames.has(summary.name),
+  );
 }
 
-export function searchOpeningCatalogResults(query: string): OpeningCatalogSearchResult[] {
+export function searchOpeningCatalogResults(
+  query: string,
+): OpeningCatalogSearchResult[] {
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) {
-    return getOpeningNames().map((summary) => ({ type: 'opening' as const, ...summary }));
+    return getOpeningNames().map((summary) => ({
+      type: "opening" as const,
+      ...summary,
+    }));
   }
 
-  const rows = db.prepare('SELECT id, name, eco, variation, color, moves FROM openings').all() as {
+  const rows = db
+    .prepare("SELECT id, name, eco, variation, color, moves FROM openings")
+    .all() as {
     id: number;
     name: string;
     eco: string;
     variation: string;
-    color: 'w' | 'b';
+    color: "w" | "b";
     moves: string;
   }[];
 
@@ -1351,7 +1679,8 @@ export function searchOpeningCatalogResults(query: string): OpeningCatalogSearch
 
   for (const row of rows) {
     const openingSearchText = `${row.name} ${row.eco}`.toLowerCase();
-    const variationSearchText = `${row.variation} ${row.eco} ${row.name}`.toLowerCase();
+    const variationSearchText =
+      `${row.variation} ${row.eco} ${row.name}`.toLowerCase();
     const matchesOpening = openingSearchText.includes(normalizedQuery);
     const matchesVariation = variationSearchText.includes(normalizedQuery);
 
@@ -1363,7 +1692,7 @@ export function searchOpeningCatalogResults(query: string): OpeningCatalogSearch
     if (matchesVariation) {
       const moves = JSON.parse(row.moves) as string[];
       variationResults.push({
-        type: 'variation',
+        type: "variation",
         id: row.id,
         name: row.name,
         variation: row.variation,
@@ -1375,13 +1704,15 @@ export function searchOpeningCatalogResults(query: string): OpeningCatalogSearch
     }
   }
 
-  const openingResults = summarizeOpeningCatalog(openingRows).map((summary) => ({
-    type: 'opening' as const,
-    ...summary,
-  }));
+  const openingResults = summarizeOpeningCatalog(openingRows).map(
+    (summary) => ({
+      type: "opening" as const,
+      ...summary,
+    }),
+  );
 
   variationResults.sort((left, right) => {
-    if (left.type !== 'variation' || right.type !== 'variation') {
+    if (left.type !== "variation" || right.type !== "variation") {
       return 0;
     }
     if (left.isBriefLine !== right.isBriefLine) {
@@ -1400,9 +1731,9 @@ export function searchOpeningCatalogResults(query: string): OpeningCatalogSearch
 }
 
 export function getOpeningsByName(name: string) {
-  const rows = db.prepare(
-    'SELECT * FROM openings WHERE name = ? ORDER BY variation, color'
-  ).all(name) as any[];
+  const rows = db
+    .prepare("SELECT * FROM openings WHERE name = ? ORDER BY variation, color")
+    .all(name) as any[];
   return rows.map((row) => ({
     ...row,
     moves: JSON.parse(row.moves),
@@ -1410,7 +1741,7 @@ export function getOpeningsByName(name: string) {
 }
 
 export function getOpeningById(id: number) {
-  const row = db.prepare('SELECT * FROM openings WHERE id = ?').get(id) as any;
+  const row = db.prepare("SELECT * FROM openings WHERE id = ?").get(id) as any;
   if (!row) return undefined;
   return {
     ...row,
@@ -1422,24 +1753,29 @@ export function insertOpening(
   name: string,
   variation: string,
   eco: string,
-  color: 'w' | 'b',
+  color: "w" | "b",
   moves: string[],
-  starting_fen: string = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+  starting_fen: string = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
 ) {
-  const existing = db.prepare('SELECT id FROM openings WHERE name = ? AND variation = ? AND color = ?').get(name, variation, color) as { id: number } | undefined;
+  const existing = db
+    .prepare(
+      "SELECT id FROM openings WHERE name = ? AND variation = ? AND color = ?",
+    )
+    .get(name, variation, color) as { id: number } | undefined;
   if (existing) {
-    db.prepare('UPDATE openings SET eco = ?, moves = ?, starting_fen = ? WHERE id = ?').run(
-      eco,
-      JSON.stringify(moves),
-      starting_fen,
-      existing.id
-    );
+    db.prepare(
+      "UPDATE openings SET eco = ?, moves = ?, starting_fen = ? WHERE id = ?",
+    ).run(eco, JSON.stringify(moves), starting_fen, existing.id);
     return existing.id;
   }
-  const result = db.prepare(`
+  const result = db
+    .prepare(
+      `
     INSERT INTO openings (name, variation, eco, color, moves, starting_fen)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run(name, variation, eco, color, JSON.stringify(moves), starting_fen);
+  `,
+    )
+    .run(name, variation, eco, color, JSON.stringify(moves), starting_fen);
   return Number(result.lastInsertRowid);
 }
 
@@ -1451,22 +1787,32 @@ export function upsertRefereeResult(
   tableNumber: number,
   result: string,
 ): void {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO referee_results (tournament_id, round, table_number, result)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(tournament_id, round, table_number) DO UPDATE SET
       result = excluded.result,
       created_at = datetime('now')
-  `).run(tournamentId, round, tableNumber, result);
+  `,
+  ).run(tournamentId, round, tableNumber, result);
 }
 
 export function getRefereeResults(tournamentId: string, round: number) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT table_number, result, created_at
     FROM referee_results
     WHERE tournament_id = ? AND round = ?
     ORDER BY table_number
-  `).all(tournamentId, round) as Array<{ table_number: number; result: string; created_at: string }>;
+  `,
+    )
+    .all(tournamentId, round) as Array<{
+    table_number: number;
+    result: string;
+    created_at: string;
+  }>;
 }
 
 export function deleteRefereeResult(
@@ -1474,10 +1820,12 @@ export function deleteRefereeResult(
   round: number,
   tableNumber: number,
 ): void {
-  db.prepare(`
+  db.prepare(
+    `
     DELETE FROM referee_results
     WHERE tournament_id = ? AND round = ? AND table_number = ?
-  `).run(tournamentId, round, tableNumber);
+  `,
+  ).run(tournamentId, round, tableNumber);
 }
 
 /**
@@ -1487,10 +1835,15 @@ export function deleteRefereeResult(
  * This replaces the O(N) sequential scrapePairings loop in referee pages
  * with a single DB query.
  */
-export function findLatestIncompleteRound(tournamentId: string, totalRounds: number): number {
+export function findLatestIncompleteRound(
+  tournamentId: string,
+  totalRounds: number,
+): number {
   // Find the highest round where ALL results are empty (the "current" round for referee)
   // Strategy: find the highest round that has pairings but no non-empty results
-  const row = db.prepare(`
+  const row = db
+    .prepare(
+      `
     SELECT r.round
     FROM results r
     WHERE r.tournament_id = ?
@@ -1500,36 +1853,57 @@ export function findLatestIncompleteRound(tournamentId: string, totalRounds: num
       AND SUM(CASE WHEN r.result != '' THEN 1 ELSE 0 END) = 0
     ORDER BY r.round DESC
     LIMIT 1
-  `).get(tournamentId, totalRounds) as { round: number } | undefined;
+  `,
+    )
+    .get(tournamentId, totalRounds) as { round: number } | undefined;
 
   return row?.round ?? 1;
 }
 
 // ── Tournament Configuration ──
 
-export function setTournamentConfig(tournamentId: string, key: string, value: string): void {
-  db.prepare(`
+export function setTournamentConfig(
+  tournamentId: string,
+  key: string,
+  value: string,
+): void {
+  db.prepare(
+    `
     INSERT INTO tournament_config (tournament_id, key, value)
     VALUES (?, ?, ?)
     ON CONFLICT(tournament_id, key) DO UPDATE SET value = excluded.value
-  `).run(tournamentId, key, value);
+  `,
+  ).run(tournamentId, key, value);
 }
 
-export function getTournamentConfig(tournamentId: string, key: string): string | null {
-  const row = db.prepare(`
+export function getTournamentConfig(
+  tournamentId: string,
+  key: string,
+): string | null {
+  const row = db
+    .prepare(
+      `
     SELECT value FROM tournament_config WHERE tournament_id = ? AND key = ?
-  `).get(tournamentId, key) as { value: string } | undefined;
+  `,
+    )
+    .get(tournamentId, key) as { value: string } | undefined;
   return row?.value ?? null;
 }
 
 // ── Player UIDs (chess-results.com internal IDs) ──
 
-export function upsertPlayerUid(tournamentId: string, startingNumber: number, uid: number): void {
-  db.prepare(`
+export function upsertPlayerUid(
+  tournamentId: string,
+  startingNumber: number,
+  uid: number,
+): void {
+  db.prepare(
+    `
     INSERT INTO player_uids (tournament_id, starting_number, uid)
     VALUES (?, ?, ?)
     ON CONFLICT(tournament_id, starting_number) DO UPDATE SET uid = excluded.uid
-  `).run(tournamentId, startingNumber, uid);
+  `,
+  ).run(tournamentId, startingNumber, uid);
 }
 
 export interface TournamentPlayerRow {
@@ -1543,8 +1917,12 @@ export interface TournamentPlayerRow {
   rating: number | null;
 }
 
-export function getTournamentPlayers(tournamentId: string): TournamentPlayerRow[] {
-  return db.prepare(`
+export function getTournamentPlayers(
+  tournamentId: string,
+): TournamentPlayerRow[] {
+  return db
+    .prepare(
+      `
     SELECT p.id AS player_id, tp.starting_number, p.name, p.federation,
            p.fide_id, p.national_id, p.photo_url,
            COALESCE(tp.rating, 0) AS rating
@@ -1552,13 +1930,19 @@ export function getTournamentPlayers(tournamentId: string): TournamentPlayerRow[
     JOIN players p ON p.id = tp.player_id
     WHERE tp.tournament_id = ?
     ORDER BY tp.starting_number
-  `).all(tournamentId) as TournamentPlayerRow[];
+  `,
+    )
+    .all(tournamentId) as TournamentPlayerRow[];
 }
 
 export function getPlayerUidMap(tournamentId: string): Record<number, number> {
-  const rows = db.prepare(`
+  const rows = db
+    .prepare(
+      `
     SELECT starting_number, uid FROM player_uids WHERE tournament_id = ?
-  `).all(tournamentId) as Array<{ starting_number: number; uid: number }>;
+  `,
+    )
+    .all(tournamentId) as Array<{ starting_number: number; uid: number }>;
   const map: Record<number, number> = {};
   for (const r of rows) {
     map[r.starting_number] = r.uid;
@@ -1577,7 +1961,8 @@ export function logUploadResult(
   status: string,
   statusMsg: string,
 ): void {
-  db.prepare(`
+  db.prepare(
+    `
     INSERT INTO upload_log (tournament_id, round, table_number, uid, result_code, status, status_msg)
     VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(tournament_id, round, table_number) DO UPDATE SET
@@ -1586,16 +1971,21 @@ export function logUploadResult(
       status = excluded.status,
       status_msg = excluded.status_msg,
       created_at = datetime('now')
-  `).run(tournamentId, round, tableNumber, uid, resultCode, status, statusMsg);
+  `,
+  ).run(tournamentId, round, tableNumber, uid, resultCode, status, statusMsg);
 }
 
 export function getUploadLog(tournamentId: string, round: number) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT table_number, uid, result_code, status, status_msg, created_at
     FROM upload_log
     WHERE tournament_id = ? AND round = ?
     ORDER BY table_number
-  `).all(tournamentId, round) as Array<{
+  `,
+    )
+    .all(tournamentId, round) as Array<{
     table_number: number;
     uid: number;
     result_code: string;
